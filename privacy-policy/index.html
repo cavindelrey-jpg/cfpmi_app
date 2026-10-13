@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Privacy Policy for the Green Hills Academia educational platform — how we collect, use, store, and protect information for students, teachers, and schools." />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#1f7a4d" />
+  <title>Privacy Policy — Green Hills Academia</title>
+  <style>
+    :root {
+      --brand:        #1f7a4d;
+      --brand-dark:   #15603b;
+      --brand-light:  #e8f3ed;
+      --accent:       #2fa968;
+      --bg:           #ffffff;
+      --surface:      #f6f8f7;
+      --text:         #1c2b24;
+      --text-muted:   #5a6b63;
+      --border:       #dce5e0;
+      --link:         #1f7a4d;
+      --maxw:         780px;
+      --radius:       12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --brand:        #3fb87a;
+        --brand-dark:   #2fa968;
+        --brand-light:  #16241d;
+        --accent:       #4cc98a;
+        --bg:           #0f1713;
+        --surface:      #16211b;
+        --text:         #e7efea;
+        --text-muted:   #a4b4ac;
+        --border:       #27362e;
+        --link:         #5fd199;
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --brand:        #3fb87a;
+      --brand-dark:   #2fa968;
+      --brand-light:  #16241d;
+      --accent:       #4cc98a;
+      --bg:           #0f1713;
+      --surface:      #16211b;
+      --text:         #e7efea;
+      --text-muted:   #a4b4ac;
+      --border:       #27362e;
+      --link:         #5fd199;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+      font-size: 17px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: var(--link); }
+    a:focus-visible,
+    button:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: -999px;
+      top: 0;
+      background: var(--brand);
+      color: #fff;
+      padding: 10px 16px;
+      z-index: 100;
+      border-radius: 0 0 8px 0;
+    }
+    .skip-link:focus { left: 0; }
+
+    /* ---------- Header ---------- */
+    header.site {
+      background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+      color: #fff;
+      padding: 40px 20px 48px;
+    }
+    .wrap {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .brand .logo {
+      width: 40px;
+      height: 40px;
+      flex: none;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.18);
+      display: grid;
+      place-items: center;
+    }
+    .brand .logo svg { width: 24px; height: 24px; }
+    .brand .name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    header.site h1 {
+      margin: 0;
+      font-size: clamp(1.9rem, 5vw, 2.6rem);
+      line-height: 1.15;
+      font-weight: 800;
+    }
+    header.site .updated {
+      margin-top: 14px;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.85);
+    }
+    header.site .updated strong { color: #fff; }
+
+    /* ---------- Layout ---------- */
+    main {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 0 20px 64px;
+    }
+
+    .intro-note {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin: 32px 0;
+      color: var(--text-muted);
+      font-size: 0.97rem;
+    }
+
+    /* ---------- Table of contents ---------- */
+    nav.toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      margin: 32px 0;
+    }
+    nav.toc h2 {
+      margin: 0 0 14px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-muted);
+    }
+    nav.toc ol {
+      margin: 0;
+      padding-left: 1.3em;
+      columns: 2;
+      column-gap: 32px;
+    }
+    nav.toc li { margin-bottom: 8px; break-inside: avoid; }
+    nav.toc a { text-decoration: none; }
+    nav.toc a:hover { text-decoration: underline; }
+
+    @media (max-width: 560px) {
+      nav.toc ol { columns: 1; }
+    }
+
+    /* ---------- Sections ---------- */
+    section { padding-top: 24px; }
+    section + section { border-top: 1px solid var(--border); margin-top: 28px; }
+
+    h2.section-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      line-height: 1.25;
+      margin: 8px 0 14px;
+      color: var(--brand);
+      scroll-margin-top: 20px;
+    }
+    h2.section-title .num {
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin: 24px 0 8px;
+      color: var(--text);
+    }
+
+    p { margin: 0 0 16px; }
+
+    ul { margin: 0 0 16px; padding-left: 1.3em; }
+    li { margin-bottom: 8px; }
+
+    .placeholder {
+      background: var(--brand-light);
+      border: 1px dashed var(--accent);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .back-to-top {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .back-to-top:hover { text-decoration: underline; }
+
+    /* ---------- Contact card ---------- */
+    .contact-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-top: 8px;
+    }
+
+    /* ---------- Footer ---------- */
+    footer.site {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 32px 20px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    footer.site .wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    footer.site .fname { font-weight: 700; color: var(--text); }
+
+    @media print {
+      header.site, footer.site { background: none !important; color: #000 !important; }
+      nav.toc { display: none; }
+      body { font-size: 12pt; }
+      a { color: #000; text-decoration: underline; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to main content</a>
+
+  <header class="site">
+    <div class="wrap">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10L12 5 2 10l10 5 10-5z" />
+            <path d="M6 12v5c0 1 2.7 3 6 3s6-2 6-3v-5" />
+          </svg>
+        </span>
+        <span class="name">Green Hills Academia</span>
+      </div>
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last Updated: <strong>6 October 2026</strong></p>
+    </div>
+  </header>
+
+  <main id="content">
+    <p class="intro-note">
+      This Privacy Policy explains how Green Hills Academia handles information within our
+      educational platform. It is written in plain language so that students, parents,
+      teachers, and school administrators can clearly understand our practices. Placeholder
+      details below are marked and can be replaced with your school's or organisation's
+      specific information at any time.
+    </p>
+
+    <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <ol>
+        <li><a href="#introduction">Introduction</a></li>
+        <li><a href="#info-we-collect">Information We Collect</a></li>
+        <li><a href="#how-we-use">How We Use Information</a></li>
+        <li><a href="#account-profile">Account and Profile Information</a></li>
+        <li><a href="#school-roles">Student, Teacher &amp; School Information</a></li>
+        <li><a href="#usage-technical">App Usage and Technical Information</a></li>
+        <li><a href="#store-protect">How We Store and Protect Information</a></li>
+        <li><a href="#sharing">Data Sharing and Third Parties</a></li>
+        <li><a href="#retention">Data Retention</a></li>
+        <li><a href="#children">Children's and Students' Privacy</a></li>
+        <li><a href="#user-rights">User Rights and Data Requests</a></li>
+        <li><a href="#changes">Changes to This Privacy Policy</a></li>
+        <li><a href="#contact">Contact Information</a></li>
+      </ol>
+    </nav>
+
+    <section id="introduction">
+      <h2 class="section-title"><span class="num">1.</span>Introduction</h2>
+      <p>
+        Green Hills Academia ("Green Hills Academia", "we", "us", or "our") provides an
+        educational platform that schools use to support teaching, learning, and day-to-day
+        school administration. The platform is used by students, teachers, and school
+        administrators.
+      </p>
+      <p>
+        We take the privacy of our users seriously, particularly because the platform is used
+        by schools and young learners. This policy describes what information the application
+        handles, why it is needed, how it is protected, and the choices and rights available to
+        users. By using Green Hills Academia, you acknowledge the practices described in this
+        policy.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="info-we-collect">
+      <h2 class="section-title"><span class="num">2.</span>Information We Collect</h2>
+      <p>
+        We only collect information that the platform needs in order to function as an
+        educational tool. We distinguish between two broad categories:
+      </p>
+      <h3>Information you actively provide</h3>
+      <p>
+        This is information entered by you, your teachers, or your school when creating
+        accounts, setting up classes, or using features of the platform — for example, names,
+        account details, academic content, and messages.
+      </p>
+      <h3>Information generated automatically</h3>
+      <p>
+        This is technical information that the application or its underlying services may
+        generate automatically when the app is used — for example, basic device and app
+        information needed to keep the service running, secure, and reliable.
+      </p>
+      <p>
+        The sections below describe each category in more detail. We do not collect information
+        that the application does not actually need to operate.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="how-we-use">
+      <h2 class="section-title"><span class="num">3.</span>How We Use Information</h2>
+      <p>We use information solely to provide and improve the educational service, including to:</p>
+      <ul>
+        <li>Create and manage student, teacher, and administrator accounts.</li>
+        <li>Authenticate users and keep accounts secure.</li>
+        <li>Display classes, subjects, timetables, assignments, and academic content.</li>
+        <li>Deliver announcements, school events, and school communication features.</li>
+        <li>Enable messaging and collaboration between appropriate members of a school.</li>
+        <li>Maintain, troubleshoot, and improve the reliability and performance of the app.</li>
+        <li>Protect the platform against misuse, unauthorised access, and security threats.</li>
+      </ul>
+      <p>
+        We do not sell personal information, and we do not use student information for
+        advertising or for any purpose unrelated to education and the operation of the platform.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="account-profile">
+      <h2 class="section-title"><span class="num">4.</span>Account and Profile Information</h2>
+      <p>
+        To use the platform, users have an account. Account and profile information may include:
+      </p>
+      <ul>
+        <li>A name or display name.</li>
+        <li>An account identifier and authentication details (such as a username, email, or
+          sign-in credential) used to sign in securely.</li>
+        <li>A role within a school (for example, student, teacher, or administrator).</li>
+        <li>Optional profile details that a user or school chooses to add.</li>
+      </ul>
+      <p>
+        Authentication credentials are used only to verify identity and secure access. Where
+        sign-in is handled through a third-party authentication service, that service processes
+        credentials on our behalf, as described in the Data Sharing section.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="school-roles">
+      <h2 class="section-title"><span class="num">5.</span>Student, Teacher, and School Information</h2>
+      <p>
+        Because Green Hills Academia is used by schools, the platform may handle information
+        relating to school activities, such as:
+      </p>
+      <ul>
+        <li>Student academic information (for example, assignments and related academic content).</li>
+        <li>Classes and subjects a user is associated with.</li>
+        <li>Timetables and school events.</li>
+        <li>Announcements and other school communications.</li>
+        <li>Messages exchanged through school communication features.</li>
+      </ul>
+      <p>
+        Much of this information is created and managed by schools and their staff. In many
+        cases, a school acts as the owner of this information and determines how it is used
+        within the platform. Where a school administers accounts on behalf of its students and
+        staff, the school is responsible for obtaining any necessary permissions and for
+        managing access in line with its own policies.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="usage-technical">
+      <h2 class="section-title"><span class="num">6.</span>App Usage and Technical Information</h2>
+      <p>
+        When the application is used, limited technical information may be generated
+        automatically to keep the service working correctly and securely. This may include:
+      </p>
+      <ul>
+        <li>Basic device and application information (such as app version and general device type).</li>
+        <li>Information needed to deliver notifications to a device, where this feature is used.</li>
+        <li>Diagnostic or error information that helps us identify and fix problems.</li>
+      </ul>
+      <p>
+        This technical information is used to operate, secure, and improve the platform. It is
+        not used to build advertising profiles. The specific technical data available depends on
+        the features in use and the services that support the app.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="store-protect">
+      <h2 class="section-title"><span class="num">7.</span>How We Store and Protect Information</h2>
+      <p>
+        Information is stored using reputable cloud infrastructure and database services. We
+        rely on a combination of technical and organisational safeguards intended to protect
+        information against unauthorised access, loss, or misuse, such as:
+      </p>
+      <ul>
+        <li>Encryption of data in transit between the app and its services.</li>
+        <li>Access controls that limit who can view or manage information based on their role.</li>
+        <li>Authentication measures to protect accounts.</li>
+      </ul>
+      <p>
+        No method of transmission or storage is completely secure, so we cannot guarantee
+        absolute security. We work to protect information using industry-standard practices and
+        to respond appropriately if a security issue arises.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="sharing">
+      <h2 class="section-title"><span class="num">8.</span>Data Sharing and Third Parties</h2>
+      <p>
+        We do not sell personal information. We share information only where necessary to operate
+        the platform, including with service providers that support core functionality. These
+        providers may include, as applicable:
+      </p>
+      <ul>
+        <li>Authentication services used to sign users in securely.</li>
+        <li>Database hosting and cloud storage services used to store platform data.</li>
+        <li>Notification services used to deliver messages or alerts to devices.</li>
+        <li>Diagnostic or analytics services used to monitor reliability and improve the app.</li>
+      </ul>
+      <p>
+        These providers process information on our behalf and only to the extent needed to
+        deliver their service. We may also disclose information where required by law or to
+        protect the rights, safety, and security of our users and the platform.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="retention">
+      <h2 class="section-title"><span class="num">9.</span>Data Retention</h2>
+      <p>
+        We retain information for as long as it is needed to provide the service and to fulfil
+        the purposes described in this policy. Retention periods may depend on the type of
+        information and on a school's own requirements.
+      </p>
+      <p>
+        When information is no longer required — for example, when an account or a school's use
+        of the platform ends — it may be deleted or anonymised, subject to any legal or
+        administrative obligations and to the instructions of the school that owns the
+        information.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="children">
+      <h2 class="section-title"><span class="num">10.</span>Children's and Students' Privacy</h2>
+      <p>
+        Green Hills Academia is designed for use in an educational setting and may be used by
+        students, including minors. We handle student information carefully and only for
+        educational purposes.
+      </p>
+      <p>
+        Student accounts are typically created and managed by a school. Where required, the
+        school is responsible for obtaining appropriate consent from parents or guardians and
+        for managing student access in accordance with applicable laws and its own policies. We
+        do not knowingly use student information for advertising or for any purpose unrelated to
+        education.
+      </p>
+      <p>
+        If you believe a student's information has been provided or used in a way that is not
+        appropriate, please contact us using the details below so we can address it.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="user-rights">
+      <h2 class="section-title"><span class="num">11.</span>User Rights and Data Requests</h2>
+      <p>Depending on your role and applicable law, you may be able to:</p>
+      <ul>
+        <li>Access the information held about you.</li>
+        <li>Request correction of inaccurate information.</li>
+        <li>Request deletion of certain information.</li>
+        <li>Ask questions about how your information is handled.</li>
+      </ul>
+      <p>
+        Because schools often manage accounts and information on behalf of their students and
+        staff, some requests may be directed to, or handled through, the relevant school. To
+        make a request, please contact us or your school administrator using the details in the
+        Contact section. We will respond in line with applicable requirements.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="changes">
+      <h2 class="section-title"><span class="num">12.</span>Changes to This Privacy Policy</h2>
+      <p>
+        We may update this Privacy Policy from time to time to reflect changes to the platform,
+        our practices, or legal requirements. When we make changes, we will update the "Last
+        Updated" date at the top of this page.
+      </p>
+      <p>
+        We encourage you to review this page periodically. Continued use of the platform after
+        an update means you acknowledge the revised policy.
+      </p>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+
+    <section id="contact">
+      <h2 class="section-title"><span class="num">13.</span>Contact Information</h2>
+      <p>
+        If you have questions about this Privacy Policy or about how your information is handled,
+        you can contact us:
+      </p>
+      <div class="contact-card">
+        <p style="margin:0 0 8px;"><strong>Green Hills Academia</strong></p>
+        <p style="margin:0;">
+          Email: <a href="mailto:agencydylansdigital@gmail.com">agencydylansdigital@gmail.com</a>
+        </p>
+        <p style="margin:8px 0 0; color:var(--text-muted); font-size:0.9rem;">
+          School administrators and additional contact details can be added here as needed.
+        </p>
+      </div>
+      <a class="back-to-top" href="#content">↑ Back to top</a>
+    </section>
+  </main>
+
+  <footer class="site">
+    <div class="wrap">
+      <span>&copy; <span id="year">2026</span> <span class="fname">Green Hills Academia</span>. All rights reserved.</span>
+      <a href="#content">Privacy Policy</a>
+    </div>
+  </footer>
+
+  <script>
+    // Keep the footer year current without any external dependency.
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

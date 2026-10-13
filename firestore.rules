@@ -1,0 +1,1328 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════════
+// Academia — Firestore Security Rules
+// ═══════════════════════════════════════════════════════════════════════
+// Mirrors the 6-tier role system in lib/models/app_user.dart:
+//   guest(0) < student(1) < lecturer(2) < departmentAdmin(3)
+//            < schoolAdmin(4) < superAdmin(5)
+//
+// These rules are the enforcement layer the audit flagged as MISSING.
+// The current dev rules ("allow read, write: if request.auth != null")
+// let any signed-in user read or write ANY document — these replace that
+// with checks that mirror AppUser's canX getters.
+//
+// Deploy: firebase deploy --only firestore:rules
+// (requires firebase.json to point "firestore.rules" at this file — the
+// default Firebase CLI init layout already does this.)
+// ═══════════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Role helpers ──────────────────────────────────────────────────
+    // Reads the requester's OWN user doc. Firestore rules can't recurse,
+    // so each helper does exactly one get() — cheap and within limits.
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function myRole() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? myUserDoc().role
+        : 'guest';
+    }
+
+    function roleLevel(role) {
+      return role == 'superAdmin'       ? 5 :
+             role == 'schoolAdmin'      ? 4 :
+             role == 'departmentAdmin'  ? 3 :
+             role == 'lecturer'         ? 2 :
+             role == 'student'          ? 1 : 0;
+    }
+
+    function myLevel() {
+      return roleLevel(myRole());
+    }
+
+    function hasMinRole(role) {
+      return isSignedIn() && myLevel() >= roleLevel(role);
+    }
+
+    function isSuperAdmin()  { return hasMinRole('superAdmin'); }
+    function canManageSchool()   { return hasMinRole('schoolAdmin'); }
+    function canManageUsers()    { return hasMinRole('departmentAdmin'); }
+    function canUploadContent()  { return hasMinRole('lecturer'); }
+    function canPostAnnouncement() { return hasMinRole('lecturer'); }
+
+    function mySchoolId() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? myUserDoc().schoolId
+        : null;
+    }
+
+    function isOwnSchool(schoolId) {
+      return mySchoolId() == schoolId;
+    }
+
+    function isOwner(field) {
+      return isSignedIn() && request.auth.uid == field;
+    }
+
+    function accountNotSuspended() {
+      return !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        || myUserDoc().status != 'suspended';
+    }
+
+    // ── Entitlement helpers (production_plan.md §8/§9) ─────────────────
+    // Premium is now an entitlement on the account rather than a flat
+    // bool, so the fields that decide paid access need the same kind of
+    // guard the XP fields above already have. Without this, ANY user
+    // could grant themselves permanent Premium with a one-line profile
+    // write — the self-update branch below otherwise lets a user set any
+    // field on their own document that isn't explicitly frozen.
+    function entitlementKeys() {
+      return ['entitlementTier', 'entitlementSource', 'entitlementStartAt',
+              'entitlementExpiresAt', 'entitlementSourceRef', 'isPremium'];
+    }
+
+    function entitlementUntouched() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(entitlementKeys());
+    }
+
+    // The ONE shape a normal user may write to their own entitlement:
+    // claiming a gift voucher they hold the code for.
+    //
+    // The referenced voucher must currently be UNUSED. Inside a
+    // transaction, get() sees pre-transaction committed state, so a
+    // voucher already consumed fails here and a second redemption of the
+    // same code cannot grant a second entitlement.
+    //
+    // Honest limitation: rules cannot verify that the matching voucher
+    // write is part of the SAME transaction, so in principle a user could
+    // write only this half and grant themselves premium while leaving the
+    // voucher unused. Doing so requires already knowing a valid unused
+    // voucher code — which is exactly the secret that legitimately
+    // entitles them to redeem it — so the attack gains nothing over just
+    // redeeming normally. Closing it fully needs a Cloud Function
+    // (the same server-authoritative work production_plan.md §4.9 defers).
+    function isValidGiftRedemption() {
+      return request.resource.data.get('entitlementTier', '') in ['silver', 'gold']
+        && request.resource.data.get('entitlementSource', '') == 'gift'
+        // Non-empty, not merely "is a string" — an ABSENT field also
+        // reads as a string via get()'s '' default, and the path
+        // interpolation below would then error on a missing key. && is
+        // short-circuit, so this ordering keeps the lookup safe.
+        && request.resource.data.get('entitlementSourceRef', '') != ''
+        && exists(/databases/$(database)/documents/vouchers/$(request.resource.data.entitlementSourceRef))
+        && get(/databases/$(database)/documents/vouchers/$(request.resource.data.entitlementSourceRef))
+             .data.status == 'unused'
+        // The written tier must be EITHER exactly what the voucher itself
+        // grants, OR the account's own already-stored tier left unchanged
+        // (EntitlementRepository.redeemVoucher never downgrades: someone
+        // who's already Gold redeeming a Silver voucher stays Gold, only
+        // extending the expiry). Without this a Silver-voucher holder
+        // could write 'gold' and claim Video Course access they never
+        // paid for — this is the actual entitlement-bypass check, not
+        // just a shape check.
+        && (
+          request.resource.data.get('entitlementTier', '') ==
+            get(/databases/$(database)/documents/vouchers/$(request.resource.data.entitlementSourceRef)).data.tier
+          || request.resource.data.get('entitlementTier', '') == resource.data.get('entitlementTier', '')
+        );
+    }
+
+    // ── School-membership helpers (architecture brief items 2-6) ────────
+    // A school app (School Connect/Timetable/Marks/marks-entry) must only
+    // be reachable by someone holding a valid voucher for THAT school —
+    // never by merely being a signed-in Academia account. Mirrors
+    // isValidGiftRedemption() immediately above: the referenced
+    // school_vouchers/{code} doc must be UNUSED, the write may only name
+    // the redeemer themselves, and the granted contentRole may only ever
+    // RAISE the stored role, never lower it.
+    function schoolVoucherContentRole(role) {
+      return role == 'student'     ? 'student' :
+             role == 'parent'      ? 'guest' :
+             role == 'teacher'     ? 'lecturer' :
+             role == 'classMaster' ? 'lecturer' :
+             role == 'admin'       ? 'schoolAdmin' : 'guest';
+    }
+
+    function isValidSchoolVoucherRedemption() {
+      let ref = request.resource.data.get('schoolVoucherRef', '');
+      return ref != ''
+        && exists(/databases/$(database)/documents/school_vouchers/$(ref))
+        && get(/databases/$(database)/documents/school_vouchers/$(ref)).data.status == 'unused'
+        && request.resource.data.get('schoolId', '') ==
+             get(/databases/$(database)/documents/school_vouchers/$(ref)).data.schoolId
+        && request.resource.data.get('schoolRole', '') ==
+             get(/databases/$(database)/documents/school_vouchers/$(ref)).data.role
+        // role may only rise to what the voucher grants, or stay exactly
+        // what it already was (a platform admin redeeming a student code
+        // keeps their existing higher role — handled by the second arm).
+        && (
+          request.resource.data.role ==
+            schoolVoucherContentRole(get(/databases/$(database)/documents/school_vouchers/$(ref)).data.role)
+          || request.resource.data.role == resource.data.role
+        );
+    }
+
+    // Architecture brief items 22-24: marks-entry permission must come
+    // from a teacher's ACTUAL assignment, never merely from holding the
+    // lecturer role. Mirrors AppUser.canRecordMarksFor() in
+    // lib/models/app_user.dart exactly (same three arms, same order) --
+    // kept in sync by hand since rules and Dart can't share code.
+    function isSchoolAdminOf(schoolId) {
+      return hasMinRole('schoolAdmin') && isOwnSchool(schoolId);
+    }
+
+    function isClassMasterOf(schoolId, classLevel) {
+      return isSignedIn() && isOwnSchool(schoolId) && classLevel != ''
+        && myUserDoc().get('classMasterOfClass', '') == classLevel;
+    }
+
+    function teachesAssignment(schoolId, subject, classLevel) {
+      return isSignedIn() && isOwnSchool(schoolId)
+        && myUserDoc().get('teachingAssignments', [])
+             .hasAny([{'subject': subject, 'classLevel': classLevel}]);
+    }
+
+    function canRecordMarksFor(schoolId, subject, classLevel) {
+      return isSchoolAdminOf(schoolId)
+        || isClassMasterOf(schoolId, classLevel)
+        || teachesAssignment(schoolId, subject, classLevel);
+    }
+
+    // Club-scoped role helpers (used by the clubs/{clubId} rules below).
+    function clubMemberRole(clubId) {
+      return get(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid)).data.role;
+    }
+    function isClubMember(clubId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid));
+    }
+
+    // ── users/{uid} ───────────────────────────────────────────────────
+    // Anyone signed in can read profile info (author bylines, avatars in
+    // Magazine/comments need this). Users edit their own doc; role/status/
+    // schoolId changes are admin-only to stop client-side privilege
+    // escalation (e.g. a student setting their own role to superAdmin).
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && accountNotSuspended() && (
+        (request.auth.uid == uid &&
+          // role/schoolId/schoolRole can each move ONLY as part of a
+          // verified school-voucher redemption (isValidSchoolVoucherRedemption
+          // covers role; the other two conditions below cover
+          // schoolId/schoolRole directly) — otherwise they must stay put,
+          // same "no client-side privilege escalation" principle this
+          // whole rule already enforces for role/status.
+          (request.resource.data.role == resource.data.role || isValidSchoolVoucherRedemption()) &&
+          request.resource.data.status == resource.data.status &&
+          (request.resource.data.schoolId == resource.data.schoolId || isValidSchoolVoucherRedemption()) &&
+          (request.resource.data.get('schoolRole', null) == resource.data.get('schoolRole', null)
+            || isValidSchoolVoucherRedemption()) &&
+          // classMasterOfClass/classLevel may only move alongside a valid
+          // redemption too -- a plain profile edit must not let a student
+          // grant themselves class-master standing.
+          (request.resource.data.get('classMasterOfClass', null) == resource.data.get('classMasterOfClass', null)
+            || isValidSchoolVoucherRedemption()) &&
+          request.resource.data.accountType == resource.data.accountType &&
+          // Paid access can't be self-granted — either the entitlement
+          // fields don't move at all, or this is a genuine §9 voucher
+          // redemption. Staff grants go through the canManageUsers()
+          // branch at the bottom of this rule instead.
+          (entitlementUntouched() || isValidGiftRedemption()) &&
+          // XP fields can't be set arbitrarily by a normal profile-edit
+          // write — only via the bounded earn/spend shapes below. This
+          // is defense-in-depth, not a full guarantee: a client calling
+          // XpRepository.awardXp() in a tight loop can still accumulate
+          // XP faster than intended, since there's no server-side rate
+          // limit without a Cloud Function. What this DOES stop is the
+          // cruder attack — directly setting xpBalance to 999999 in one
+          // write, or moving lifetimeXP and xpBalance independently.
+          (
+            (request.resource.data.xpBalance == resource.data.xpBalance &&
+             request.resource.data.lifetimeXP == resource.data.lifetimeXP)
+            ||
+            // earn: balance and lifetime move up together, capped at 200.
+            // Covers the highest possible SINGLE-QUESTION award under
+            // core/xp_rules.dart's questionXp() — Essay/AC base 55 x hard
+            // difficulty (130%) x Advanced-level multiplier (2.2x) = ~157,
+            // rounded up with headroom. (Was hardcoded to 45 — the old
+            // "AC = 45 XP" flat rate with no level multiplier; already
+            // too low the moment difficultyMultiplierPercent's 130% tier
+            // existed, since 45 x 1.3 = 58.5 > 45. Not a regression this
+            // session introduced, just one this session's own baseXp/
+            // level-multiplier change made impossible to keep ignoring.)
+            // NOTE: testCompletion/streakMilestone bonuses are separate,
+            // naturally-larger values (a whole test's or a long streak's
+            // worth) that this same 200 ceiling only loosely bounds for
+            // very large tests/streaks — full server-side enforcement is
+            // production_plan.md §4.9's Cloud Function work, not solved
+            // here.
+            (request.resource.data.xpBalance > resource.data.xpBalance &&
+             (request.resource.data.xpBalance - resource.data.xpBalance) ==
+             (request.resource.data.lifetimeXP - resource.data.lifetimeXP) &&
+             (request.resource.data.xpBalance - resource.data.xpBalance) <= 200)
+            ||
+            // spend: balance moves down, lifetime untouched, capped at
+            // the largest defined unlock cost (full bundle = 800 XP)
+            (request.resource.data.xpBalance < resource.data.xpBalance &&
+             request.resource.data.lifetimeXP == resource.data.lifetimeXP &&
+             (resource.data.xpBalance - request.resource.data.xpBalance) <= 800)
+          ))
+        || canManageUsers()
+      );
+      allow delete: if isSuperAdmin();
+
+      // Per-user notification feed — only the owner ever reads/writes it.
+      match /notifications/{notificationId} {
+        allow read, update, delete: if isOwner(uid);
+        allow create: if isSignedIn(); // other users' actions (comments/replies) create these
+      }
+
+      // Per-user settings (notification preferences etc).
+      match /settings/{settingId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Real daily-activity streak — one doc per active calendar day,
+      // self-only (no one else's activity should be writable/readable
+      // through this path).
+      match /activityDays/{dayId} {
+        allow read, create, update: if isOwner(uid);
+        allow delete: if false;
+      }
+
+      // Magazine bookmarks — matches MagazineRepository.toggleBookmark/
+      // watchBookmarkedArticles. Also had no rule (default-deny); distinct
+      // from public_courses/{id}/bookmarks/{userId} below, which was
+      // already covered.
+      match /bookmarks/{articleId} {
+        allow read, create, delete: if isOwner(uid);
+      }
+
+      // Personal Study Timetable (production_plan.md §5) — self-authored,
+      // owner-only. Distinct from schools/{id}/timetable (the School
+      // Timetable, admin-authored, matched separately below).
+      match /study_timetable/{slotId} {
+        allow read, create, update, delete: if isOwner(uid);
+      }
+
+      // Daily Learning progress (lib/repositories/daily_learning_repository.dart)
+      // -- which lessons of a course (Etymology first) this user has
+      // completed. Course/lesson CONTENT is static app data, not
+      // Firestore -- only per-user progress needs a rule. Self-only,
+      // same shape as study_timetable above.
+      match /dailyLearningProgress/{courseId} {
+        allow read, create, update: if isOwner(uid);
+      }
+    }
+
+    // ── curriculum_icons/{id} ─────────────────────────────────────────
+    // Also had no rule (default-deny) — broke CourseBrowsePage.load()
+    // entirely (Future.wait([curriculumTreeOnce(), curriculumIconsOnce()])
+    // fails as a whole when either call throws, so Browse Courses was
+    // stuck on its loading spinner forever, not just missing icons).
+    // Same "any signed-in user creates their own" model as public_courses.
+    match /curriculum_icons/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // ── schools/{schoolId} ────────────────────────────────────────────
+    match /schools/{schoolId} {
+      allow read: if isSignedIn();
+      allow write: if canManageSchool() && isOwnSchool(schoolId);
+
+      match /seats/{seatId} {
+        // Seat claiming happens pre-auth-doc-existing in some flows, so
+        // allow any signed-in user to read/create-claim a seat, but only
+        // school admins can provision new unclaimed seats.
+        allow read: if isSignedIn();
+        allow update: if isSignedIn(); // claim flow sets claimed/claimedByUid
+        allow create, delete: if canManageSchool() && isOwnSchool(schoolId);
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // School-management subcollections (production_plan.md §7C)
+      // ══════════════════════════════════════════════════════════════
+      // AUDIT FINDING (2026-08-17, §7C pass): these six subcollections
+      // are where the school-management repositories ACTUALLY read and
+      // write — TimetableRepository, AttendanceRepository,
+      // AssignmentRepository, CalendarRepository, CourseRepository and
+      // AnnouncementRepository all build their paths as
+      // `schools/{schoolId}/<name>` (verified in each repository's
+      // _col() helper), NOT as top-level collections.
+      //
+      // Before this block they matched NO rule. A `match /schools/
+      // {schoolId}` block does not cascade to subcollections in
+      // Firestore rules — only the explicitly-declared /seats did — so
+      // every one of these paths fell through to the file's default
+      // deny. Meanwhile the top-level `match /timetable/{id}`,
+      // /attendance/{id}, /assignments/{id}, /academic_calendar/{id}
+      // and /courses/{id} rules further down this file govern paths no
+      // repository in lib/ ever touches. Those top-level rules are left
+      // exactly as they are (this pass weakens nothing), but they are
+      // effectively dead — see docs/AUTOPILOT_LOG.md.
+      //
+      // Every rule below is therefore ADDITIVE on a previously
+      // unmatched path, and every one is scoped with isOwnSchool() —
+      // strictly tighter than the dead top-level equivalents, which
+      // allow any signed-in user on the platform to read any school's
+      // records. This is the "appropriate backend authorization" half
+      // of §7C: hiding the route in the client is not security, this is.
+      //
+      // Consistency note on superAdmin: like the `schools/{schoolId}`
+      // write rule directly above, these require isOwnSchool(), so a
+      // superAdmin with no schoolId set cannot write another school's
+      // records. That mirrors the existing rule deliberately rather
+      // than silently widening superAdmin's reach in a security pass;
+      // flagged here as a decision to revisit if platform-owner
+      // cross-school access is actually wanted.
+
+      // Read: anyone signed in who belongs to this school (students need
+      // their own timetable/assignments/calendar). Write: staff only.
+      match /timetable/{slotId} {
+        allow read: if isSignedIn() && isOwnSchool(schoolId);
+        allow write: if canManageSchool() && isOwnSchool(schoolId);
+      }
+
+      // Class Master name per classLevel -- shown on the student info
+      // card across School Connect/Marks/Timetable. Same read/write
+      // shape as timetable above.
+      match /classInfo/{classLevel} {
+        allow read: if isSignedIn() && isOwnSchool(schoolId);
+        allow write: if canManageSchool() && isOwnSchool(schoolId);
+      }
+
+      match /academic_calendar/{eventId} {
+        allow read: if isSignedIn() && isOwnSchool(schoolId);
+        allow write: if canManageSchool() && isOwnSchool(schoolId);
+      }
+
+      // Mirrors the intent of the (dead) top-level /courses rule: school
+      // admins manage the catalog, and a lecturer may edit the course
+      // they own. create is admin-only because a lecturerId cannot be
+      // trusted from request.resource on a brand-new doc.
+      match /courses/{courseId} {
+        allow read: if isSignedIn() && isOwnSchool(schoolId);
+        allow create: if canManageSchool() && isOwnSchool(schoolId);
+        allow update, delete: if isOwnSchool(schoolId) && (
+          canManageSchool()
+          || (canUploadContent() && resource.data.lecturerId == request.auth.uid)
+        );
+      }
+
+      match /announcements/{announcementId} {
+        allow read: if isSignedIn() && isOwnSchool(schoolId);
+        allow create, update, delete:
+          if canPostAnnouncement() && isOwnSchool(schoolId);
+      }
+
+      // Attendance carries a studentId field, so a student may read
+      // their own record and nobody else's; staff read the register.
+      // Mirrors the shape of the existing top-level /attendance rule.
+      match /attendance/{recordId} {
+        allow read: if isSignedIn() && isOwnSchool(schoolId) && (
+          resource.data.studentId == request.auth.uid
+          || canUploadContent() || canManageSchool()
+        );
+        allow write: if (canUploadContent() || canManageSchool())
+          && isOwnSchool(schoolId);
+      }
+
+      match /assignments/{assignmentId} {
+        allow read: if isSignedIn() && isOwnSchool(schoolId);
+        allow create, update, delete:
+          if (canUploadContent() || canManageSchool()) && isOwnSchool(schoolId);
+
+        // A submission's doc id IS the studentId (AssignmentRepository
+        // .submit() does _subs(...).doc(sub.studentId).set(...)), so the
+        // ownership check can use the path directly and does not depend
+        // on the document already existing.
+        match /submissions/{studentId} {
+          allow read: if isSignedIn() && isOwnSchool(schoolId) && (
+            request.auth.uid == studentId
+            || canUploadContent() || canManageSchool()
+          );
+          allow create: if isSignedIn() && request.auth.uid == studentId
+            && isOwnSchool(schoolId);
+          // Students edit their own submission; lecturers grade it.
+          allow update: if isSignedIn() && isOwnSchool(schoolId) && (
+            request.auth.uid == studentId || canUploadContent()
+          );
+          allow delete: if false;
+        }
+      }
+    }
+
+    // ── marks/{schoolId}/... ──────────────────────────────────────────
+    // Same audit finding as the schools/ subcollections above: the real
+    // marks data does NOT live at top-level `marks/{id}` (the rule
+    // further down this file). MarksRepository writes
+    //   marks/{schoolId}/{studentId}/sequences/{sequenceId}/{markId}
+    // — note {studentId} and {sequenceId} are COLLECTION names, i.e. the
+    // schema encodes identifiers as collection ids. Firestore rules
+    // cannot bind a wildcard to a collection id (only the recursive
+    // {name=**} form), so "a student may read their own marks" is
+    // literally inexpressible against this schema; the studentId is not
+    // reachable as either a captured variable or a document field.
+    //
+    // This block is therefore staff-only. That is not a regression:
+    // these paths matched no rule at all before, so nobody could read
+    // them. It restores marks for the people who administer them while
+    // staying strictly school-scoped, and deliberately does not invent a
+    // looser rule to paper over the schema.
+    //
+    // TO FIX PROPERLY: store studentId as a FIELD on the mark document
+    // (and flatten the path), then this becomes the same
+    // `resource.data.studentId == request.auth.uid` check attendance
+    // already uses. Logged in docs/AUTOPILOT_LOG.md.
+    match /marks/{schoolId}/{document=**} {
+      allow read: if isSignedIn() && isOwnSchool(schoolId)
+        && (canUploadContent() || canManageSchool());
+      allow write: if (canUploadContent() || canManageSchool())
+        && isOwnSchool(schoolId);
+    }
+
+    // ── serials/{code} ────────────────────────────────────────────────
+    // Also missing entirely (default-deny) -- broke SerialRepository.
+    // preview()'s pre-account-creation branding lookup. Client may only
+    // read; claim/generate/revoke/release all go through Cloud Functions
+    // (Admin SDK, bypasses these rules) per firestore.rules.snippet /
+    // docs/AUTOPILOT_LOG.md's note on the serial-code security hardening
+    // baseline commit -- "no client writes" is a real enforcement
+    // boundary here, not just a UI convention.
+    match /serials/{code} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── institutions/{id} ─────────────────────────────────────────────
+    // Public read (school-code lookup happens pre-auth in some flows);
+    // only superAdmin manages the institution directory itself.
+    match /institutions/{id} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // ── announcements/{id} ────────────────────────────────────────────
+    match /announcements/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if canPostAnnouncement();
+    }
+
+    // ── library/{id} ──────────────────────────────────────────────────
+    // Legacy/simple content collection still read by LibraryRepository
+    // (Home's Library banner + Recommended for You, the Library tab, and
+    // homepage Search) — this had NO rule at all before (default-deny),
+    // which is why all of those threw permission-denied. Same public-read
+    // shape as academic_content; `views` is a narrow public counter any
+    // signed-in viewer can bump (mirrors articles' likeCount pattern),
+    // full-document writes stay lecturer+.
+    match /library/{id} {
+      allow read: if true;
+      allow create, delete: if canUploadContent();
+      allow update: if canUploadContent()
+        || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
+            && request.resource.data.views is int
+            && request.resource.data.views == resource.data.views + 1);
+    }
+
+    // ── dailyChallenges/{dateKey} ─────────────────────────────────────
+    // Also had no rule at all (default-deny) — Home's Daily Challenge card
+    // silently showed "No challenge today" for every user because
+    // getToday() threw permission-denied and the FutureBuilder just
+    // treated the error the same as "no data". Challenge content itself
+    // is signed-in readable; only lecturer+ seed/edit it.
+    match /dailyChallenges/{dateKey} {
+      allow read: if isSignedIn();
+      allow write: if canPostAnnouncement();
+
+      // One attempt doc per user, doc ID == their uid — append-only, so
+      // an answered challenge can't be silently rewritten to retry.
+      match /attempts/{userId} {
+        allow read: if isOwner(userId) || canPostAnnouncement();
+        // Client computes correctCount/xpAwarded itself (it already has
+        // the answer key from reading the parent doc) — same
+        // defense-in-depth trust model as xpTransactions above, not a
+        // full guarantee. Bound both against the actual challenge shape
+        // so a write can't self-report more than the max possible score.
+        allow create: if isSignedIn() && request.auth.uid == userId &&
+          request.resource.data.correctCount is int &&
+          request.resource.data.correctCount >= 0 &&
+          request.resource.data.correctCount <=
+            get(/databases/$(database)/documents/dailyChallenges/$(dateKey)).data.questions.size() &&
+          request.resource.data.xpAwarded is int &&
+          request.resource.data.xpAwarded >= 0 &&
+          request.resource.data.xpAwarded <=
+            get(/databases/$(database)/documents/dailyChallenges/$(dateKey)).data.questions.size() *
+            get(/databases/$(database)/documents/dailyChallenges/$(dateKey)).data.xpPerCorrect;
+        allow update, delete: if false;
+      }
+    }
+
+    // ── academic_content/{id} ─────────────────────────────────────────
+    match /academic_content/{id} {
+      allow read: if true; // guests browse the Content Library read-only
+      allow create: if canUploadContent();
+      allow update, delete: if canUploadContent() &&
+        (resource.data.uploadedBy == request.auth.uid || canManageSchool());
+
+      // Saved-for-offline marker and per-user recent-view tracking —
+      // both are self-only, never touched by anyone but the owner.
+      //
+      // `read` is split into two checks on purpose: `request.auth.uid ==
+      // userId` (the path segment) covers a direct .doc(userId).get(), but
+      // AcademicContentRepository.watchSavedContent()/watchRecentlyViewed()
+      // read these via a collectionGroup(...).where('userId', isEqualTo:
+      // uid) query — Firestore can only allow a collection-group LIST
+      // query if the rule is provably true from the query's own filters,
+      // and a rule keyed on the *path segment* can't be statically matched
+      // against a query filtered on a *data field*, even though in this
+      // app's data the two are always kept equal. Firestore denied the
+      // whole query outright (`permission-denied`) rather than partially
+      // allow it. Adding the `resource.data.userId == request.auth.uid`
+      // check (matching what the query actually filters on) is what makes
+      // Firestore able to verify the query is safe. Writes keep the
+      // stricter path-segment check (a spoofed `userId` field can't fake
+      // which document it lands on).
+      match /saves/{userId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || resource.data.userId == request.auth.uid);
+        allow create, delete: if isSignedIn() && request.auth.uid == userId;
+      }
+      match /recent_views/{userId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || resource.data.userId == request.auth.uid);
+        allow create, update: if isSignedIn() && request.auth.uid == userId;
+        allow delete: if false;
+      }
+
+      // Real last-read page position — powers Home "Continue Reading".
+      // Self-only, same collection-group-query shape as recent_views above.
+      match /readPositions/{userId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || resource.data.userId == request.auth.uid);
+        allow create, update: if isSignedIn() && request.auth.uid == userId;
+        allow delete: if false;
+      }
+    }
+
+    // ── clubs/{clubId} ────────────────────────────────────────────────
+    // Any signed-in user can create a club (they become its admin via
+    // the members subcollection, set in the same createClub() batch
+    // write). Editing the club doc itself (name/description/banner) is
+    // restricted to that club's own admin/moderator, its founder, or
+    // school staff — EXCEPT the memberCount field, which any member can
+    // increment/decrement by joining or leaving.
+    // ── club_join_requests/{id} ────────────────────────────────────────
+    // Only relevant for approval-gated clubs. Requester and the club's
+    // own admins/moderators can see a given request; only an admin/mod
+    // of that specific club can change its status.
+    match /club_join_requests/{requestId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+        || (isClubMember(resource.data.clubId) && clubMemberRole(resource.data.clubId) in ['admin', 'moderator'])
+      );
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() &&
+        isClubMember(resource.data.clubId) && clubMemberRole(resource.data.clubId) in ['admin', 'moderator'] &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if false;
+    }
+
+    match /clubs/{clubId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        // join/leave only touches memberCount — allow any signed-in user
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount'])
+        // sendMessage()'s denormalized lastMessage* preview (see
+        // ClubRepository.sendMessage) — any actual club member, not just
+        // staff, since anyone in the chat can send the message that
+        // updates this.
+        || (isClubMember(clubId) && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['lastMessageText', 'lastMessageSenderId', 'lastMessageAt']))
+        || resource.data.moderatorId == request.auth.uid
+        || canManageSchool()
+        || (isClubMember(clubId) && clubMemberRole(clubId) in ['admin', 'moderator'])
+      );
+      allow delete: if isSignedIn() &&
+        (resource.data.moderatorId == request.auth.uid || canManageSchool());
+
+      match /posts/{postId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        // Any signed-in user may bump likeCount/commentCount by liking or
+        // commenting (see the two subcollections below) — a full-document
+        // edit otherwise stays author/staff-only, same pattern as
+        // articles/{id} above.
+        allow update: if isOwner(resource.data.authorId) || canManageSchool() ||
+          (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount', 'commentCount']));
+        allow delete: if isOwner(resource.data.authorId) || canManageSchool();
+
+        match /likes/{userId} {
+          allow read: if true;
+          allow write: if isSignedIn() && request.auth.uid == userId;
+        }
+        match /comments/{commentId} {
+          allow read: if true;
+          allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+          allow update, delete: if isOwner(resource.data.authorId) || canManageSchool();
+        }
+      }
+      // Loosened from school-staff-only: a club's own admins/moderators
+      // can create/manage their club's events too, not just school staff
+      // -- this rule pre-existed the ClubEvent model/UI (client-side
+      // never used it before), so widening it to the club's own mod
+      // structure is additive, not a weakening of anything already relied
+      // on. RSVP marker docs follow the same self-only shape as club
+      // discussion/post likes.
+      match /events/{eventId} {
+        allow read: if true;
+        allow write: if canManageSchool() || canUploadContent()
+          || (isClubMember(clubId) && clubMemberRole(clubId) in ['admin', 'moderator']);
+
+        match /rsvps/{userId} {
+          allow read: if true;
+          allow create, delete: if isSignedIn() && request.auth.uid == userId;
+        }
+      }
+
+      // Club Resources tab — shared links/files. Any signed-in club
+      // member can add a resource; only the uploader or club staff can
+      // remove one.
+      match /resources/{resourceId} {
+        allow read: if true;
+        allow create: if isSignedIn() && request.resource.data.uploaderId == request.auth.uid;
+        allow update, delete: if isSignedIn() && (
+          resource.data.uploaderId == request.auth.uid
+          || (isClubMember(clubId) && clubMemberRole(clubId) in ['admin', 'moderator'])
+        );
+      }
+
+      // Discussions — Q&A threads with a mark-able best answer (see
+      // ClubDiscussion/ClubDiscussionReply in models/club.dart). Anyone
+      // signed in can ask/answer/like, matching the same open-by-default
+      // posture as clubs/{id}/posts above; only the thread's own author or
+      // that club's admin/moderator can mark a best answer.
+      match /discussions/{discussionId} {
+        allow read: if true;
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+        allow update: if isSignedIn() && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount', 'likeCount'])
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bestAnswerReplyId']) &&
+              (resource.data.authorId == request.auth.uid ||
+               (isClubMember(clubId) && clubMemberRole(clubId) in ['admin', 'moderator'])))
+          || isOwner(resource.data.authorId)
+          || canManageSchool()
+        );
+        allow delete: if isOwner(resource.data.authorId) || canManageSchool();
+
+        match /likes/{userId} {
+          allow read: if true;
+          allow write: if isSignedIn() && request.auth.uid == userId;
+        }
+        match /replies/{replyId} {
+          allow read: if true;
+          allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+          // isBestAnswer is flipped by markBestAnswer() on behalf of the
+          // discussion's author/staff, not by the reply's own author.
+          // likeCount is bumped by ClubRepository.toggleReplyLike() on
+          // behalf of ANY signed-in member (same pattern as posts/{id}
+          // above) — everything else about a reply stays author/staff-only.
+          allow update: if isOwner(resource.data.authorId) || canManageSchool() ||
+            (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBestAnswer']) &&
+              (get(/databases/$(database)/documents/clubs/$(clubId)/discussions/$(discussionId)).data.authorId == request.auth.uid ||
+               (isClubMember(clubId) && clubMemberRole(clubId) in ['admin', 'moderator']))) ||
+            (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount']));
+          allow delete: if isOwner(resource.data.authorId) || canManageSchool();
+
+          match /likes/{userId} {
+            allow read: if true;
+            allow write: if isSignedIn() && request.auth.uid == userId;
+          }
+        }
+      }
+
+      // Club chat — matches ClubRepository.watchMessages/sendMessage.
+      // Senders can soft-delete their own message (clears text, flips
+      // `deleted`) — everything else about a sent message is immutable.
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+        allow update: if isSignedIn() && resource.data.senderId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted', 'text']) &&
+          request.resource.data.deleted == true;
+        allow delete: if false;
+      }
+
+      // Membership + the mod structure (visitor < member < moderator <
+      // admin). Joining/leaving is self-service; role changes and
+      // removals follow "normal mod structure" rules: admins manage
+      // anyone, moderators manage only plain members.
+      match /members/{memberId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.auth.uid == memberId; // join / found
+        allow update: if isSignedIn() && (
+          canManageSchool()
+          || (isClubMember(clubId) && clubMemberRole(clubId) == 'admin')
+          || (isClubMember(clubId) && clubMemberRole(clubId) == 'moderator'
+              && resource.data.role in ['member', 'moderator']
+              && request.resource.data.role in ['member', 'moderator'])
+          // Self-service presence heartbeat (ClubRepository.pingClubActive,
+          // the "X members online" hero stat) — any member, regardless of
+          // role, marking their OWN doc's lastActiveAt only. Everything
+          // else about this doc (role in particular) stays gated on the
+          // branches above.
+          || (request.auth.uid == memberId &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt']))
+        );
+        allow delete: if isSignedIn() && (
+          request.auth.uid == memberId // leave
+          || canManageSchool()
+          || (isClubMember(clubId) && clubMemberRole(clubId) == 'admin')
+          || (isClubMember(clubId) && clubMemberRole(clubId) == 'moderator' && resource.data.role == 'member')
+        );
+      }
+    }
+
+    // ── magazine_gallery/{id}, magazine_videos/{id} ─────────────────────
+    // "Student Gallery" and "Latest Videos" — the academia_fix Magazine
+    // mockup's two other post types, distinct from articles/{id}. Same
+    // owner-write/public-read/likeCount-increment shape as articles.
+    match /magazine_gallery/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount']))
+      );
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+
+      match /likes/{userId} {
+        allow read: if true;
+        allow create, delete: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+    match /magazine_videos/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']) &&
+            request.resource.data.viewCount == resource.data.viewCount + 1)
+      );
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+    }
+
+    // ── articles/{id}  (Magazine) ─────────────────────────────────────
+    match /articles/{articleId} {
+      allow read: if resource.data.published == true
+                   || (isSignedIn() && resource.data.authorId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid
+        // Any signed-in user can bump likeCount by liking/unliking —
+        // full-document edits still stay author-only.
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount'])
+        // Any signed-in reader can bump readCount by exactly 1 (recordRead)
+        // or shareCount by exactly 1 (recordShare) — matches the library/
+        // {id} views-increment pattern above. commentCount's increment
+        // rides the author-owned-doc branch above via postComment()'s
+        // batched write, same as before this pass.
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount']) &&
+            request.resource.data.readCount == resource.data.readCount + 1)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shareCount']) &&
+            request.resource.data.shareCount == resource.data.shareCount + 1)
+        // settleMagazineXpIfDue() flips this exactly once, false -> true,
+        // possibly on behalf of a reader who isn't the author (it runs as
+        // a side effect of ANY interaction, not just the author's own).
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['magazineXpSettled']) &&
+            resource.data.magazineXpSettled != true &&
+            request.resource.data.magazineXpSettled == true)
+      );
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      }
+
+      // One doc per user who's liked/read/shared this article — existence
+      // == liked/read/shared. reads/shares had no rule at all before this
+      // pass (default-deny) — recordRead()'s `reads/{uid}` marker write
+      // would have been silently rejected for any non-author reader.
+      match /likes/{userId} {
+        allow read: if true;
+        allow create, delete: if isSignedIn() && request.auth.uid == userId;
+      }
+      match /reads/{userId} {
+        allow read: if true;
+        allow create: if isSignedIn() && request.auth.uid == userId;
+        allow update, delete: if false;
+      }
+      match /shares/{userId} {
+        allow read: if true;
+        allow create: if isSignedIn() && request.auth.uid == userId;
+        allow update, delete: if false;
+      }
+    }
+
+    // ── follows/{followerId}_{followedId} ────────────────────────────
+    // One-way follow relationships backing Magazine's Following tab.
+    // Doc ID is composite (followerId_followedId) so a user can only
+    // ever have one follow-doc per person they follow.
+    // ── xpTransactions/{id} ────────────────────────────────────────────
+    // Append-only ledger. Amount ceilings match the earn/spend bounds
+    // enforced on users/{uid} above — same defense-in-depth limitation
+    // applies (stops crude single-write abuse, not a determined script
+    // calling awardXp() repeatedly; that needs a Cloud Function).
+    match /xpTransactions/{id} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && (
+        // See the matching users/{uid} earn-cap comment above for why 200
+        // (was 45 -- too low even before this session's XP formula change).
+        (request.resource.data.type == 'earn' && request.resource.data.amount <= 200)
+        || (request.resource.data.type == 'spend' && request.resource.data.amount <= 800)
+      );
+      allow update, delete: if false;
+    }
+
+    // ── unlockedPapers/{userId_paperId} ─────────────────────────────────
+    match /unlockedPapers/{id} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid
+          && request.resource.data.unlockedVia == 'xp';
+      allow update, delete: if false;
+    }
+
+    match /follows/{followId} {
+      allow read: if true; // follower/following counts are public, like most social apps
+      allow create: if isSignedIn() && request.resource.data.followerId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.followerId == request.auth.uid;
+      allow update: if false; // follows are create/delete only, never edited
+    }
+
+    // ── friend_requests/{id} ──────────────────────────────────────────
+    // Mutual-connection system, separate from follows above. Only the
+    // sender or recipient can see/act on a given request.
+    match /friend_requests/{requestId} {
+      allow read: if isSignedIn() &&
+        (resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.fromUserId == request.auth.uid;
+      // Only the recipient can accept/decline (status is the only field that changes).
+      allow update: if isSignedIn() && resource.data.toUserId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if false;
+    }
+
+    // ── friendships/{uidA_uidB} ────────────────────────────────────────
+    // Created only via acceptRequest() server-side logic (client writes
+    // it as part of the same batch as the request-status update, so this
+    // rule mirrors that: only the recipient of an accepted request can
+    // create the friendship doc, and only if they're one of its two IDs).
+    match /friendships/{pairId} {
+      allow read: if true; // friend counts are public, like followers
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.userIds;
+      allow update, delete: if false; // immutable once formed
+    }
+
+    // ── conversations/{id} ─────────────────────────────────────────────
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participantIds;
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        // Two independent update shapes: (1) anyone in the conversation
+        // can mark a message as read by them (readBy only), or (2) the
+        // sender can soft-delete their own message (clears content,
+        // flips `deleted`) — everything else stays immutable.
+        allow update: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds &&
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
+            || (resource.data.senderId == request.auth.uid &&
+                request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['deleted', 'text', 'imageUrl', 'videoUrl', 'fileUrl', 'fileName']) &&
+                request.resource.data.deleted == true)
+          );
+        allow delete: if false;
+      }
+    }
+
+    // ── heroSlides/{id} ───────────────────────────────────────────────
+    match /heroSlides/{id} {
+      allow read: if true;
+      allow write: if canManageSchool(); // superAdmin/schoolAdmin per repo's own comment
+    }
+
+    // ── marks/{id}, sequences/{id}, subjects/{id} ─────────────────────
+    // Used to be "any lecturer+ can read/write ANY mark, at ANY school"
+    // (canUploadContent()/canManageSchool() alone) -- a Physics teacher
+    // at Green Hills could read or overwrite a Form 4 Math mark, or a
+    // student's marks at a different school entirely. Architecture brief
+    // items 22-25: permission comes from an actual (subject, classLevel)
+    // teaching assignment, class-master standing, or school-admin rank --
+    // all scoped to the mark's OWN school. See canRecordMarksFor() above.
+    match /marks/{id} {
+      allow read: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid
+        || canRecordMarksFor(resource.data.schoolId, resource.data.subject, resource.data.classLevel)
+      );
+      allow create: if canRecordMarksFor(
+        request.resource.data.schoolId, request.resource.data.subject, request.resource.data.classLevel);
+      allow update, delete: if canRecordMarksFor(
+        resource.data.schoolId, resource.data.subject, resource.data.classLevel);
+    }
+    match /sequences/{id} { allow read: if isSignedIn(); allow write: if canManageSchool(); }
+    match /subjects/{id}  { allow read: if isSignedIn(); allow write: if canManageSchool(); }
+
+    // ── school_requests/{id} ────────────────────────────────────────────
+    // School Connect's five request types (Report an Issue, Leave
+    // Request, Fee Inquiry, School Request, Give Feedback) -- one
+    // collection, a `type` field distinguishes them. A student reads/
+    // creates only their own; staff (lecturer+) read every request for
+    // their school and respond (update) but never delete one, same
+    // "keep the audit trail" reasoning as purchases/{id} below.
+    match /school_requests/{id} {
+      allow read: if isSignedIn() &&
+        (resource.data.studentId == request.auth.uid || canUploadContent() || canManageSchool());
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow update: if canUploadContent() || canManageSchool();
+      allow delete: if false;
+    }
+
+    // ── timetable/{id} ────────────────────────────────────────────────
+    match /timetable/{id} {
+      allow read: if isSignedIn();
+      allow write: if canManageSchool();
+    }
+
+    // ── chatrooms/{id}/messages/{id} ──────────────────────────────────
+    match /chatrooms/{roomId} {
+      allow read, write: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if isSignedIn();
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      }
+    }
+
+    // ── attendance/{id} ───────────────────────────────────────────────
+    match /attendance/{id} {
+      allow read: if isSignedIn() &&
+        (resource.data.studentId == request.auth.uid || canUploadContent() || canManageSchool());
+      allow write: if canUploadContent() || canManageSchool();
+    }
+
+    // ── assignments/{id}/submissions/{id} ─────────────────────────────
+    match /assignments/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if canUploadContent() || canManageSchool();
+
+      match /submissions/{subId} {
+        allow read: if isSignedIn() &&
+          (resource.data.studentId == request.auth.uid || canUploadContent() || canManageSchool());
+        allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+        allow update: if isSignedIn() &&
+          (resource.data.studentId == request.auth.uid || canUploadContent());
+      }
+    }
+
+    // ── academic_calendar/{id} ────────────────────────────────────────
+    match /academic_calendar/{id} {
+      allow read: if isSignedIn();
+      allow write: if canManageSchool();
+    }
+
+    // ── courses/{id} ──────────────────────────────────────────────────
+    // NOTE: pending the Courses rebuild discussed separately — these
+    // rules match the CURRENT school-catalog model (single lecturerId,
+    // schoolAdmin-gated creation) so Attendance/Assignments keep working.
+    // Revisit when/if a parallel contributor-publishing model ships.
+    match /courses/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if canManageSchool() ||
+        (canUploadContent() && resource.data.lecturerId == request.auth.uid);
+    }
+
+    // ── public_courses/{id} ───────────────────────────────────────────
+    // The general-app marketplace Courses — genuinely separate from the
+    // school-scoped courses/{id} above. Any signed-in user creates their
+    // own; likeCount/enrolledCount/avgRating/ratingCount need cross-user
+    // updates (same pattern as articles' likeCount), full-document edits
+    // stay creator-only.
+    match /public_courses/{courseId} {
+      allow read: if resource.data.published == true
+                   || (isSignedIn() && resource.data.creatorId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.creatorId == request.auth.uid
+        || request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['likeCount', 'enrolledCount', 'avgRating', 'ratingCount', 'commentCount'])
+      );
+      allow delete: if isSignedIn() && resource.data.creatorId == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      }
+      match /likes/{userId} {
+        allow read: if true;
+        allow create, delete: if isSignedIn() && request.auth.uid == userId;
+      }
+      // read is split the same way as academic_content's saves/recent_views/
+      // readPositions above: PublicCourseRepository.watchBookmarkedCourses()
+      // reads this via a collectionGroup(...).where('userId', isEqualTo: uid)
+      // query, which needs a resource.data.userId check (matching what the
+      // query actually filters on) to pass Firestore's list-query rule
+      // validation — a path-segment-only check denies the whole query.
+      match /bookmarks/{userId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || resource.data.userId == request.auth.uid);
+        allow create, delete: if isSignedIn() && request.auth.uid == userId;
+      }
+      match /learners/{userId} {
+        allow read: if true;
+        allow create: if isSignedIn() && request.auth.uid == userId;
+        allow update, delete: if false; // enrollment marker, never edited/removed
+      }
+      match /ratings/{userId} {
+        allow read: if true;
+        allow create, update: if isSignedIn() && request.auth.uid == userId;
+        allow delete: if false;
+      }
+    }
+
+    // ── audit_logs/{institutionId}/entries/{entryId} ─────────────────────
+    // Pre-launch audit finding: this rule was `match /audit_logs/{id}`,
+    // a flat top-level match -- but AuditService.log() (services/
+    // analytics_service.dart) writes to the NESTED path
+    // `audit_logs/{institutionId}/entries/{entryId}`. A single-segment
+    // match does not cascade to subcollections in Firestore rules, so
+    // every write to the real path had no matching rule at all and was
+    // default-denied -- the audit-logging mechanism has never actually
+    // worked. (Currently also has zero call sites anywhere in lib/, so
+    // this was silent/inert rather than an active production failure --
+    // flagging both facts: the plumbing is now fixed, but nothing calls
+    // it yet. See docs/AUTOPILOT_LOG.md.)
+    match /audit_logs/{institutionId}/entries/{entryId} {
+      allow read: if isSuperAdmin();
+      allow create: if isSignedIn(); // app writes audit entries for any signed-in action
+      allow update, delete: if false; // append-only
+    }
+
+    // ── payments/{id} ──────────────────────────────────────────────────
+    // widgets/premium_unlock_sheet.dart's direct MoMo/Orange Money path —
+    // the app's OWN in-app funding route (the other is a vendor voucher,
+    // see vouchers/{voucherId} below). This write only ever records that a
+    // payment was INITIATED (`status: 'pending'`) — it never grants
+    // access itself. A Cloud Function (Admin SDK, bypasses these rules)
+    // must confirm the provider's callback and then write the account's
+    // entitlement fields server-side, the same "no client self-grant"
+    // posture as subscriptions/{id} right below.
+    match /payments/{id} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.tier in ['silver', 'gold'];
+      allow update, delete: if false;
+    }
+
+    // ── subscriptions/{id} ────────────────────────────────────────────
+    match /subscriptions/{id} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || canManageSchool());
+      allow write: if canManageSchool() || isSuperAdmin();
+      // Actual payment confirmation should happen via a Cloud Function
+      // with the Admin SDK (bypasses these rules entirely) once the MoMo
+      // confirmation function exists — client should never mark its own
+      // subscription active directly.
+    }
+
+    // ── tests/{id}, testAttempts/{id} ───────────────────────────────────
+    // Also had NO rule at all (default-deny) — this is why "Quizzes"
+    // appeared empty regardless of seeded content: TestRepository's own
+    // header comment already flagged this exact gap ("hasn't been
+    // updated for the tests/testAttempts collections yet").
+    match /tests/{id} {
+      allow read: if resource.data.published == true ||
+        (isSignedIn() && (resource.data.createdBy == request.auth.uid || canManageSchool()));
+      allow create: if canUploadContent() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if canUploadContent() &&
+        (resource.data.createdBy == request.auth.uid || canManageSchool());
+    }
+    match /testAttempts/{id} {
+      // Lecturer+ also read every attempt for the grading queue
+      // (TestRepository.watchPendingGradingQueue isn't scoped to one
+      // student), students read only their own.
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || canUploadContent());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // Grading (TestRepository.gradeResponse) only ever touches these
+      // four fields, done by a lecturer+ who isn't the attempt's owner.
+      allow update: if isSignedIn() && canUploadContent() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['responses', 'status', 'gradedAt', 'totalXpAwarded']);
+      allow delete: if false;
+    }
+
+    // ── quiz_categories/{id} ─────────────────────────────────────────
+    // The Quiz page's top-level "section" tier (Primary School / JSS /
+    // SSS / High School / Undergraduate, plus any admin-added one).
+    // Same "any signed-in author manages it" model as curriculum_icons
+    // below (which Subject/Topic tiles in this same tree reuse, keyed by
+    // a `quizSubject::`/`quizTopic::` prefix) — the UI itself only shows
+    // the add/edit affordances to canUploadContent (lecturer+) users,
+    // matching the honest gap already noted on the `tests` match above.
+    match /quiz_categories/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // ── purchases/{id} ────────────────────────────────────────────────
+    // production_plan.md §9. A record of a PHYSICAL sale (cash handed to
+    // a sales agent in person) — it contains the amount paid, the buyer's
+    // name and which agent took the money. None of that is any ordinary
+    // user's business, so unlike almost every other collection in this
+    // file there is no "allow read: if isSignedIn()" here. Staff only,
+    // end to end.
+    //
+    // Note this is commercial bookkeeping, not a payment integration:
+    // nothing in the app ever charges anyone, so there is no payment
+    // webhook or provider identity to authorize here.
+    match /purchases/{purchaseId} {
+      allow read:   if canManageUsers();
+      allow create: if canManageUsers()
+                    && request.resource.data.salesAgentId == request.auth.uid;
+      allow update: if canManageUsers();
+      // Purchase records are the audit trail behind every issued voucher.
+      // Deleting one would orphan its voucher and erase the evidence that
+      // money was taken — refunds are recorded via status, not deletion.
+      allow delete: if false;
+    }
+
+    // ── vouchers/{code} ───────────────────────────────────────────────
+    // production_plan.md §9. The document id IS the normalized voucher
+    // code (see lib/models/voucher.dart for why — atomic redemption needs
+    // a direct document read, and the client SDK can't query inside a
+    // transaction).
+    //
+    // get vs list is the important distinction here. A redeeming user
+    // must be able to READ the voucher document inside the redemption
+    // transaction, so `get` is open to any signed-in user — but only for
+    // a document whose id they can already name, i.e. only if they
+    // already hold the code. `list` stays staff-only, so nobody can
+    // enumerate the collection to harvest unused codes. Guessing one
+    // instead means searching a 31^12 (~7.9e17) space.
+    match /vouchers/{voucherId} {
+      allow get:  if isSignedIn();
+      allow list: if canManageUsers();
+
+      // Only staff issue vouchers, and only against a purchase they
+      // recorded. Users can never mint one.
+      allow create: if canManageUsers()
+                    && request.resource.data.createdByUid == request.auth.uid
+                    && request.resource.data.status == 'unused';
+
+      allow update: if
+        // (a) Staff administration — revoking a voucher after a refund.
+        canManageUsers()
+        // (b) A normal user redeeming a code they hold. Deliberately
+        // narrow: the voucher must currently be UNUSED, may only move to
+        // REDEEMED, and the redeemer may only name THEMSELVES as the
+        // recipient. hasOnly() freezes everything else on the document —
+        // a user cannot touch durationDays to buy themselves ten years,
+        // cannot rewrite purchaseId to launder the audit trail, and
+        // cannot un-revoke a cancelled voucher.
+        || (
+          isSignedIn()
+          && accountNotSuspended()
+          && resource.data.status == 'unused'
+          && request.resource.data.status == 'redeemed'
+          && request.resource.data.recipientUserId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'recipientUserId', 'recipientName',
+                         'redeemedAt', 'expiresAt'])
+        );
+
+      // Same reasoning as purchases: a redeemed voucher is the proof of
+      // why an account has premium. Revoke sets a status, never deletes.
+      allow delete: if false;
+    }
+
+    // ── schools/{schoolId} ────────────────────────────────────────────
+    // The school registry (architecture brief item 4 — generic, not
+    // hardcoded to Green Hills). Readable by anyone signed in (the
+    // redemption success screen and any school-picker UI need to show a
+    // school's name); registering a new school is platform-level, same
+    // tier as "Register a School" already is elsewhere in this app.
+    match /schools/{schoolId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSuperAdmin();
+      allow delete: if false;
+    }
+
+    // ── school_vouchers/{code} ───────────────────────────────────────
+    // Same get-vs-list reasoning as vouchers/{voucherId} above: a
+    // redeeming user must be able to read the one code they hold (its id
+    // IS the code, see school_voucher.dart), but never enumerate the
+    // collection to harvest unused codes.
+    match /school_vouchers/{code} {
+      allow get:  if isSignedIn();
+      allow list: if canManageUsers();
+
+      // Only school/platform staff issue codes, and only for a school
+      // they're allowed to administer (their own school, or any school if
+      // they're a superAdmin/platform-level departmentAdmin+).
+      allow create: if canManageUsers()
+                    && request.resource.data.createdByUid == request.auth.uid
+                    && request.resource.data.status == 'unused'
+                    && (isSuperAdmin() || isOwnSchool(request.resource.data.schoolId));
+
+      allow update: if
+        // Staff administration — revoking a code.
+        canManageUsers()
+        // A user redeeming a code they hold — narrow, same shape as
+        // vouchers/{voucherId}'s redemption branch.
+        || (
+          isSignedIn()
+          && accountNotSuspended()
+          && resource.data.status == 'unused'
+          && request.resource.data.status == 'redeemed'
+          && request.resource.data.redeemedByUserId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'redeemedByUserId', 'redeemedAt'])
+        );
+
+      allow delete: if false;
+    }
+
+    // ── app_config/{id} ───────────────────────────────────────────────
+    match /app_config/{id} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // ── Default deny ──────────────────────────────────────────────────
+    // Anything not explicitly matched above is denied by default under
+    // Firestore rules semantics — no catch-all rule needed, but stated
+    // here for clarity to whoever edits this file next.
+  }
+}

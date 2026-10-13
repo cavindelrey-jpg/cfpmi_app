@@ -1,0 +1,23 @@
+-- 20260916060000_school_memberships_multi_tenant.sql
+-- INTENTIONALLY A NO-OP (replaced 2026-10-02, QA pass).
+--
+-- The original body could never apply against the shared Supabase
+-- project: academia-cameroon's 20260909190000_school_memberships_
+-- architecture.sql (earlier timestamp, same project) already creates
+-- public.school_memberships with a different shape (role user_role, no
+-- department_id / teaching_assignments), so `create table if not
+-- exists` here was skipped and the follow-up INSERT failed with
+--   ERROR: column "department_id" of relation "school_memberships" does not exist
+-- (reproduced on a local replica of all three repos' migrations).
+--
+-- Had it applied, it would also have:
+--   * created a SELECT policy on school_memberships that queries
+--     school_memberships itself (Postgres: "infinite recursion detected
+--     in policy"), breaking every marks/timetable policy that reads it;
+--   * replaced the school_marks insert/update policies WITHOUT the
+--     per-(subject, class) is_teacher_authorized_for_marks() check from
+--     20260904000000, letting any teacher write any subject's marks.
+--
+-- Nothing in lib/ reads school_memberships; the app's school identity is
+-- still public.users.institution_id/school_role/teaching_assignments.
+select 1;

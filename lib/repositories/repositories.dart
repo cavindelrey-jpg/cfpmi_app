@@ -1,0 +1,17 @@
+// lib/repositories/repositories.dart
+export 'academic_content_repository.dart';
+export 'announcement_repository.dart';
+export 'club_repository.dart';
+export 'hero_slide_repository.dart';
+export 'magazine_repository.dart';
+export 'daily_challenge_repository.dart';
+export 'xp_repository.dart';
+export 'entitlement_repository.dart';
+export 'test_repository.dart';
+export 'public_course_repository.dart';
+export 'academic_section_repository.dart';
+export 'school_repository.dart';
+export 'school_access_repository.dart';
+export 'academia_voucher_repository.dart';
+export 'exam_repository.dart';
+export 'daily_notice_repository.dart';

@@ -1,0 +1,11 @@
+# Add to your existing pubspec.yaml dependencies (firebase_storage,
+# cloud_firestore, firebase_auth, google_fonts already present):
+
+  google_sign_in: ^6.2.1
+  url_launcher: ^6.3.1
+
+# flutter pub get
+
+# Google Sign-In needs your Android SHA-1 registered in Firebase Console
+# (Project Settings > Your Android app > Add fingerprint):
+#   cd android && ./gradlew signingReport

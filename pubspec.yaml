@@ -1,0 +1,111 @@
+name: academia_app
+description: CFPMI — School Management Platform
+publish_to: 'none'
+version: 2.0.1+2
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management & Core
+  provider: ^6.1.5+1
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.2
+  http: ^1.2.1
+
+  # Firebase Ecosystem (NDK 27 compatible)
+  # Auth/Firestore/Storage/Functions migrated to Supabase — see
+  # supabase_flutter below. Kept for Analytics/Crashlytics only.
+  firebase_core: ^3.6.0
+  firebase_analytics: ^11.3.3
+  firebase_crashlytics: ^4.1.3
+
+  # Supabase (replaces firebase_auth, cloud_firestore, firebase_storage, cloud_functions)
+  supabase_flutter: ^2.8.0
+
+  # UI, Styling & Icons
+  cupertino_icons: ^1.0.8
+  google_fonts: ^8.1.0
+  fl_chart: ^1.2.0
+
+  # Rich Text Canvas Editor & Word Importer Dependencies
+  flutter_quill: ^11.0.0
+  flutter_quill_extensions: ^11.0.0
+  archive: ^4.0.9
+  xml: ^6.5.0
+
+  # Real LaTeX math rendering for course content (Academia_Course_Generation_Rules.md Rule 1)
+  flutter_math_fork: ^0.7.3
+
+  # File Management, Pickers & Utilities
+  file_picker: ^8.1.2              # CHANGED from 12.0.0-beta.7 to a highly stable production release
+  image_picker: ^1.1.2
+  url_launcher: ^6.0.0
+  share_plus: ^12.0.2
+  intl: ^0.20.2
+  win32: ^5.5.0                    # Now perfectly unifies file_picker, share_plus, and flutter_quill
+  google_sign_in: ^6.3.0
+  video_player: ^2.11.1
+  chewie: ^1.14.1
+  connectivity_plus: ^7.3.1
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  pdfrx: ^2.6.5
+  pdf: ^3.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.3
+  # Already a transitive dep of flutter_quill (used internally for its
+  # rich-paste HTML->Delta conversion) — declared directly so the
+  # section-3 paste-structure test can import it without an analyzer lint.
+  flutter_quill_delta_from_html: ^1.5.3
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/logos/
+    - assets/images/
+    - assets/icon/
+    - assets/branding/
+    - assets/data/
+    - assets/google_fonts/
+
+# CFPMI fork of the Ladybird app -- pointed at assets/branding/
+# cfpmi_logo.png, matching this fork's BRAND_ID default (see
+# lib/config/branding.dart). This is a transparent PNG PLACEHOLDER logo
+# (maroon rounded badge + gold "CFPMI" wordmark) generated for this fork;
+# replace it in-place with the real CFPMI crest (square, >=1024px,
+# transparent PNG) at this same path -- no other config changes needed.
+# See docs/AUTOPILOT_LOG.md.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/branding/cfpmi_logo.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/branding/cfpmi_logo.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: "assets/branding/cfpmi_logo.png"
+  android_12:
+    color: "#FFFFFF"
+    image: "assets/branding/cfpmi_logo.png"
+  android: true
+  ios: true
+
+dependency_overrides:
+  # web: ^1.1.1
+  win32: ^5.5.0
+  intl: ^0.19.0
+  package_info_plus: ^8.1.4

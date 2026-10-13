@@ -1,0 +1,234 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════════
+// Academia — Firebase Storage Security Rules
+// ═══════════════════════════════════════════════════════════════════════
+// This file did not exist before — Storage had NO rules deployed via this
+// repo at all (confirmed: no "storage" key in firebase.json, no
+// storage.rules file anywhere). Whatever the bucket was actually running
+// on was whatever got set outside of source control (console default —
+// often locked-down/deny-all on newer Blaze projects, which matches
+// reports of images failing to load with a permission error).
+//
+// Mirrors the same role model as firestore.rules (6-tier role system in
+// lib/models/app_user.dart), scoped to the actual upload paths found in
+// the app (grepped every FirebaseStorage.instance.ref(...) call site).
+//
+// Deploy: firebase deploy --only storage
+// (requires firebase.json's "storage" key pointing at this file — see
+// that file, updated alongside this one.)
+// ═══════════════════════════════════════════════════════════════════════
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myRole() {
+      return isSignedIn() && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        ? firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role
+        : 'guest';
+    }
+
+    function roleLevel(role) {
+      return role == 'superAdmin'      ? 5 :
+             role == 'schoolAdmin'     ? 4 :
+             role == 'departmentAdmin' ? 3 :
+             role == 'lecturer'        ? 2 :
+             role == 'student'         ? 1 : 0;
+    }
+
+    function hasMinRole(role) {
+      return isSignedIn() && roleLevel(myRole()) >= roleLevel(role);
+    }
+
+    function canUploadContent()  { return hasMinRole('lecturer'); }
+    function canManageSchool()   { return hasMinRole('schoolAdmin'); }
+
+    function isConversationParticipant(conversationId) {
+      return isSignedIn() &&
+        request.auth.uid in firestore.get(
+          /databases/(default)/documents/conversations/$(conversationId)
+        ).data.participantIds;
+    }
+
+    // Pre-launch audit: no path in this file enforced any file-size
+    // limit at all -- a signed-in user (any tier that could write to a
+    // given path) could upload an arbitrarily large object, a real
+    // storage-cost/abuse vector with nothing here to stop it (client-side
+    // picker restrictions alone don't count -- a modified client can
+    // skip them entirely). Two tiers: images stay small, actual content
+    // files (videos/PDFs/docs) get a generous but bounded cap.
+    function underSize(maxBytes) {
+      return request.resource.size < maxBytes;
+    }
+    function isReasonableImage() { return underSize(10 * 1024 * 1024); }        // 10MB
+    function isReasonableContentFile() { return underSize(300 * 1024 * 1024); } // 300MB -- video lessons need headroom
+
+    // Fix for F1 (pentest_report.md): article_thumbnails/club_banners/
+    // course_covers used to be `allow write: if isSignedIn()` with no
+    // ownership check at all, while the Firestore DOCUMENT each image
+    // belongs to (articles/{id}, clubs/{id}, public_courses/{id}) is
+    // strictly owner-gated -- any signed-in user could overwrite another
+    // user's article thumbnail/club banner/course cover by uploading to
+    // its predictable {id}.jpg path, without ever touching the document
+    // that actually "owns" it. These three helpers mirror the exact
+    // ownership check each corresponding firestore.rules update rule
+    // already uses, extracting the id from the filename (fileName is
+    // always `{id}.{ext}`, matching every actual upload call site in
+    // lib/repositories/).
+    function isArticleAuthor(articleId) {
+      return isSignedIn() &&
+        firestore.get(/databases/(default)/documents/articles/$(articleId)).data.authorId == request.auth.uid;
+    }
+
+    function isCourseCreator(courseId) {
+      return isSignedIn() &&
+        firestore.get(/databases/(default)/documents/public_courses/$(courseId)).data.creatorId == request.auth.uid;
+    }
+
+    function isClubManager(clubId) {
+      return isSignedIn() && (
+        firestore.get(/databases/(default)/documents/clubs/$(clubId)).data.moderatorId == request.auth.uid
+        || (
+          firestore.exists(/databases/(default)/documents/clubs/$(clubId)/members/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/clubs/$(clubId)/members/$(request.auth.uid)).data.role in ['admin', 'moderator']
+        )
+        || canManageSchool()
+      );
+    }
+
+    // ── avatars/{uid}.jpg ────────────────────────────────────────────
+    // Public read (profile photos shown everywhere — avatars, chat,
+    // clubs); only the owning account can (over)write their own.
+    match /avatars/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && fileName.matches(request.auth.uid + '\\..*') && isReasonableImage();
+    }
+
+    // ── article_thumbnails/{articleId}.jpg ──────────────────────────
+    // Fix for F1: owner-only, matching articles/{id}'s own update rule.
+    match /article_thumbnails/{fileName} {
+      allow read: if true;
+      allow write: if isArticleAuthor(fileName.split('.')[0]) && isReasonableImage();
+    }
+
+    // ── club_banners/{clubId}.jpg ────────────────────────────────────
+    // Fix for F1: club admin/moderator/staff only, matching clubs/{id}'s
+    // own update rule.
+    match /club_banners/{fileName} {
+      allow read: if true;
+      allow write: if isClubManager(fileName.split('.')[0]) && isReasonableImage();
+    }
+
+    // ── hero_slides/{slideId}.jpg ─────────────────────────────────────
+    // Matches heroSlides/{id} Firestore rule: superAdmin/schoolAdmin only.
+    match /hero_slides/{fileName} {
+      allow read: if true;
+      allow write: if canManageSchool() && isReasonableImage();
+    }
+
+    // ── announcement_images/{announcementId}.jpg ───────────────────────
+    // Architecture brief item 12: device photo upload for announcements.
+    // Role-gated (not per-document ownership) to match the EXISTING
+    // announcements/{id} and schools/{schoolId}/announcements/{id}
+    // Firestore rules exactly, both of which already gate create/update
+    // on canPostAnnouncement() (any lecturer+), not a specific author —
+    // this isn't a weaker link than what already governs the doc itself.
+    match /announcement_images/{fileName} {
+      allow read: if true;
+      allow write: if canUploadContent() && isReasonableImage();
+    }
+
+    // ── curriculum_icons/{docId}.jpg ──────────────────────────────────
+    match /curriculum_icons/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isReasonableImage();
+    }
+
+    // ── course_covers/{courseId}.jpg ──────────────────────────────────
+    // Fix for F1: creator-only, matching public_courses/{id}'s own
+    // update rule.
+    match /course_covers/{fileName} {
+      allow read: if true;
+      allow write: if isCourseCreator(fileName.split('.')[0]) && isReasonableImage();
+    }
+
+    // ── quiz_categories/{categoryId}.jpg ──────────────────────────────
+    // The Quiz page's top-level section tiles (Primary School/JSS/SSS/
+    // High School/Undergraduate/admin-added) — same open-to-any-signed-in
+    // -author model as curriculum_icons above, matching the UI's own
+    // canUploadContent gate on the edit affordance.
+    match /quiz_categories/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isReasonableImage();
+    }
+
+    // ── test_thumbnails/{testId}.jpg ──────────────────────────────────
+    // A single quiz's own tile/card photo — matches the `tests/{id}`
+    // Firestore rule's own write gate (lecturer+, own test or school
+    // admin) rather than "any signed-in user", since a quiz already has
+    // a real owner unlike the free-text Subject/Topic tree nodes above.
+    match /test_thumbnails/{fileName} {
+      allow read: if true;
+      allow write: if canUploadContent() && isReasonableImage();
+    }
+
+    // ── test_question_images/{testId}_{questionId}.jpg ─────────────────
+    // Architecture brief item 9 — real photos/diagrams attached to one
+    // question inside a test. Same role gate as the thumbnail above.
+    match /test_question_images/{fileName} {
+      allow read: if true;
+      allow write: if canUploadContent() && isReasonableImage();
+    }
+
+    // ── public_courses/inline/... ─────────────────────────────────────
+    // Inline lesson images uploaded by the compiler pipeline (see
+    // academia_compiler/compile-course.js) — writes there go through the
+    // Admin SDK (bypasses these rules entirely), this just covers reads.
+    match /public_courses/inline/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isReasonableImage();
+    }
+
+    // ── content_files/{institutionId}/{fileName} ──────────────────────
+    // ── thumbnails/{institutionId}/{fileName} ─────────────────────────
+    // Matches academic_content/{id} Firestore rule: lecturer+ uploads,
+    // anyone (including guests) reads. content_files holds the actual
+    // book/video/PDF, so it gets the larger content-file cap;
+    // thumbnails are images, small cap.
+    match /content_files/{institutionId}/{fileName} {
+      allow read: if true;
+      allow write: if canUploadContent() && isReasonableContentFile();
+    }
+    match /thumbnails/{institutionId}/{fileName} {
+      allow read: if true;
+      allow write: if canUploadContent() && isReasonableImage();
+    }
+
+    // ── chat_media/{conversationId}/{fileName} ────────────────────────
+    // ── chat_files/{conversationId}/{fileName} ────────────────────────
+    // Only the two (or more) participants in a conversation can read or
+    // send its attachments — mirrors conversations/{id}/messages'
+    // Firestore rule exactly (request.auth.uid in participantIds).
+    // read and write split (rather than the original combined `allow
+    // read, write`) because request.resource.size is only meaningful on
+    // a write -- referencing it on a read would error the rule and
+    // effectively break reading chat attachments entirely. chat_files
+    // can be any attachment type (not just images), so it gets the
+    // larger content-file cap rather than the image-only one.
+    match /chat_media/{conversationId}/{fileName} {
+      allow read: if isConversationParticipant(conversationId);
+      allow write: if isConversationParticipant(conversationId) && isReasonableImage();
+    }
+    match /chat_files/{conversationId}/{fileName} {
+      allow read: if isConversationParticipant(conversationId);
+      allow write: if isConversationParticipant(conversationId) && isReasonableContentFile();
+    }
+
+    // ── Default deny ───────────────────────────────────────────────────
+    // Anything not explicitly matched above is denied by default.
+  }
+}
