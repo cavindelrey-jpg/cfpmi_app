@@ -1,9 +1,9 @@
 {
   "appName": "CFPM",
   "tagline": "Professional Training & Academic Excellence",
-  "primaryColor": "#8A1538",
-  "secondaryColor": "#1C1C28",
-  "accentColor": "#D4A017",
+  "primaryColor": "#0B1F3A",
+  "secondaryColor": "#087F5B",
+  "accentColor": "#F4C542",
   "logoAssetPath": "assets/branding/cfpmi_logo.png",
   "splashAssetPath": "assets/branding/cfpmi_logo.png",
   "voucherPrefix": "CF",

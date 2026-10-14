@@ -81,6 +81,24 @@ const List<BoxShadow> _glow = [
   BoxShadow(color: Color(0x0C000000), blurRadius: 16, offset: Offset(0, 4)),
 ];
 
+// ── CFPM dashboard spec palette (exact hexes from the design brief) ─────
+const Color _cNavy = Color(0xFF0B1F3A); // deep academic navy
+const Color _cDarkGreen = Color(0xFF004D40); // deep forest green
+const Color _cGreen = Color(0xFF087F5B); // emerald green
+const Color _cGold = Color(0xFFF4C542); // warm academic gold
+const Color _cCard = Color(0xFFFFFFFF);
+const Color _cText = Color(0xFF14213D);
+const Color _cText2 = Color(0xFF64748B);
+const Color _cBorder = Color(0xFFE5E7EB);
+const Color _cInfo = Color(0xFF2563EB); // information blue
+const Color _cPurple = Color(0xFF7C3AED);
+const Color _cOrange = Color(0xFFEA580C);
+// pale icon-chip backgrounds
+const Color _cPaleGreen = Color(0xFFE8F7ED);
+const Color _cPaleYellow = Color(0xFFFFF8E1);
+const Color _cPaleBlue = Color(0xFFEFF6FF);
+const Color _cPalePurple = Color(0xFFF3E8FF);
+
 // ── Home's own "Recommended for You" ranking helpers ───────────────────
 // Pure, top-level, unit-tested (test/home_recommendation_ranking_test.dart)
 // — deliberately independent copies of the same shape of logic
@@ -449,38 +467,34 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
           backgroundColor: ac.surf,
           onRefresh: _handleRefresh,
           child: ListView(
-            padding: const EdgeInsets.only(bottom: 32),
+            padding: const EdgeInsets.only(bottom: 36),
             children: [
+              // ── CFPM student dashboard (per design spec) ──
               _topBar(context),
+              const SizedBox(height: 4),
+              _homeHeading(context),
+              const SizedBox(height: 16),
+              _featuredBanner(context),
+              const SizedBox(height: 22),
+              _sh('Quick Access',
+                  onTap: () => _open(context, LibraryHomePage(user: _userOrGuest))),
               const SizedBox(height: 12),
-              _greetingHeader(context),
-              const SizedBox(height: 14),
-              _commandCenterHero(context),
-              const SizedBox(height: 18),
-              _progressAndGoalsStrip(context),
+              _quickAccessSection(context),
+              const SizedBox(height: 22),
+              _studentProgressCard(context),
               const SizedBox(height: 24),
-              _sectionHeader('Academic Hubs'),
+              _sh('Featured Courses',
+                  action: 'Browse All',
+                  onTap: () => _open(context, CoursesHomePage(user: _u))),
               const SizedBox(height: 12),
-              _academicHubsGrid(context),
-              const SizedBox(height: 12),
-              _secondaryToolsRow(context),
+              _featuredCoursesSection(context),
               const SizedBox(height: 24),
-              _sectionHeader("Today's Schedule & Tasks"),
+              _sh('Study Tools',
+                  onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
               const SizedBox(height: 12),
-              _scheduleAndTasksRow(context),
+              _studyToolsSection(context),
               const SizedBox(height: 24),
-              _sectionHeader("Campus & Community"),
-              const SizedBox(height: 12),
-              _campusAndCommunityRow(context),
-              const SizedBox(height: 24),
-              _sectionHeader(
-                'Recommended for You',
-                onViewAll: () => _open(context, LibraryHomePage(user: _userOrGuest)),
-              ),
-              const SizedBox(height: 12),
-              _recommendedRow(context),
-              const SizedBox(height: 24),
-              _academicProfileSummaryCard(context),
+              _scheduleAnnouncementsSection(context),
             ],
           ),
         ),
@@ -488,47 +502,22 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     );
   }
 
-  // ── Top Bar ────────────────────────────────────────────────────────
+  // ── Top Bar (spec: hamburger · [no logo/name] · search · bell · avatar)
   Widget _topBar(BuildContext context) {
-    final schoolLabel = (!_isGuest && _u!.isSchoolMember && _u!.schoolName.isNotEmpty)
-        ? _u!.schoolName
-        : (_u?.classLevel.isNotEmpty == true ? _u!.classLevel : null);
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+      padding: const EdgeInsets.fromLTRB(10, 8, 12, 0),
       child: Row(
         children: [
           Builder(
             builder: (ctx) => IconButton(
-              icon: Icon(Icons.menu_rounded, color: ac.txt, size: 24),
+              icon: const Icon(Icons.menu_rounded, color: _cNavy, size: 24),
               onPressed: () => Scaffold.of(ctx).openDrawer(),
-              tooltip: 'Navigation Menu',
+              tooltip: 'Menu',
             ),
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  Branding.current.appName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.sora(fontSize: 17, fontWeight: FontWeight.w800, color: ac.primary),
-                ),
-                if (schoolLabel != null)
-                  Text(
-                    schoolLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: ac.txt2),
-                  ),
-              ],
-            ),
-          ),
+          const Spacer(),
           IconButton(
-            icon: Icon(Icons.search_rounded, color: ac.txt2, size: 22),
+            icon: const Icon(Icons.search_rounded, color: _cNavy, size: 23),
             tooltip: 'Search',
             onPressed: () => _open(context, SearchPage(user: _userOrGuest)),
           ),
@@ -536,40 +525,51 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                icon: Icon(Icons.chat_bubble_outline_rounded, color: ac.txt2, size: 20),
-                tooltip: 'Messages',
-                onPressed: () => _open(context, MessagesHomePage(user: _userOrGuest)),
-              ),
-              if (!_isGuest) _messagesTopUnreadBadge(),
-            ],
-          ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: Icon(Icons.notifications_outlined, color: ac.txt2, size: 22),
+                icon: const Icon(Icons.notifications_none_rounded, color: _cNavy, size: 23),
                 tooltip: 'Notifications',
                 onPressed: () => _open(context, NotificationsPage(user: _userOrGuest)),
               ),
-              if (!_isGuest)
-                Positioned(
-                  top: 9,
-                  right: 9,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: ac.grn, shape: BoxShape.circle),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDC2626),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _cCard, width: 1.5),
                   ),
                 ),
+              ),
             ],
           ),
-          const SizedBox(width: 4),
-          UserAvatar(
-            initials: _isGuest || _userOrGuest.name.isEmpty ? '?' : _userOrGuest.name[0].toUpperCase(),
-            radius: 17,
-            photoUrl: _u?.photoUrl,
-            onTap: () => _open(context, ProfilePage(user: _userOrGuest)),
+          const SizedBox(width: 2),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              UserAvatar(
+                initials: _isGuest || _userOrGuest.name.isEmpty ? '?' : _userOrGuest.name[0].toUpperCase(),
+                radius: 20,
+                photoUrl: _u?.photoUrl,
+                onTap: () => _open(context, ProfilePage(user: _userOrGuest)),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 11,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: _cGreen,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _cCard, width: 2),
+                  ),
+                ),
+              ),
+            ],
           ),
+          const SizedBox(width: 2),
         ],
       ),
     );
@@ -602,64 +602,790 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     );
   }
 
-  // ── Greeting Header ────────────────────────────────────────────────
-  Widget _greetingHeader(BuildContext context) {
-    final firstName = _isGuest
-        ? 'Student'
-        : (_u!.name.trim().isEmpty ? 'Student' : _u!.name.trim().split(' ').first);
+  // ══════════════════════════════════════════════════════════════════
+  // CFPM STUDENT DASHBOARD — built to the design spec.
+  // Header has no logo/brand text; page heading "Home" stands alone.
+  // ══════════════════════════════════════════════════════════════════
 
+  // ── Page heading: "Home" + session pill (no greeting/subtitle) ──────
+  Widget _homeHeading(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(18, 2, 18, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$_timeGreeting, $firstName 👋',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.sora(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: ac.txt,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _isGuest
-                      ? 'Welcome to your academic learning hub.'
-                      : (_u!.classLevel.isNotEmpty
-                          ? '${_u!.classLevel} · Ready to master your subjects today?'
-                          : 'Your academic command center is ready.'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(fontSize: 12, color: ac.txt2),
-                ),
-              ],
+          Text(
+            'Home',
+            style: GoogleFonts.inter(
+              fontSize: 25,
+              fontWeight: FontWeight.w800,
+              color: _cNavy,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(width: 8),
+          const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: ac.primaryBg,
-              borderRadius: BorderRadius.circular(Rad.xs),
-              border: Border.all(color: ac.primary.withValues(alpha: 0.15)),
+              color: _cPaleGreen,
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               '$_academicSession Session',
               style: GoogleFonts.inter(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: ac.primary,
+                color: _cDarkGreen,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Section header: bold navy title + green "View all →" action ─────
+  Widget _sh(String title, {String action = 'View all', VoidCallback? onTap}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(fontSize: 19, fontWeight: FontWeight.w800, color: _cNavy),
+            ),
+          ),
+          if (onTap != null)
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onTap();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(action,
+                        style: GoogleFonts.inter(
+                            fontSize: 12.5, fontWeight: FontWeight.w700, color: _cGreen)),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.arrow_forward_rounded, size: 14, color: _cGreen),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Featured promotional banner ─────────────────────────────────────
+  Widget _featuredBanner(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GestureDetector(
+        onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest)),
+        child: Container(
+          height: 160,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: _glow,
+          ),
+          child: Stack(
+            children: [
+              Row(
+                children: [
+                  // Left: navy → forest-green panel with text
+                  Expanded(
+                    flex: 63,
+                    child: Container(
+                      height: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(16, 15, 10, 14),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [_cNavy, _cDarkGreen],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('FEATURED',
+                              style: GoogleFonts.inter(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: _cGold,
+                                  letterSpacing: 1.4)),
+                          const SizedBox(height: 7),
+                          Text('Excellence Through\nKnowledge',
+                              style: GoogleFonts.inter(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  height: 1.15)),
+                          const SizedBox(height: 5),
+                          Text('Explore courses and learning resources.',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                  fontSize: 11, color: Colors.white.withValues(alpha: 0.85))),
+                          const SizedBox(height: 11),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _cGold,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Continue Learning',
+                                    style: GoogleFonts.inter(
+                                        fontSize: 12, fontWeight: FontWeight.w700, color: _cNavy)),
+                                const SizedBox(width: 5),
+                                const Icon(Icons.arrow_forward_rounded, size: 14, color: _cNavy),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Right: campus placeholder panel (no logo/crest)
+                  Expanded(
+                    flex: 37,
+                    child: Container(
+                      height: double.infinity,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [_cGreen, _cDarkGreen],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(Icons.account_balance_rounded,
+                            size: 58, color: Colors.white.withValues(alpha: 0.22)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              // Carousel indicators
+              Positioned(
+                bottom: 10,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(4, (i) {
+                    final active = i == 0;
+                    return Container(
+                      width: active ? 18 : 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: active ? _cGold : Colors.white.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Quick Access (4 feature cards, horizontally scrollable) ─────────
+  Widget _quickAccessSection(BuildContext context) {
+    return SizedBox(
+      height: 150,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _featureCard(
+            icon: Icons.menu_book_rounded,
+            iconColor: _cGreen,
+            iconBg: _cPaleGreen,
+            title: 'My Courses',
+            subtitle: 'Access your lessons',
+            onTap: () => _open(context, CoursesHomePage(user: _u)),
+          ),
+          const SizedBox(width: 10),
+          _featureCard(
+            icon: Icons.assignment_turned_in_rounded,
+            iconColor: const Color(0xFFB7791F),
+            iconBg: _cPaleYellow,
+            title: 'My Marks',
+            subtitle: 'View your results',
+            onTap: () => _open(context, MarksPage(user: _userOrGuest)),
+          ),
+          const SizedBox(width: 10),
+          _featureCard(
+            icon: Icons.description_rounded,
+            iconColor: _cInfo,
+            iconBg: _cPaleBlue,
+            title: 'Past Papers',
+            subtitle: 'GCE, A-level & exams',
+            onTap: () => _open(context, LibraryHomePage(user: _userOrGuest)),
+          ),
+          const SizedBox(width: 10),
+          _featureCard(
+            icon: Icons.school_rounded,
+            iconColor: _cPurple,
+            iconBg: _cPalePurple,
+            title: 'Campus Info',
+            subtitle: 'Timetable & notices',
+            onTap: () => _open(context, TimetablePage(user: _userOrGuest)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Study Tools (4 feature cards) ───────────────────────────────────
+  Widget _studyToolsSection(BuildContext context) {
+    return SizedBox(
+      height: 150,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _featureCard(
+            icon: Icons.quiz_rounded,
+            iconColor: _cGreen,
+            iconBg: _cPaleGreen,
+            title: 'Quizzes',
+            subtitle: 'Test yourself',
+            onTap: () => _open(context, QuizCategoriesPage(user: _userOrGuest)),
+          ),
+          const SizedBox(width: 10),
+          _featureCard(
+            icon: Icons.style_rounded,
+            iconColor: _cInfo,
+            iconBg: _cPaleBlue,
+            title: 'Flashcards',
+            subtitle: 'Revise faster',
+            onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest)),
+          ),
+          const SizedBox(width: 10),
+          _featureCard(
+            icon: Icons.psychology_rounded,
+            iconColor: const Color(0xFFB7791F),
+            iconBg: _cPaleYellow,
+            title: 'Study Plan',
+            subtitle: 'Stay on track',
+            onTap: () => _open(context, PersonalStudyPage(user: _userOrGuest)),
+          ),
+          const SizedBox(width: 10),
+          _featureCard(
+            icon: Icons.cloud_download_rounded,
+            iconColor: _cPurple,
+            iconBg: _cPalePurple,
+            title: 'Offline Mode',
+            subtitle: 'Download now',
+            onTap: () => _open(context, LibraryHomePage(user: _userOrGuest)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _featureCard({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: Container(
+        width: 116,
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: _cCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _cBorder),
+          boxShadow: _glow,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(13)),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(height: 12),
+            Text(title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: _cText)),
+            const SizedBox(height: 3),
+            Text(subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(fontSize: 11, color: _cText2, height: 1.25)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Student progress card (dark green, 4 columns) ───────────────────
+  Widget _studentProgressCard(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: StreamBuilder<DailyLearningStreak?>(
+        stream: _streakStream ?? const Stream.empty(),
+        builder: (context, streakSnap) {
+          final streakCount = streakSnap.data?.currentStreak ?? 0;
+          return StreamBuilder<(int, int)>(
+            stream: _xpStream ?? const Stream.empty(),
+            builder: (context, xpSnap) {
+              final xp = _isGuest ? 0 : (xpSnap.data?.$2 ?? 0);
+              return FutureBuilder<Map<String, int>>(
+                future: _completionCountsFuture ?? Future.value(const {}),
+                builder: (context, qSnap) {
+                  final quizzes =
+                      (qSnap.data ?? const {}).values.fold<int>(0, (s, v) => s + v);
+                  final activeDays = _weekActivityCount();
+                  final pct = (activeDays / 7 * 100).round().clamp(0, 100);
+                  return GestureDetector(
+                    onTap: () => _open(context, XpDashboardPage(user: _userOrGuest)),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [_cDarkGreen, Color(0xFF066352)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: _glow,
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.insights_rounded, color: _cGold, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text('YOUR PROGRESS',
+                                      style: GoogleFonts.inter(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: _cGold,
+                                          letterSpacing: 0.8)),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Text('View Details',
+                                      style: GoogleFonts.inter(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white.withValues(alpha: 0.9))),
+                                  const SizedBox(width: 2),
+                                  Icon(Icons.arrow_forward_rounded,
+                                      size: 13, color: Colors.white.withValues(alpha: 0.9)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(child: _progressRing(pct)),
+                                _progressSep(),
+                                Expanded(
+                                    child: _progressStat(
+                                        Icons.star_rounded, _cGold, '$xp', 'XP Points')),
+                                _progressSep(),
+                                Expanded(
+                                    child: _progressStat(Icons.local_fire_department_rounded,
+                                        _cOrange, '$streakCount', 'Day Streak')),
+                                _progressSep(),
+                                Expanded(
+                                    child: _progressStat(Icons.emoji_events_rounded, _cGold,
+                                        '$quizzes', 'Quizzes Done')),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _progressSep() => Container(width: 1, color: Colors.white.withValues(alpha: 0.14));
+
+  Widget _progressRing(int pct) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 72,
+          height: 72,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 72,
+                height: 72,
+                child: CircularProgressIndicator(
+                  value: pct / 100,
+                  strokeWidth: 7,
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  valueColor: const AlwaysStoppedAnimation<Color>(_cGold),
+                ),
+              ),
+              Text('$pct%',
+                  style: GoogleFonts.inter(
+                      fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text('Course Progress',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+                fontSize: 10.5, color: Colors.white.withValues(alpha: 0.85))),
+      ],
+    );
+  }
+
+  Widget _progressStat(IconData icon, Color iconColor, String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: iconColor, size: 26),
+        const SizedBox(height: 8),
+        Text(value,
+            style: GoogleFonts.inter(
+                fontSize: 21, fontWeight: FontWeight.w800, color: Colors.white)),
+        const SizedBox(height: 2),
+        Text(label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+                fontSize: 10.5, color: Colors.white.withValues(alpha: 0.85))),
+      ],
+    );
+  }
+
+  // ── Featured courses (horizontal carousel) ──────────────────────────
+  Widget _featuredCoursesSection(BuildContext context) {
+    return SizedBox(
+      height: 222,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _courseCard(context,
+              title: 'Advanced Mathematics',
+              subject: 'Mathematics',
+              lessons: 12,
+              topColor: const Color(0xFF1F2937),
+              icon: Icons.functions_rounded,
+              pillColor: _cInfo),
+          const SizedBox(width: 13),
+          _courseCard(context,
+              title: 'Physics 2016 Paper 2',
+              subject: 'Physics',
+              lessons: 8,
+              topColor: const Color(0xFF0F3D3E),
+              icon: Icons.science_rounded,
+              pillColor: _cGreen),
+          const SizedBox(width: 13),
+          _courseCard(context,
+              title: 'Literature & Composition',
+              subject: 'English',
+              lessons: 10,
+              topColor: const Color(0xFF5B3A1E),
+              icon: Icons.auto_stories_rounded,
+              pillColor: const Color(0xFFB7791F)),
+        ],
+      ),
+    );
+  }
+
+  Widget _courseCard(
+    BuildContext context, {
+    required String title,
+    required String subject,
+    required int lessons,
+    required Color topColor,
+    required IconData icon,
+    required Color pillColor,
+  }) {
+    return GestureDetector(
+      onTap: () => _open(context, CoursesHomePage(user: _u)),
+      child: Container(
+        width: 196,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: _cCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _cBorder),
+          boxShadow: _glow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Container(
+                  height: 104,
+                  width: double.infinity,
+                  color: topColor,
+                  child: Center(
+                    child: Icon(icon, size: 40, color: Colors.white.withValues(alpha: 0.85)),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(subject,
+                        style: GoogleFonts.inter(
+                            fontSize: 10.5, fontWeight: FontWeight.w700, color: pillColor)),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 42,
+                    child: Text(title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            color: _cText,
+                            height: 1.15)),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.menu_book_rounded, size: 14, color: _cText2),
+                          const SizedBox(width: 5),
+                          Text('$lessons lessons',
+                              style: GoogleFonts.inter(fontSize: 12, color: _cText2)),
+                        ],
+                      ),
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: const BoxDecoration(color: _cPaleYellow, shape: BoxShape.circle),
+                        child: const Icon(Icons.arrow_forward_rounded, size: 16, color: _cNavy),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Today's Schedule + Announcements (two cards) ────────────────────
+  Widget _scheduleAnnouncementsSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final schedule = _scheduleCard(context);
+          final announce = _announcementsCard(context);
+          if (c.maxWidth < 340) {
+            return Column(children: [schedule, const SizedBox(height: 12), announce]);
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: schedule),
+              const SizedBox(width: 12),
+              Expanded(child: announce),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _scheduleCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _open(context, TimetablePage(user: _userOrGuest)),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _cPaleGreen,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _cGreen.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.calendar_today_rounded, size: 15, color: _cDarkGreen),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text("Today's Schedule",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                          fontSize: 13, fontWeight: FontWeight.w800, color: _cDarkGreen)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('08:00',
+                        style: GoogleFonts.inter(
+                            fontSize: 15, fontWeight: FontWeight.w800, color: _cText)),
+                    const SizedBox(height: 4),
+                    Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(color: _cGreen, shape: BoxShape.circle)),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Mathematics Class',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                              fontSize: 13, fontWeight: FontWeight.w700, color: _cText)),
+                      const SizedBox(height: 2),
+                      Text('Classroom A1',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(fontSize: 11.5, color: _cText2)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _announcementsCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _open(context, DailyNoticesPage(user: _userOrGuest)),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _cPaleYellow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _cGold.withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.campaign_rounded, size: 16, color: Color(0xFFB7791F)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('Announcements',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                          fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF8A6D1B))),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                    margin: const EdgeInsets.only(top: 5),
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(color: _cGreen, shape: BoxShape.circle)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('New Past Papers Available',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                              fontSize: 13, fontWeight: FontWeight.w700, color: _cText)),
+                      const SizedBox(height: 2),
+                      Text('GCE & A-level (2019–2023)',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(fontSize: 11.5, color: _cText2)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, size: 18, color: _cText2),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

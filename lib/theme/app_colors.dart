@@ -196,26 +196,24 @@ class AppColors extends ThemeExtension<AppColors> {
     shadow: Color(0x73000000),
   );
 
-  // ── CFPM — brand/header colors (primary, navy, gold) sourced from the
-  // CFPM brand palette (assets/branding/cfpmi.json / lib/config/branding
-  // .dart: primaryColor #8A1538 maroon, secondaryColor #1C1C28 charcoal,
-  // accentColor #D4A017 gold). PLACEHOLDER palette pending the real CFPM
-  // crest/brand guide. Mirrors the Ladybird split: only brand-identity
-  // slots (primary, navy, gold) change; every functional/status color
-  // (red, org, pur, blu, grn success-state) stays identical to the base
-  // Academia palette.
+  // ── CFPM — academic navy + green + gold palette, sourced from the CFPM
+  // dashboard design spec (navy #0B1F3A, forest/emerald green #004D40 /
+  // #087F5B, warm gold #F4C542, warm-gray bg #F7F9F7). primary = navy for
+  // headings/primary; grn carries the spec's success/active-green;
+  // gold is the achievement/accent. Functional status colors (red, org,
+  // pur, blu) kept close to the spec's info/purple values.
   static const AppColors cfpmiLight = AppColors(
-    bg: Color(0xFFF5F7FA), surf: Color(0xFFFFFFFF), surf2: Color(0xFFF8F9FB), surf3: Color(0xFFF1F3F8),
-    txt: Color(0xFF0F172A), txt2: Color(0xFF475569), muted: Color(0xFF94A3B8),
-    bdr: Color(0xFFE2E8F0), bdr2: Color(0xFFF1F5F9),
-    primary: Color(0xFF8A1538), primaryBg: Color(0xFFFBE9EE),
-    navy: Color(0xFF1C1C28), navy2: Color(0xFF3A1A24),
-    gold: Color(0xFFD4A017), goldBg: Color(0xFFFBF1D6),
-    grn: Color(0xFF16A34A), grnBg: Color(0xFFDCFCE7),
+    bg: Color(0xFFF7F9F7), surf: Color(0xFFFFFFFF), surf2: Color(0xFFF7F9F7), surf3: Color(0xFFF1F5F3),
+    txt: Color(0xFF14213D), txt2: Color(0xFF64748B), muted: Color(0xFF94A3B8),
+    bdr: Color(0xFFE5E7EB), bdr2: Color(0xFFF1F5F9),
+    primary: Color(0xFF0B1F3A), primaryBg: Color(0xFFE7EDF5),
+    navy: Color(0xFF0B1F3A), navy2: Color(0xFF14213D),
+    gold: Color(0xFFF4C542), goldBg: Color(0xFFFFF8E1),
+    grn: Color(0xFF15803D), grnBg: Color(0xFFE8F7ED),
     red: Color(0xFFDC2626), redBg: Color(0xFFFEE2E2),
     org: Color(0xFFEA580C), orgBg: Color(0xFFFFEDD5),
-    pur: Color(0xFF7C3AED), purBg: Color(0xFFF5F3FF), purDark: Color(0xFF6D28D9), purLight: Color(0xFF8B5CF6),
-    blu: Color(0xFF0284C7), bluBg: Color(0xFFE0F2FE),
+    pur: Color(0xFF7C3AED), purBg: Color(0xFFF3E8FF), purDark: Color(0xFF6D28D9), purLight: Color(0xFF8B5CF6),
+    blu: Color(0xFF2563EB), bluBg: Color(0xFFEFF6FF),
     shadow: Color(0x0D0A1432),
   );
 

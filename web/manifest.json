@@ -4,7 +4,7 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
-    "theme_color": "#8A1538",
+    "theme_color": "#0B1F3A",
     "description": "CFPM - Professional Training & Academic Excellence",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
