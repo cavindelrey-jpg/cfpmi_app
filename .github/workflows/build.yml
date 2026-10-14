@@ -1,0 +1,69 @@
+name: CFPMI CI (test then build)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  # ── 1. Tests run first. If they fail, the build job below never runs. ──
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run flutter test
+        run: flutter test
+
+  # ── 2. Build only after tests pass (needs: test). ──
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build web (CFPMI)
+        run: flutter build web --release --dart-define=BRAND_ID=cfpmi
+
+      - name: Upload web build (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfpmi-web
+          path: build/web
+          retention-days: 7
+
+      - name: Build Android APK (CFPMI)
+        run: flutter build apk --release --flavor cfpmi --dart-define=BRAND_ID=cfpmi --target-platform android-arm64
+
+      - name: Upload APK (artifact)
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: cfpmi-release-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 7
