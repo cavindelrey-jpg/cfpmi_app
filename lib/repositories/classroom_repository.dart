@@ -59,6 +59,9 @@ class ClassroomRepository {
   Future<Result<void>> setSlides(String id, List<String> urls) =>
       _patch(id, {'slide_urls': urls});
 
+  Future<Result<void>> setOriginalFile(String id, String url) =>
+      _patch(id, {'original_file': url});
+
   // ── Resources ──────────────────────────────────────────────────────
   Future<Result<void>> addResource(ClassroomResource r) async {
     final t = _resources;

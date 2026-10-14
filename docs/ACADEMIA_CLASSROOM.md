@@ -45,11 +45,23 @@ every future feature. CFPMI repo only.
 + `classroom_resources` with the visibility model and RLS. **Apply via
 `supabase db push`** before it works live (no Supabase login in the build sandbox).
 
+## File upload (implemented)
+`services/classroom_upload_service.dart` uploads to the shared `app-content`
+Supabase Storage bucket (uploadBinary → works on web, the teacher's laptop)
+under `classroom/<schoolId>/`. In the teacher control panel:
+- **Upload slide images** (multi-select, sorted by name) → becomes the synced
+  slide deck. Export slides from PowerPoint as PNG/JPG, pick them, done.
+- **Attach PowerPoint / PDF** → stored as the lesson's `original_file` for
+  download.
+- **Resources → Upload file** → any file uploaded, `kind` inferred from the
+  extension, title auto-filled.
+
 ## Deliberately FUTURE (per spec section 12 + sandbox limits)
-- **.pptx → slides conversion** and **file upload to storage**. Today slides =
-  a list of image URLs and resources = title+URL (paste/link). A server-side
-  pptx-to-images step + a Supabase Storage file picker are the next pieces; the
-  model/UI already carry `original_file` and per-resource URLs for them.
+- **Automatic .pptx/PDF → slide images rendering.** Today the teacher uploads
+  slide *images* (fully self-serve, no server) and can attach the raw .pptx/PDF
+  for download. Auto-rendering a raw deck into slide images needs a server-side
+  step (LibreOffice/unoconv in a Supabase Edge Function or cloud function) —
+  the model already carries `original_file` to feed it.
 - **LAN/hotspot P2P sync** (teacher laptop as local host) — the spec marks this
   "where technically practical / eventually". Current sync is cloud realtime;
   offline = cached content. P2P is a later transport swap behind the same repo.

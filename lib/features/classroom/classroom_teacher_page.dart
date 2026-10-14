@@ -3,6 +3,7 @@
 // opens the control panel: slide navigation + the resource RELEASE controls.
 // The control panel is private to the teacher; the TV shows ClassroomDisplayPage.
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -12,6 +13,7 @@ import '../../models/classroom.dart';
 import '../../models/student_record.dart';
 import '../../repositories/classroom_repository.dart';
 import '../../repositories/student_roster_repository.dart';
+import '../../services/classroom_upload_service.dart';
 import '../../theme/app_colors.dart';
 import 'classroom_display_page.dart';
 import 'classroom_slide.dart';
@@ -305,7 +307,87 @@ class ClassroomControlPage extends StatelessWidget {
         ),
       );
 
+  void _toast(BuildContext context, String msg) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
   Future<void> _addSlidesDialog(BuildContext context, ClassroomSession s) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            leading: const Icon(Icons.add_photo_alternate_outlined),
+            title: const Text('Upload slide images'),
+            subtitle: const Text('Pick the slides (export from PowerPoint as PNG/JPG). They sync live.'),
+            onTap: () => Navigator.pop(ctx, 'upload'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.slideshow_outlined),
+            title: const Text('Attach PowerPoint / PDF'),
+            subtitle: const Text('Stored with the lesson for download.'),
+            onTap: () => Navigator.pop(ctx, 'attach'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.link_rounded),
+            title: const Text('Paste image URLs'),
+            onTap: () => Navigator.pop(ctx, 'urls'),
+          ),
+        ]),
+      ),
+    );
+    if (choice == 'upload') {
+      await _uploadSlideImages(context, s);
+    } else if (choice == 'attach') {
+      await _attachPresentation(context, s);
+    } else if (choice == 'urls') {
+      await _slideUrlsDialog(context, s);
+    }
+  }
+
+  Future<void> _uploadSlideImages(BuildContext context, ClassroomSession s) async {
+    final res = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: true, withData: true);
+    if (res == null || res.files.isEmpty) return;
+    _toast(context, 'Uploading ${res.files.length} slide(s)…');
+    final files = res.files.toList()..sort((a, b) => a.name.compareTo(b.name));
+    final urls = <String>[...s.slideUrls];
+    var failed = 0;
+    for (final f in files) {
+      final bytes = f.bytes;
+      if (bytes == null) {
+        failed++;
+        continue;
+      }
+      final up = await ClassroomUploadService.instance.uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
+      if (up is Success<String>) {
+        urls.add(up.value);
+      } else {
+        failed++;
+      }
+    }
+    await ClassroomRepository.instance.setSlides(sessionId, urls);
+    _toast(context, failed == 0 ? 'Slides updated (${urls.length}).' : 'Added ${urls.length - s.slideUrls.length} slide(s); $failed failed.');
+  }
+
+  Future<void> _attachPresentation(BuildContext context, ClassroomSession s) async {
+    final res = await FilePicker.platform.pickFiles(
+        type: FileType.custom, allowedExtensions: ['pptx', 'ppt', 'pdf'], withData: true);
+    if (res == null || res.files.isEmpty) return;
+    final f = res.files.first;
+    final bytes = f.bytes;
+    if (bytes == null) return;
+    _toast(context, 'Uploading ${f.name}…');
+    final up = await ClassroomUploadService.instance.uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
+    if (up is Success<String>) {
+      await ClassroomRepository.instance.setOriginalFile(sessionId, up.value);
+      _toast(context, 'Presentation attached. Tip: upload slide images too for synced slides.');
+    } else {
+      _toast(context, (up as Failure<String>).friendlyMessage);
+    }
+  }
+
+  Future<void> _slideUrlsDialog(BuildContext context, ClassroomSession s) async {
     final ctrl = TextEditingController(text: s.slideUrls.join('\n'));
     final ok = await showDialog<bool>(
       context: context,
@@ -335,6 +417,7 @@ class ClassroomControlPage extends StatelessWidget {
     final titleCtrl = TextEditingController();
     final urlCtrl = TextEditingController();
     String kind = 'document';
+    bool uploading = false;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -345,6 +428,37 @@ class ClassroomControlPage extends StatelessWidget {
               TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
               const SizedBox(height: 10),
               TextField(controller: urlCtrl, decoration: const InputDecoration(labelText: 'File URL / link', border: OutlineInputBorder())),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: uploading
+                      ? null
+                      : () async {
+                          final r = await FilePicker.platform.pickFiles(withData: true);
+                          if (r == null || r.files.isEmpty) return;
+                          final f = r.files.first;
+                          final bytes = f.bytes;
+                          if (bytes == null) return;
+                          setD(() => uploading = true);
+                          final up = await ClassroomUploadService.instance
+                              .uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
+                          final ext = f.name.contains('.') ? f.name.split('.').last.toLowerCase() : '';
+                          setD(() {
+                            uploading = false;
+                            if (up is Success<String>) {
+                              urlCtrl.text = up.value;
+                              kind = ClassroomUploadService.kindForExt(ext);
+                              if (titleCtrl.text.trim().isEmpty) titleCtrl.text = f.name;
+                            }
+                          });
+                        },
+                  icon: uploading
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.upload_file_rounded, size: 18),
+                  label: Text(uploading ? 'Uploading…' : 'Upload file'),
+                ),
+              ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 initialValue: kind,
