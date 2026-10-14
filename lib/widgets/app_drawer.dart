@@ -34,6 +34,7 @@ import '../features/testing/quiz_categories_page.dart';
 import '../features/testing/grading_page.dart';
 import '../features/testing/test_composer_page.dart';
 import '../features/school/school_connect_page.dart';
+import '../features/school/attendance_page.dart';
 import '../features/school/marks_page.dart';
 import '../features/school/timetable_page.dart';
 import '../features/school/homework_page.dart';
@@ -138,6 +139,10 @@ class AppDrawer extends StatelessWidget {
                 _item(context, ac, Icons.calendar_month_outlined, 'Timetable', () {
                   Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => TimetablePage(user: user ?? AppUser.guest())));
+                }),
+                _item(context, ac, Icons.fact_check_outlined, 'Attendance', () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => AttendancePage(user: user ?? AppUser.guest())));
                 }),
                 _item(context, ac, Icons.campaign_outlined, 'Daily Notices', () {
                   Navigator.of(context).push(MaterialPageRoute(

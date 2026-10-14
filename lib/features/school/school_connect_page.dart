@@ -15,6 +15,7 @@
 //     Office" action -- routes into the same request system rather than
 //     showing fabricated phone numbers no data source backs.
 
+import 'attendance_page.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../config/branding.dart';
@@ -139,6 +140,21 @@ class SchoolConnectPage extends StatelessWidget {
               subtitle: 'Class Schedule',
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => TimetablePage(user: user),
+              )),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _schoolQuickCard(
+              context,
+              ac: ac,
+              icon: Icons.fact_check_outlined,
+              iconColor: ac.blu,
+              iconBg: ac.bluBg,
+              title: 'Attendance',
+              subtitle: 'Daily register',
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => AttendancePage(user: user),
               )),
             ),
           ),

@@ -1,6 +1,7 @@
 // lib/models/models.dart
 export 'academic_content.dart';
 export 'app_user.dart';
+export 'attendance_record.dart';
 export 'entitlement.dart';
 export 'purchase.dart';
 export 'voucher.dart';
