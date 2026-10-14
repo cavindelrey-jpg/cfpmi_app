@@ -77,10 +77,24 @@ statement / slip) and the app derives outstanding balances.
 - **Nav**: staff **drawer** → Fees.
 - **Tests**: `test/fee_ledger_test.dart` (5, passing — the balance math).
 
+## Distinct web vs mobile UI — adaptive shell (started)
+"To each lock its own key." `lib/screens/app_router.dart` `HomeShell` now
+branches at a 900px breakpoint:
+- **Mobile (< 900px):** the existing bottom `NavigationBar` capsule + FAB +
+  drawer. Unchanged.
+- **Desktop/web (≥ 900px):** a persistent **left sidebar** (YouTube-style) —
+  brand wordmark + menu, one gold "Create" CTA, vertical nav with a 4-change
+  active state (filled icon + brand colour + bold + tinted pill + left
+  indicator bar), account row → Profile; content is width-capped (1180px) and
+  centred. No bottom bar.
+Same pages, tab state and role gating feed both — one shell, two surfaces.
+(Guest shell + per-page multi-column desktop layouts are follow-ups.)
+
 ## Still pending (prioritised)
-1. Student-facing views (attendance + fees balance) and admin monitors/summaries.
-2. Unified operational dashboards (no financial reports, per user).
-3. The two UI redesigns (mobile design system + distinct desktop/web "YouTube-style" app with offline) — separate track, after core functional gaps.
+1. Apply remaining web rules per page (multi-column desktop layouts) + mobile
+   design-note polish; extend the adaptive shell to the guest shell.
+2. Student-facing views (attendance + fees balance) and admin monitors.
+3. Unified operational dashboards (no financial reports, per user).
 
 ## Deployment caveat
 Both new tables (`attendance_records`, `fee_ledger`) are committed as

@@ -362,41 +362,49 @@ class _HomeShellState extends State<HomeShell> {
   // Firestore streams from starting until it's actually opened.
   final Set<int> _visitedTabs = {0};
 
+  // Desktop/web breakpoint. "To each lock its own key": at/above this
+  // width the shell renders a persistent left sidebar (YouTube-style),
+  // below it the mobile bottom-nav bar — same pages, tab state and role
+  // gating, two deliberately different navigation surfaces.
+  static const double _wideBreakpoint = 900;
+
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final nav     = _buildNav();
+    final nav = _buildNav();
     final safeTab = _tab.clamp(0, nav.length - 1);
     _visitedTabs.add(safeTab);
 
+    final content = IndexedStack(
+      index: safeTab,
+      children: List.generate(nav.length,
+          (i) => _visitedTabs.contains(i) ? _buildPage(ac, nav[i]) : const SizedBox.shrink()),
+    );
+
+    final isWide = MediaQuery.of(context).size.width >= _wideBreakpoint;
+    return isWide
+        ? _desktopScaffold(ac, nav, safeTab, content)
+        : _mobileScaffold(ac, nav, safeTab, content);
+  }
+
+  // ── Mobile: bottom-nav shell (phones) ──────────────────────────────
+  Widget _mobileScaffold(AppColors ac, List<_NavDef> nav, int safeTab, Widget content) {
     return Scaffold(
       drawer: AppDrawer(user: widget.user, onHomeTap: () => setState(() => _tab = 0)),
       body: SafeArea(
         child: Column(children: [
           const _OfflineBanner(),
-          Expanded(
-            child: IndexedStack(
-              index: safeTab,
-              children: List.generate(nav.length,
-                  (i) => _visitedTabs.contains(i) ? _buildPage(ac, nav[i]) : const SizedBox.shrink()),
-            ),
-          ),
+          Expanded(child: content),
         ]),
       ),
       // Architecture brief item 14: content creation lives behind this
-      // one "+" button instead of permanent per-page CTA cards -- see
-      // create_content_sheet.dart for the destinations it opens.
+      // one "+" button instead of permanent per-page CTA cards.
       floatingActionButton: FloatingActionButton(
         backgroundColor: ac.gold,
         onPressed: () => showCreateContentSheet(context, widget.user),
         child: Icon(Icons.add_rounded, color: ac.navy),
       ),
       bottomNavigationBar: DecoratedBox(
-        // A restyle of the selected-tab indicator only (still a plain
-        // Material 3 pill behind the active icon) — floated above the
-        // page content with its own shadow/rounded top edge so it reads
-        // as a distinct capsule bar rather than a flat strip. Tabs and
-        // destinations below are untouched.
         decoration: BoxDecoration(
           color: ac.surf,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(Rad.lg)),
@@ -411,6 +419,172 @@ class _HomeShellState extends State<HomeShell> {
             destinations: nav.map((n) => NavigationDestination(
               icon: Icon(n.outlinedIcon), selectedIcon: Icon(n.filledIcon), label: n.label,
             )).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Desktop/web: persistent left sidebar shell ─────────────────────
+  Widget _desktopScaffold(AppColors ac, List<_NavDef> nav, int safeTab, Widget content) {
+    return Scaffold(
+      // The drawer still holds the deeper "My School" links (Attendance,
+      // Fees, Marks…); the sidebar's menu button opens it.
+      drawer: AppDrawer(user: widget.user, onHomeTap: () => setState(() => _tab = 0)),
+      body: SafeArea(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _desktopSidebar(ac, nav, safeTab),
+            Expanded(
+              child: Column(
+                children: [
+                  const _OfflineBanner(),
+                  // Constrain + centre the content so wide monitors read
+                  // like a designed page, not an edge-to-edge phone stretch.
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1180),
+                        child: content,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _desktopSidebar(AppColors ac, List<_NavDef> nav, int safeTab) {
+    final profileIndex = nav.indexWhere((n) => n.label == 'Profile');
+    return Container(
+      width: 248,
+      decoration: BoxDecoration(
+        color: ac.surf,
+        border: Border(right: BorderSide(color: ac.bdr)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Brand + menu (sidebar branding, like YouTube's top-left).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 18, 16, 14),
+            child: Row(
+              children: [
+                Builder(
+                  builder: (ctx) => IconButton(
+                    icon: Icon(Icons.menu_rounded, color: ac.txt2),
+                    tooltip: 'More',
+                    onPressed: () => Scaffold.of(ctx).openDrawer(),
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Text('CFPMI',
+                    style: GoogleFonts.inter(
+                        fontSize: 20, fontWeight: FontWeight.w800, color: ac.primary, letterSpacing: -0.5)),
+              ],
+            ),
+          ),
+          // One CTA colour, reachable (the gold "+") — the only accent button.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 2, 14, 10),
+            child: FilledButton.icon(
+              onPressed: () => showCreateContentSheet(context, widget.user),
+              style: FilledButton.styleFrom(
+                backgroundColor: ac.gold,
+                foregroundColor: ac.navy,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              ),
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: const Text('Create', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              children: [for (int i = 0; i < nav.length; i++) _desktopNavTile(ac, nav[i], i, safeTab)],
+            ),
+          ),
+          Divider(height: 1, color: ac.bdr),
+          // Account row -> Profile tab.
+          if (profileIndex >= 0)
+            InkWell(
+              onTap: () => setState(() => _tab = profileIndex),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: ac.primary.withValues(alpha: 0.12),
+                      child: Text(
+                        widget.user.name.isNotEmpty ? widget.user.name[0].toUpperCase() : '?',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: ac.primary, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        widget.user.name.isEmpty ? 'My account' : widget.user.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: ac.txt),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Active tile gets 4 distinct changes (filled icon + brand colour +
+  // bold label + tinted pill + left indicator bar) — the design notes ask
+  // for at least two.
+  Widget _desktopNavTile(AppColors ac, _NavDef def, int index, int safeTab) {
+    final selected = index == safeTab;
+    final color = selected ? ac.primary : ac.txt2;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => setState(() => _tab = index),
+          child: Container(
+            height: 46,
+            decoration: BoxDecoration(
+              color: selected ? ac.primary.withValues(alpha: 0.10) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: selected ? ac.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Icon(selected ? def.filledIcon : def.outlinedIcon, color: color, size: 22),
+                const SizedBox(width: 14),
+                Text(def.label,
+                    style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        color: color)),
+              ],
+            ),
           ),
         ),
       ),
