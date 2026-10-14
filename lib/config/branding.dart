@@ -64,12 +64,12 @@ class Branding {
     }
   }
 
-  // This repo is the CFPMI fork of the Ladybird app (see
-  // docs/AUTOPILOT_LOG.md for the fork record) -- it ships as CFPMI
+  // This repo is the CFPM fork of the Ladybird app (see
+  // docs/AUTOPILOT_LOG.md for the fork record) -- it ships as CFPM
   // only, same reasoning the Ladybird/Green Hills repos already used for
   // defaulting to their own brand: "just run it" (a plain `flutter run`,
   // an IDE launch config, a CI step someone forgets to flag) should
-  // render CFPMI, not fall through to Academia's or Ladybird's identity.
+  // render CFPM, not fall through to Academia's or Ladybird's identity.
   static const String _envBrandId =
       String.fromEnvironment('BRAND_ID', defaultValue: 'cfpmi');
 
@@ -78,13 +78,13 @@ class Branding {
   /// codebase's existing "never a blank/broken screen" standard. main()
   /// awaits [load] before runApp, so in practice this is only ever seen
   /// for one frame at worst. Mirrors assets/branding/cfpmi.json so that
-  /// one frame is CFPMI too. Name/tagline/colors are PLACEHOLDERS pending
-  /// the real CFPMI brand assets (the homepage mockup lives in the
+  /// one frame is CFPM too. Name/tagline/colors are PLACEHOLDERS pending
+  /// the real CFPM brand assets (the homepage mockup lives in the
   /// external "Ladybird Docs" OneDrive folder, not available to this
   /// sandbox) -- see docs/AUTOPILOT_LOG.md.
   static Branding _current = const Branding(
     brandId: _envBrandId,
-    appName: 'CFPMI',
+    appName: 'CFPM',
     tagline: 'Professional Training & Academic Excellence',
     primaryColor: const Color(0xFF8A1538),
     secondaryColor: const Color(0xFF1C1C28),
@@ -104,7 +104,7 @@ class Branding {
     } else {
       _current = const Branding(
         brandId: _envBrandId,
-        appName: 'CFPMI',
+        appName: 'CFPM',
         tagline: 'Professional Training & Academic Excellence',
         primaryColor: const Color(0xFF8A1538),
         secondaryColor: const Color(0xFF1C1C28),

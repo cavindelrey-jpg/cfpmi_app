@@ -1,11 +1,11 @@
 {
-    "name": "CFPMI",
-    "short_name": "CFPMI",
+    "name": "CFPM",
+    "short_name": "CFPM",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#8A1538",
-    "description": "CFPMI - Professional Training & Academic Excellence",
+    "description": "CFPM - Professional Training & Academic Excellence",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

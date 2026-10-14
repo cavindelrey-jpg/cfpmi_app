@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        // CFPMI fork of the Ladybird app -- defaults to the cfpmi
+        // CFPM fork of the Ladybird app -- defaults to the cfpmi
         // package so a flavor-less `flutter run`/`flutter build` (no
         // --flavor flag) matches this repo's primary identity, same
         // reasoning as BRAND_ID's default in lib/config/branding.dart.
@@ -72,7 +72,7 @@ android {
     // BRAND_ID=academia) produces a build that looks like one product
     // and installs as the other's package -- always pass both.
     //
-    // This repo is the CFPMI fork (see docs/AUTOPILOT_LOG.md) -- its
+    // This repo is the CFPM fork (see docs/AUTOPILOT_LOG.md) -- its
     // primary flavor is cfpmi. Build with:
     //   flutter build apk --flavor cfpmi --dart-define=BRAND_ID=cfpmi
     flavorDimensions += "brand"
@@ -80,7 +80,7 @@ android {
         create("cfpmi") {
             dimension = "brand"
             applicationId = "com.example.academia_app.cfpmi"
-            resValue("string", "app_name", "CFPMI")
+            resValue("string", "app_name", "CFPM")
         }
     }
 }

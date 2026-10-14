@@ -196,10 +196,10 @@ class AppColors extends ThemeExtension<AppColors> {
     shadow: Color(0x73000000),
   );
 
-  // ── CFPMI — brand/header colors (primary, navy, gold) sourced from the
-  // CFPMI brand palette (assets/branding/cfpmi.json / lib/config/branding
+  // ── CFPM — brand/header colors (primary, navy, gold) sourced from the
+  // CFPM brand palette (assets/branding/cfpmi.json / lib/config/branding
   // .dart: primaryColor #8A1538 maroon, secondaryColor #1C1C28 charcoal,
-  // accentColor #D4A017 gold). PLACEHOLDER palette pending the real CFPMI
+  // accentColor #D4A017 gold). PLACEHOLDER palette pending the real CFPM
   // crest/brand guide. Mirrors the Ladybird split: only brand-identity
   // slots (primary, navy, gold) change; every functional/status color
   // (red, org, pur, blu, grn success-state) stays identical to the base

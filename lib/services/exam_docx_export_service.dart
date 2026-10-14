@@ -27,7 +27,7 @@ class ExamDocxExportService {
       id: 'default',
       schoolId: '',
       name: 'Default',
-      schoolName: 'CFPMI',
+      schoolName: 'CFPM',
     );
 
     final archive = Archive();
