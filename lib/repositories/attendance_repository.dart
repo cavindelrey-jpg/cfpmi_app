@@ -66,6 +66,32 @@ class AttendanceRepository {
     }
   }
 
+  /// All attendance for a class across a date range — for the staff monitor.
+  Future<Result<List<AttendanceRecord>>> getForClassRange(
+    String schoolId,
+    String classLevel,
+    DateTime from,
+    DateTime to,
+  ) async {
+    if (schoolId.isEmpty || classLevel.isEmpty) return const Success([]);
+    final table = _table;
+    if (table == null) return const Failure('Attendance is offline right now.');
+    try {
+      final rows = await table
+          .select()
+          .eq('school_id', schoolId)
+          .eq('class_level', classLevel)
+          .gte('session_date', AttendanceRecord.dateKey(from))
+          .lte('session_date', AttendanceRecord.dateKey(to));
+      final list = (rows as List)
+          .map((r) => AttendanceRecord.fromMap(r as Map<String, dynamic>))
+          .toList();
+      return Success(list);
+    } catch (e) {
+      return Failure('Could not load attendance.', e);
+    }
+  }
+
   /// A single student's attendance history (most recent first).
   Future<Result<List<AttendanceRecord>>> getForStudent(
     String studentId, {

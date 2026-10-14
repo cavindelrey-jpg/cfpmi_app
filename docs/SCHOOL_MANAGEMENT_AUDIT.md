@@ -90,10 +90,20 @@ branches at a 900px breakpoint:
 Same pages, tab state and role gating feed both — one shell, two surfaces.
 (Guest shell + per-page multi-column desktop layouts are follow-ups.)
 
+## Student + admin views (done)
+- **Student self-service** `features/school/student_records_page.dart` — read-only
+  My Attendance (rate %, counts, history) + My Fees (outstanding + ledger),
+  keyed on the signed-in user's id. Works for account-based students (the roster
+  falls back to the `users` table where id = auth uid); CSV-only roster entries
+  have no login. In staff drawer + Home Quick Access.
+- **Admin attendance monitor** `features/school/attendance_summary_page.dart` —
+  per-student attendance % over a date range for a class (lowest first), class
+  average. Staff drawer → "Attendance Summary".
+
 ## Still pending (prioritised)
-1. Apply remaining web rules per page (multi-column desktop layouts) + mobile
-   design-note polish; extend the adaptive shell to the guest shell.
-2. Student-facing views (attendance + fees balance) and admin monitors.
+1. Per-page multi-column desktop layouts + mobile design-note polish; extend the
+   adaptive shell to the guest shell.
+2. Roster↔auth linkage for CSV-imported students who also hold accounts.
 3. Unified operational dashboards (no financial reports, per user).
 
 ## Deployment caveat
