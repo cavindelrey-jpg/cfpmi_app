@@ -71,6 +71,7 @@ import '../school/exam_composer/exam_list_page.dart';
 import '../school/homework_page.dart';
 import '../school/marks_page.dart';
 import '../school/school_connect_page.dart';
+import '../school/student_records_page.dart';
 import '../school/timetable_page.dart';
 import '../testing/quiz_categories_page.dart';
 import '../testing/xp_dashboard_page.dart';
@@ -851,6 +852,15 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
             title: 'Campus Info',
             subtitle: 'Timetable & notices',
             onTap: () => _open(context, TimetablePage(user: _userOrGuest)),
+          ),
+          const SizedBox(width: 10),
+          _featureCard(
+            icon: Icons.badge_rounded,
+            iconColor: _cGreen,
+            iconBg: _cPaleGreen,
+            title: 'My Records',
+            subtitle: 'Attendance & fees',
+            onTap: () => _open(context, StudentRecordsPage(user: _userOrGuest)),
           ),
         ],
       ),

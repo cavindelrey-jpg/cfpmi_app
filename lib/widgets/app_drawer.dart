@@ -36,6 +36,7 @@ import '../features/testing/test_composer_page.dart';
 import '../features/school/school_connect_page.dart';
 import '../features/school/attendance_page.dart';
 import '../features/school/fees_page.dart';
+import '../features/school/student_records_page.dart';
 import '../features/school/marks_page.dart';
 import '../features/school/timetable_page.dart';
 import '../features/school/homework_page.dart';
@@ -148,6 +149,10 @@ class AppDrawer extends StatelessWidget {
                 _item(context, ac, Icons.account_balance_wallet_outlined, 'Fees', () {
                   Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => FeesPage(user: user ?? AppUser.guest())));
+                }),
+                _item(context, ac, Icons.badge_outlined, 'My Attendance & Fees', () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => StudentRecordsPage(user: user ?? AppUser.guest())));
                 }),
                 _item(context, ac, Icons.campaign_outlined, 'Daily Notices', () {
                   Navigator.of(context).push(MaterialPageRoute(
