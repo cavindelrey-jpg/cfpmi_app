@@ -32,7 +32,9 @@ The fork inherits a substantial SMS layer (Supabase-backed, RLS-protected,
    → **IMPLEMENTED (this pass).**
 2. **School fees / payments — MISSING.** No fee/invoice/payment model,
    repository, or page (the existing `voucher`/`entitlement`/`purchase` are
-   the Academia XP economy, not school fees). → **NEXT.**
+   the Academia XP economy, not school fees). → **IMPLEMENTED (record-only
+   ledger, per user: no transactions through the app, no financial reports —
+   staff record charges/payments from the bank statement; app tracks balances).**
 3. **Consolidated reports** (academic/administrative/financial) — partial;
    per-feature exports exist (`exam_pdf_export`, `school_document_export`),
    no unified reporting hub. → later.
@@ -59,8 +61,29 @@ Teacher opens Attendance → picks class/date → roster appears → marks statu
 → Save → re-open same class/date → saved register is restored. (Admin monitor
 view + student self-view are the immediate follow-ups.)
 
+## Implemented this pass — Fees (record-only ledger)
+Per user: the app performs **no transactions** and generates **no financial
+reports** — staff only RECORD charges and payments (sourced from the bank
+statement / slip) and the app derives outstanding balances.
+- **DB**: `supabase/migrations/20261014130000_fee_ledger.sql` — `fee_ledger`
+  (charge|payment entries, `reference` holds the bank-statement line), RLS
+  mirrors attendance. *Needs applying on next `db push`.*
+- **Model**: `lib/models/fee_ledger_entry.dart` (+ `StudentFeeBalance`).
+- **Repository**: `lib/repositories/fee_repository.dart` — `addEntry`,
+  `getForStudent`, `getForClass`, pure `balancesFrom()`.
+- **UI**: `lib/features/school/fees_page.dart` — class → per-student balances
+  (charged/paid/outstanding) → open student → ledger + Record charge / Record
+  payment (amount, date, bank reference, note).
+- **Nav**: staff **drawer** → Fees.
+- **Tests**: `test/fee_ledger_test.dart` (5, passing — the balance math).
+
 ## Still pending (prioritised)
-1. Student-facing attendance view + admin attendance monitor/summary.
-2. **School fees** module (obligation → payment → outstanding balance → report).
-3. Unified reports hub.
-4. The two UI redesigns (mobile design system + distinct desktop/web "YouTube-style" app with offline) — separate track, after core functional gaps.
+1. Student-facing views (attendance + fees balance) and admin monitors/summaries.
+2. Unified operational dashboards (no financial reports, per user).
+3. The two UI redesigns (mobile design system + distinct desktop/web "YouTube-style" app with offline) — separate track, after core functional gaps.
+
+## Deployment caveat
+Both new tables (`attendance_records`, `fee_ledger`) are committed as
+migrations but must be applied to Supabase via `supabase db push` (no Supabase
+login in the build sandbox). Until applied, the screens render but save/load
+against those tables will error.

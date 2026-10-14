@@ -2,6 +2,7 @@
 export 'academic_content_repository.dart';
 export 'announcement_repository.dart';
 export 'attendance_repository.dart';
+export 'fee_repository.dart';
 export 'club_repository.dart';
 export 'hero_slide_repository.dart';
 export 'magazine_repository.dart';
