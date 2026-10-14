@@ -81,7 +81,7 @@ const List<BoxShadow> _glow = [
   BoxShadow(color: Color(0x0C000000), blurRadius: 16, offset: Offset(0, 4)),
 ];
 
-// ── CFPM dashboard spec palette (exact hexes from the design brief) ─────
+// ── CFPMI dashboard spec palette (exact hexes from the design brief) ─────
 const Color _cNavy = Color(0xFF0B1F3A); // deep academic navy
 const Color _cDarkGreen = Color(0xFF004D40); // deep forest green
 const Color _cGreen = Color(0xFF087F5B); // emerald green
@@ -469,7 +469,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
           child: ListView(
             padding: const EdgeInsets.only(bottom: 36),
             children: [
-              // ── CFPM student dashboard (per design spec) ──
+              // ── CFPMI student dashboard (per design spec) ──
               _topBar(context),
               const SizedBox(height: 4),
               _homeHeading(context),
@@ -603,7 +603,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // CFPM STUDENT DASHBOARD — built to the design spec.
+  // CFPMI STUDENT DASHBOARD — built to the design spec.
   // Header has no logo/brand text; page heading "Home" stands alone.
   // ══════════════════════════════════════════════════════════════════
 

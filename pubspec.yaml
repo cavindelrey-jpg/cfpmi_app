@@ -1,5 +1,5 @@
 name: academia_app
-description: CFPM — School Management Platform
+description: CFPMI — School Management Platform
 publish_to: 'none'
 version: 2.0.1+2
 
@@ -80,11 +80,11 @@ flutter:
     - assets/data/
     - assets/google_fonts/
 
-# CFPM fork of the Ladybird app -- pointed at assets/branding/
+# CFPMI fork of the Ladybird app -- pointed at assets/branding/
 # cfpmi_logo.png, matching this fork's BRAND_ID default (see
 # lib/config/branding.dart). This is a transparent PNG PLACEHOLDER logo
-# (maroon rounded badge + gold "CFPM" wordmark) generated for this fork;
-# replace it in-place with the real CFPM crest (square, >=1024px,
+# (navy rounded badge + gold "CFPMI" wordmark) generated for this fork;
+# replace it in-place with the real CFPMI crest (square, >=1024px,
 # transparent PNG) at this same path -- no other config changes needed.
 # See docs/AUTOPILOT_LOG.md.
 flutter_launcher_icons:

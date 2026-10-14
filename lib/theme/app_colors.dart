@@ -196,7 +196,7 @@ class AppColors extends ThemeExtension<AppColors> {
     shadow: Color(0x73000000),
   );
 
-  // ── CFPM — academic navy + green + gold palette, sourced from the CFPM
+  // ── CFPMI — academic navy + green + gold palette, sourced from the CFPMI
   // dashboard design spec (navy #0B1F3A, forest/emerald green #004D40 /
   // #087F5B, warm gold #F4C542, warm-gray bg #F7F9F7). primary = navy for
   // headings/primary; grn carries the spec's success/active-green;
