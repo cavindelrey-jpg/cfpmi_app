@@ -72,6 +72,7 @@ import '../school/homework_page.dart';
 import '../school/marks_page.dart';
 import '../school/school_connect_page.dart';
 import '../school/student_records_page.dart';
+import '../classroom/student_classroom_page.dart';
 import '../school/timetable_page.dart';
 import '../testing/quiz_categories_page.dart';
 import '../testing/xp_dashboard_page.dart';
@@ -861,6 +862,15 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
             title: 'My Records',
             subtitle: 'Attendance & fees',
             onTap: () => _open(context, StudentRecordsPage(user: _userOrGuest)),
+          ),
+          const SizedBox(width: 10),
+          _featureCard(
+            icon: Icons.sensors_rounded,
+            iconColor: _cPurple,
+            iconBg: _cPalePurple,
+            title: 'Live Class',
+            subtitle: 'Join the lesson',
+            onTap: () => _open(context, StudentClassroomPage(user: _userOrGuest)),
           ),
         ],
       ),

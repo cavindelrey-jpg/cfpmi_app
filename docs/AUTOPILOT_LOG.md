@@ -1,4 +1,4 @@
-﻿# Autopilot Decision Log
+# Autopilot Decision Log
 
 One line (or short paragraph) per non-obvious default chosen without stopping to ask. Chronological.
 
@@ -5604,3 +5604,23 @@ refresh work with no change. Built successfully with
    native builds initialise Firebase. Web build is unaffected.
 4. **No `schools/{schoolId:'cfpmi'}` registry doc** — a live production write
    via the in-app "Register a School" superAdmin flow; not scripted blind.
+
+## 2026-10-14 — School Management System (SMS) completion, Adaptive UI & Classroom (branch main)
+
+- **GitHub Repository**: Pushed local repo to `cavindelrey-jpg/cfpmi_app` (`main`). Configured `.github/workflows/build.yml` for CI (flutter test + web build + APK artifact).
+- **Attendance Management**: Added complete attendance tracking across three roles:
+  - Teacher: Daily/period roll-call marking (`attendance_page.dart`).
+  - School Admin: Whole-school attendance monitor (`attendance_summary_page.dart`).
+  - Student: Personal attendance records & percentage view (`student_records_page.dart`).
+  - Data: `lib/models/attendance_record.dart`, `lib/repositories/attendance_repository.dart`, migration `supabase/migrations/20261014120000_attendance_records.sql`.
+- **School Fees (Record-Only)**: Built according to strict PM directive (no financial transactions through app, record entry against bank statements only, automatic balance derivations).
+  - UI: `fees_page.dart` (staff record payments/charges, student view in `student_records_page.dart`).
+  - Data: `lib/models/fee_ledger_entry.dart`, `lib/repositories/fee_repository.dart`, migration `supabase/migrations/20261014130000_fee_ledger.sql`.
+- **Adaptive UI Architecture**: Added desktop-first layout support:
+  - Persistent left sidebar for large displays (width >= 900px) while preserving bottom-navigation for mobile devices in `app_router.dart`.
+- **Academia Classroom**: Initiated teacher-to-TV projector presentation + student mobile companion:
+  - Offline-first architecture tailored for low-bandwidth Cameroon schools.
+  - Implemented `lib/models/classroom.dart`, `lib/repositories/classroom_repository.dart`, `lib/features/classroom/classroom_slide.dart`, and `lib/features/classroom/classroom_teacher_page.dart`.
+  - Migration written: `supabase/migrations/20261014140000_academia_classroom.sql`.
+- **Live Preview**: Built with `flutter build web --dart-define=BRAND_ID=cfpmi --release`, running locally on port 8080 via SPA server.
+

@@ -2,6 +2,7 @@
 export 'academic_content.dart';
 export 'app_user.dart';
 export 'attendance_record.dart';
+export 'classroom.dart';
 export 'fee_ledger_entry.dart';
 export 'entitlement.dart';
 export 'purchase.dart';

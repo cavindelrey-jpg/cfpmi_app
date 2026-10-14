@@ -38,6 +38,8 @@ import '../features/school/attendance_page.dart';
 import '../features/school/attendance_summary_page.dart';
 import '../features/school/fees_page.dart';
 import '../features/school/student_records_page.dart';
+import '../features/classroom/classroom_teacher_page.dart';
+import '../features/classroom/student_classroom_page.dart';
 import '../features/school/marks_page.dart';
 import '../features/school/timetable_page.dart';
 import '../features/school/homework_page.dart';
@@ -158,6 +160,14 @@ class AppDrawer extends StatelessWidget {
                 _item(context, ac, Icons.badge_outlined, 'My Attendance & Fees', () {
                   Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => StudentRecordsPage(user: user ?? AppUser.guest())));
+                }),
+                _item(context, ac, Icons.cast_for_education_rounded, 'Classroom (Teacher)', () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ClassroomTeacherPage(user: user ?? AppUser.guest())));
+                }),
+                _item(context, ac, Icons.sensors_rounded, 'Live Class', () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => StudentClassroomPage(user: user ?? AppUser.guest())));
                 }),
                 _item(context, ac, Icons.campaign_outlined, 'Daily Notices', () {
                   Navigator.of(context).push(MaterialPageRoute(
