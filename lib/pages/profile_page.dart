@@ -21,7 +21,13 @@ import 'settings_page.dart';
 import '../widgets/app_background.dart';
 class ProfilePage extends StatelessWidget {
   final AppUser user;
-  const ProfilePage({super.key, required this.user});
+
+  /// True when the application shell renders this page in its workspace
+  /// (the global top bar is already present). The page then omits its own
+  /// AcademiaAppBar and shows Settings / Sign Out in a slim in-body header,
+  /// so the two bars don't stack.
+  final bool embedded;
+  const ProfilePage({super.key, required this.user, this.embedded = false});
 
   /// Entitlement label plus its real remaining days, e.g.
   /// "Gifted Premium · 118 days left". Falls back to the bare label for a
@@ -47,29 +53,40 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final rc   = _roleColor(ac, user.role);
+    final actions = [
+      IconButton(
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => SettingsPage(user: user))),
+        icon: Icon(Icons.settings_outlined, color: ac.txt2),
+        tooltip: 'Settings',
+      ),
+      TextButton.icon(
+        onPressed: () => AuthService.instance.performSignOut(context),
+        icon: Icon(Icons.logout_rounded, size: 18, color: ac.red),
+        label: Text('Sign Out',
+            style: GoogleFonts.inter(fontSize: 13, color: ac.red, fontWeight: FontWeight.w600)),
+      ),
+    ];
     return Scaffold(
       backgroundColor: ac.bg,
-      appBar: AcademiaAppBar(
-        title: 'Profile',
-        user: user,
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => SettingsPage(user: user))),
-            icon: Icon(Icons.settings_outlined, color: ac.txt2),
-            tooltip: 'Settings',
-          ),
-          TextButton.icon(
-            onPressed: () => AuthService.instance.performSignOut(context),
-            icon: Icon(Icons.logout_rounded, size: 18, color: ac.red),
-            label: Text('Sign Out',
-                style: GoogleFonts.inter(fontSize: 13, color: ac.red, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+      appBar: embedded
+          ? null
+          : AcademiaAppBar(title: 'Profile', user: user, actions: actions),
       body: AppBackground(child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(children: [
+          // When embedded, the global top bar replaces this page's own bar,
+          // so surface the page title + Settings/Sign Out here instead.
+          if (embedded) ...[
+            Row(children: [
+              Text('Profile',
+                  style: GoogleFonts.sora(
+                      fontSize: 22, fontWeight: FontWeight.w800, color: ac.txt)),
+              const Spacer(),
+              ...actions,
+            ]),
+            const SizedBox(height: 12),
+          ],
           // Avatar
           user.photoUrl != null && user.photoUrl!.isNotEmpty
               ? CircleAvatar(radius: 40, backgroundImage: NetworkImage(user.photoUrl!))

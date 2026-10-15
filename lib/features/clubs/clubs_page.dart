@@ -60,7 +60,13 @@ import 'club_discussion_page.dart';
 
 class ClubsPage extends StatefulWidget {
   final AppUser user;
-  const ClubsPage({super.key, required this.user});
+
+  /// True when the application shell renders this page directly — the global
+  /// top bar already provides notifications + account, so the page's own
+  /// AppBar drops those duplicated actions (keeping its title, search and
+  /// category chips, which are page-specific). False when pushed as a route.
+  final bool embedded;
+  const ClubsPage({super.key, required this.user, this.embedded = false});
 
   @override
   State<ClubsPage> createState() => _ClubsPageState();
@@ -182,7 +188,9 @@ class _ClubsPageState extends State<ClubsPage> {
                       style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy),
                     ),
                     iconTheme: IconThemeData(color: ac.navy),
-                    actions: [
+                    actions: widget.embedded
+                        ? const []
+                        : [
                       IconButton(
                         icon: Icon(Icons.notifications_outlined, color: ac.txt2),
                         onPressed: () => Navigator.of(context).push(MaterialPageRoute(

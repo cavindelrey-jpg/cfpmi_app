@@ -278,11 +278,11 @@ class _HomeShellState extends State<HomeShell> {
       case 'Home':     return u.isParent ? ParentDashboardPage(user: u) : UniversalHomePage(user: u, embedded: true);
       case 'Courses':  return CoursesHomePage(user: u);
       case 'Library':  return LibraryHomePage(user: u);
-      case 'Magazine': return MagazineFeedPage(user: u);
-      case 'Groups':   return ClubsPage(user: u);
-      case 'Tests':    return QuizCategoriesPage(user: u);
+      case 'Magazine': return MagazineFeedPage(user: u, embedded: true);
+      case 'Groups':   return ClubsPage(user: u, embedded: true);
+      case 'Tests':    return QuizCategoriesPage(user: u, embedded: true);
       case 'School':   return isWide ? _schoolWorkspaceDesktop(ac) : _schoolWorkspaceMobile(ac);
-      case 'Profile':  return ProfilePage(user: u);
+      case 'Profile':  return ProfilePage(user: u, embedded: true);
       default:         return const SizedBox.shrink();
     }
   }

@@ -25,7 +25,13 @@ import 'xp_dashboard_page.dart';
 
 class QuizCategoriesPage extends StatefulWidget {
   final AppUser user;
-  const QuizCategoriesPage({super.key, required this.user});
+
+  /// True when the application shell renders this page directly in its
+  /// workspace (it already provides the global top bar). The page then
+  /// drops its own AppBar and shows a lightweight in-body heading instead,
+  /// so the two bars don't stack. False when pushed as its own route.
+  final bool embedded;
+  const QuizCategoriesPage({super.key, required this.user, this.embedded = false});
 
   @override
   State<QuizCategoriesPage> createState() => _QuizCategoriesPageState();
@@ -135,19 +141,21 @@ class _QuizCategoriesPageState extends State<QuizCategoriesPage> {
     final isGuest = widget.user.isGuest;
     return Scaffold(
       backgroundColor: ac.bg,
-      appBar: AppBar(
-        title: Text('Academia Quizzes & Tests', style: AppText.h2),
-        actions: [
-          if (!isGuest)
-            IconButton(
-              icon: Icon(Icons.bolt_rounded, color: ac.gold),
-              tooltip: 'XP Dashboard',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => XpDashboardPage(user: widget.user))),
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              title: Text('Academia Quizzes & Tests', style: AppText.h2),
+              actions: [
+                if (!isGuest)
+                  IconButton(
+                    icon: Icon(Icons.bolt_rounded, color: ac.gold),
+                    tooltip: 'XP Dashboard',
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => XpDashboardPage(user: widget.user))),
+                  ),
+              ],
             ),
-        ],
-      ),
-      body: _loading
+      body: _embedWrap(isGuest, _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(
@@ -185,20 +193,60 @@ class _QuizCategoriesPageState extends State<QuizCategoriesPage> {
             )
           : RefreshIndicator(
               onRefresh: _load,
-              child: GridView.builder(
-                padding: const EdgeInsets.all(20),
-                itemCount: _categories.length + (_canManage ? 1 : 0),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.92,
-                ),
-                itemBuilder: (context, i) {
-                  if (i >= _categories.length) return _addTile();
-                  final c = _categories[i];
-                  final count = _counts[c.name] ?? 0;
-                  return _categoryTile(c, count);
+              child: LayoutBuilder(
+                builder: (context, cns) {
+                  // Responsive columns with a FIXED card height, so a wide
+                  // desktop shows a sensible grid of ~190px-tall tiles
+                  // instead of two 600px-tall stretched cards.
+                  final w = cns.maxWidth;
+                  final cols = w >= 1180 ? 5 : w >= 920 ? 4 : w >= 640 ? 3 : 2;
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: _categories.length + (_canManage ? 1 : 0),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      mainAxisExtent: 188,
+                    ),
+                    itemBuilder: (context, i) {
+                      if (i >= _categories.length) return _addTile();
+                      final c = _categories[i];
+                      final count = _counts[c.name] ?? 0;
+                      return _categoryTile(c, count);
+                    },
+                  );
                 },
               ),
-            ),
+            )),
+    );
+  }
+
+  /// Wraps the page body with a slim in-body heading when embedded in the
+  /// application shell (which already owns the global top bar). A pushed
+  /// route keeps its own AppBar and this is a pass-through.
+  Widget _embedWrap(bool isGuest, Widget content) {
+    if (!widget.embedded) return content;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 2),
+          child: Row(
+            children: [
+              Expanded(child: Text('Academia Quizzes & Tests', style: AppText.h2)),
+              if (!isGuest)
+                IconButton(
+                  icon: Icon(Icons.bolt_rounded, color: ac.gold),
+                  tooltip: 'XP Dashboard',
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => XpDashboardPage(user: widget.user))),
+                ),
+            ],
+          ),
+        ),
+        Expanded(child: content),
+      ],
     );
   }
 

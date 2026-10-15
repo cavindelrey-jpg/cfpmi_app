@@ -102,7 +102,13 @@ Color _categoryColor(String cat) => _kCategoryColors.of(cat);
 
 class MagazineFeedPage extends StatefulWidget {
   final AppUser? user;
-  const MagazineFeedPage({super.key, this.user});
+
+  /// True when the application shell renders this page directly (its global
+  /// top bar already provides search / notifications / account). The in-body
+  /// header then drops those duplicated controls and keeps only the title and
+  /// magazine-specific actions. False when pushed as its own route.
+  final bool embedded;
+  const MagazineFeedPage({super.key, this.user, this.embedded = false});
 
   @override
   State<MagazineFeedPage> createState() => _MagazineFeedPageState();
@@ -315,11 +321,12 @@ class _MagazineFeedPageState extends State<MagazineFeedPage> {
             Text('Write. Share. Inspire.', style: AppText.caption.copyWith(fontSize: 12)),
           ]),
         ),
-        IconButton(
-          icon: Icon(Icons.search_rounded, color: ac.txt2),
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => MagazineSearchPage(user: widget.user))),
-        ),
+        if (!widget.embedded)
+          IconButton(
+            icon: Icon(Icons.search_rounded, color: ac.txt2),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => MagazineSearchPage(user: widget.user))),
+          ),
         if (_canCompose)
           IconButton(
             icon: Icon(Icons.leaderboard_outlined, color: ac.txt2),
@@ -327,7 +334,8 @@ class _MagazineFeedPageState extends State<MagazineFeedPage> {
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => const TopWritersPage())),
           ),
-        widget.user == null || widget.user!.isGuest
+        if (!widget.embedded)
+          widget.user == null || widget.user!.isGuest
             ? IconButton(
                 icon: Icon(Icons.notifications_outlined, color: ac.txt2),
                 onPressed: () => showToast(context, 'Sign in to see notifications'),
@@ -356,21 +364,22 @@ class _MagazineFeedPageState extends State<MagazineFeedPage> {
                   ]);
                 },
               ),
-        Material(
-          color: Colors.transparent,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: _canCompose
-                ? () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => AuthorProfilePage(authorId: widget.user!.id, currentUser: widget.user)))
-                : null,
-            child: UserAvatar(
-              initials: (widget.user?.name.isNotEmpty ?? false) ? widget.user!.name[0].toUpperCase() : '?',
-              radius: 18, photoUrl: widget.user?.photoUrl,
+        if (!widget.embedded)
+          Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _canCompose
+                  ? () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => AuthorProfilePage(authorId: widget.user!.id, currentUser: widget.user)))
+                  : null,
+              child: UserAvatar(
+                initials: (widget.user?.name.isNotEmpty ?? false) ? widget.user!.name[0].toUpperCase() : '?',
+                radius: 18, photoUrl: widget.user?.photoUrl,
+              ),
             ),
           ),
-        ),
       ]),
     );
   }
