@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 import '../providers/theme_provider.dart';
@@ -79,12 +80,51 @@ class SettingsPage extends StatelessWidget {
               () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => const AboutAcademiaPage()))),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          _sectionLabel(context, 'Account'),
+          _tile(context, Icons.delete_outline_rounded, 'Request account deletion',
+              'Delete your account & personal data',
+              () => _requestAccountDeletion(context, user), color: ac.red),
+
+          const SizedBox(height: 16),
           _tile(context, Icons.logout_rounded, 'Sign Out', null,
               () => AuthService.instance.performSignOut(context), color: ac.red),
         ],
       )),
     );
+  }
+
+  Future<void> _requestAccountDeletion(BuildContext context, AppUser user) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Request account deletion'),
+        content: const Text(
+          'This starts a request to permanently delete your account and personal data. '
+          'Records the school is legally required to keep (e.g. official results or financial '
+          'records) may be retained. Your request is actioned within 30 days.\n\n'
+          'Continue to send your request?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Continue')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final uri = Uri(
+      scheme: 'mailto',
+      path: 'privacy@cfpmi.cm',
+      query: 'subject=CFPMI account deletion request'
+          '&body=Please delete my CFPMI account and associated data.%0A%0A'
+          'Name: ${Uri.encodeComponent(user.name)}%0ASchool: ${Uri.encodeComponent(user.schoolName)}',
+    );
+    final ok = await launchUrl(uri);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Could not open email. Please email privacy@cfpmi.cm to request deletion.'),
+      ));
+    }
   }
 
   /// Three-way Light / Dark / System control rather than a plain on-off

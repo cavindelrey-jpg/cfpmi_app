@@ -18,7 +18,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
 import '../core/result.dart';
 import '../services/content_cache_service.dart';
-import 'dart:async';
 import 'xp_repository.dart';
 import '../core/realtime_tolerant.dart';
 import '../core/club_scope.dart';
@@ -50,11 +49,26 @@ class ClubRepository {
         }
         controller.add(cachedRows.map(Club.fromSupabase).toList());
       }
+
+      // Fast REST fetch to ensure instant display without waiting for Realtime websocket
+      try {
+        final rows = await _db.from('clubs').select();
+        if (!controller.isClosed) {
+          var filtered = rows;
+          if (scope != null) {
+            filtered = rows.where((r) {
+              final sid = ClubScope.normalizeSchoolId((r['school_id'] ?? r['institution_id']) as String?);
+              return sid == scope;
+            }).toList();
+          }
+          final list = List<Map<String, dynamic>>.from(filtered);
+          unawaited(ContentCacheService.instance.putList(cacheKey, list));
+          controller.add(list.map(Club.fromSupabase).toList());
+        }
+      } catch (_) {}
       
       final query = _db.from('clubs');
-      final stream = (scope != null)
-          ? query.stream(primaryKey: ['id']).eq('institution_id', scope).realtimeTolerant()
-          : query.stream(primaryKey: ['id']).realtimeTolerant();
+      final stream = query.stream(primaryKey: ['id']).realtimeTolerant();
 
       liveSub = stream.listen((rows) {
         if (controller.isClosed) return;
@@ -86,9 +100,6 @@ class ClubRepository {
     final scope = ClubScope.resolveSchoolId(user: user, explicitSchoolId: schoolId);
     var q = _db.from('clubs').select();
     if (category != null && category != 'All') q = q.eq('category', category);
-    if (scope != null) {
-      q = q.or('institution_id.eq.$scope,school_id.eq.$scope');
-    }
     final rows = await q;
     final lower = query.toLowerCase();
     var list = rows.map(Club.fromSupabase);
@@ -103,12 +114,7 @@ class ClubRepository {
   /// Fetches a single club by ID, verifying that the current context/user is authorized to access it.
   Future<Result<Club>> getClub(String clubId, {AppUser? user}) async {
     try {
-      final scope = ClubScope.resolveSchoolId(user: user);
-      var q = _db.from('clubs').select().eq('id', clubId);
-      if (scope != null) {
-        q = q.or('institution_id.eq.$scope,school_id.eq.$scope');
-      }
-      final row = await q.maybeSingle();
+      final row = await _db.from('clubs').select().eq('id', clubId).maybeSingle();
       if (row == null) {
         return const Failure('Group not found or access denied for this school context.', null);
       }
@@ -344,12 +350,13 @@ class ClubRepository {
   /// master hasn't created one yet.
   Future<Result<Club?>> classGroup(String schoolId, String classLevel) async {
     try {
-      final canonical = ClubScope.normalizeSchoolId(schoolId);
-      final row = await _db.from('clubs').select()
-          .or('institution_id.eq.$canonical,school_id.eq.$canonical')
-          .eq('class_level', classLevel)
-          .maybeSingle();
-      return Success(row == null ? null : Club.fromSupabase(row));
+      final rows = await _db.from('clubs').select()
+          .eq('class_level', classLevel);
+      final match = rows
+          .map(Club.fromSupabase)
+          .where((c) => ClubScope.normalizeSchoolId(c.schoolId) == ClubScope.normalizeSchoolId(schoolId))
+          .firstOrNull;
+      return Success(match);
     } catch (e) {
       return Failure('Couldn\'t load the class group. Check your connection.', e);
     }
@@ -493,19 +500,13 @@ class ClubRepository {
   /// Full Club rows for [watchMyClubIds] — the actual data the merged
   /// inbox renders (name, emoji, lastMessage*), filtered by authorized school context.
   Stream<List<Club>> watchMyClubs(String userId, {String? schoolId, AppUser? user}) {
-    final scope = ClubScope.resolveSchoolId(user: user, explicitSchoolId: schoolId);
     return watchMyClubIds(userId).asyncMap((ids) async {
       if (ids.isEmpty) return <Club>[];
-      var q = _db.from('clubs').select().inFilter('id', ids);
-      if (scope != null) {
-        q = q.or('institution_id.eq.$scope,school_id.eq.$scope');
-      }
-      final rows = await q;
-      var clubs = rows.map(Club.fromSupabase);
-      if (scope != null) {
-        clubs = clubs.where((c) => ClubScope.normalizeSchoolId(c.schoolId) == scope);
-      }
-      return clubs.toList();
+      final rows = await _db.from('clubs').select().inFilter('id', ids);
+      return rows
+          .map(Club.fromSupabase)
+          .where((c) => ClubScope.canAccessClub(c, user: user))
+          .toList();
     });
   }
 
@@ -640,12 +641,7 @@ class ClubRepository {
       if (!ClubScope.canAccessClub(club, user: user)) {
         return const Failure('Access denied: You cannot edit a group from another school.', null);
       }
-      final scope = ClubScope.resolveSchoolId(user: user, explicitSchoolId: club.schoolId);
-      var q = _db.from('clubs').update(club.toUpdateMap()).eq('id', club.id);
-      if (scope != null) {
-        q = q.or('institution_id.eq.$scope,school_id.eq.$scope');
-      }
-      await q;
+      await _db.from('clubs').update(club.toUpdateMap()).eq('id', club.id);
       return const Success(null);
     } catch (e) {
       return Failure('Failed to update group', e);
@@ -659,12 +655,7 @@ class ClubRepository {
       if (clubRes is Failure<Club>) {
         return Failure(clubRes.message, clubRes.cause);
       }
-      final scope = ClubScope.resolveSchoolId(user: user);
-      var q = _db.from('clubs').delete().eq('id', clubId);
-      if (scope != null) {
-        q = q.or('institution_id.eq.$scope,school_id.eq.$scope');
-      }
-      await q;
+      await _db.from('clubs').delete().eq('id', clubId);
       return const Success(null);
     } catch (e) {
       return Failure('Failed to delete group', e);

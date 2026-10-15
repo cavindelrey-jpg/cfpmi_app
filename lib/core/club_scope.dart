@@ -25,10 +25,17 @@ class ClubScope {
     if (id == null) return null;
     final s = id.trim().toLowerCase();
     if (s.isEmpty) return null;
-    if (s == 'green_hill' || s == 'green_hills' || s == 'greenhill' || s == 'greenhills') {
+    if (s == 'green_hill' ||
+        s == 'green_hills' ||
+        s == 'greenhill' ||
+        s == 'greenhills' ||
+        s == '93f2afa1-aaa1-4d15-86e8-41a15b1f94c2') {
       return 'green_hill';
     }
-    if (s == 'ladybird' || s == 'ladybird_app' || s == 'lady_bird') {
+    if (s == 'ladybird' ||
+        s == 'ladybird_app' ||
+        s == 'lady_bird' ||
+        s == 'e57702a0-91b1-4dd3-8d31-29bb928d3114') {
       return 'ladybird';
     }
     if (s == 'st_stephen' || s == 'ststephen' || s == 'st_stephens') {
@@ -38,6 +45,22 @@ class ClubScope {
       return 'academia';
     }
     return s;
+  }
+
+  /// Returns all known aliases/UUIDs for a school tenant identifier.
+  static List<String> schoolAliases(String? schoolId) {
+    final canonical = normalizeSchoolId(schoolId);
+    if (canonical == null) return const [];
+    if (canonical == 'green_hill') {
+      return const ['green_hill', 'green_hills', 'greenhill', 'greenhills', '93f2afa1-aaa1-4d15-86e8-41a15b1f94c2'];
+    }
+    if (canonical == 'ladybird') {
+      return const ['ladybird', 'ladybird_app', 'lady_bird', 'e57702a0-91b1-4dd3-8d31-29bb928d3114'];
+    }
+    if (canonical == 'st_stephen') {
+      return const ['st_stephen', 'ststephen', 'st_stephens'];
+    }
+    return [canonical];
   }
 
   /// Resolves the permitted school identifier for the current context.

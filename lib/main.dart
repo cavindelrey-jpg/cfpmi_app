@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'widgets/action_error_widget.dart';
 import 'services/connectivity_service.dart';
@@ -137,6 +138,10 @@ class AcademiaApp extends StatelessWidget {
         builder: (context, themeProvider, localeProvider, _) => MaterialApp(
           title: Branding.current.appName,
           debugShowCheckedModeBanner: false,
+          // Clamping physics + no overscroll stretch: stops the page from
+          // scrolling past its content into empty white space (reported on
+          // both web and mobile), and lets mouse-drag scroll on web.
+          scrollBehavior: const _AppScrollBehavior(),
           locale: localeProvider.locale,
           theme: AppTheme.light.copyWith(
             pageTransitionsTheme: const PageTransitionsTheme(builders: {
@@ -312,4 +317,25 @@ class _ErrorFallback extends StatelessWidget {
       }),
     );
   }
+}
+
+/// App-wide scroll behavior: clamping physics (no scrolling past content into
+/// empty white space) and no overscroll stretch/glow. Also enables mouse-drag
+/// scrolling on web.
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) => const ClampingScrollPhysics();
+
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
 }

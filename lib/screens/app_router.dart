@@ -321,7 +321,6 @@ class _HomeShellState extends State<HomeShell> {
       const _NavDef('Home', Icons.home_rounded, Icons.home_outlined, UserRole.guest),
       const _NavDef('Groups', Icons.groups_rounded, Icons.groups_outlined, UserRole.guest),
       const _NavDef('Library', Icons.menu_book_rounded, Icons.menu_book_outlined, UserRole.guest),
-      const _NavDef('Magazine', Icons.auto_stories_rounded, Icons.auto_stories_outlined, UserRole.guest),
       const _NavDef('Courses', Icons.school_rounded, Icons.school_outlined, UserRole.guest),
       const _NavDef('Profile', Icons.person_rounded, Icons.person_outlined, UserRole.guest),
     ];
