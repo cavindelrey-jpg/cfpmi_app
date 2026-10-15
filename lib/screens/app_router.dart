@@ -414,7 +414,11 @@ class _HomeShellState extends State<HomeShell> {
           child: NavigationBar(
             selectedIndex: safeTab,
             onDestinationSelected: (i) => setState(() => _tab = i),
-            labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+            // Labels under every icon (not just the selected one): the
+            // design notes recommend this for a mixed/less tech-savvy
+            // audience (parents, teachers, students). Labels are short,
+            // single-line, so all 5 fit cleanly.
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             destinations: nav.map((n) => NavigationDestination(
               icon: Icon(n.outlinedIcon), selectedIcon: Icon(n.filledIcon), label: n.label,
             )).toList(),
