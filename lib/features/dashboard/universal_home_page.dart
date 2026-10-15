@@ -468,39 +468,107 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
           color: ac.primary,
           backgroundColor: ac.surf,
           onRefresh: _handleRefresh,
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 36),
-            children: [
-              // ── CFPMI student dashboard (per design spec) ──
-              _topBar(context),
-              const SizedBox(height: 4),
-              _homeHeading(context),
-              const SizedBox(height: 16),
-              _featuredBanner(context),
-              const SizedBox(height: 22),
-              _sh('Quick Access',
-                  onTap: () => _open(context, LibraryHomePage(user: _userOrGuest))),
-              const SizedBox(height: 12),
-              _quickAccessSection(context),
-              const SizedBox(height: 22),
-              _studentProgressCard(context),
-              const SizedBox(height: 24),
-              _sh('Featured Courses',
-                  action: 'Browse All',
-                  onTap: () => _open(context, CoursesHomePage(user: _u))),
-              const SizedBox(height: 12),
-              _featuredCoursesSection(context),
-              const SizedBox(height: 24),
-              _sh('Study Tools',
-                  onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
-              const SizedBox(height: 12),
-              _studyToolsSection(context),
-              const SizedBox(height: 24),
-              _scheduleAnnouncementsSection(context),
-            ],
+          // Branch on the ACTUAL available width (not the window) so the
+          // two-column desktop dashboard only kicks in when there's room —
+          // the mobile single column stays single on phones.
+          child: LayoutBuilder(
+            builder: (context, c) =>
+                c.maxWidth >= 760 ? _desktopBody(context) : _mobileBody(context),
           ),
         ),
       ),
+    );
+  }
+
+  // Mobile: single vertical column (unchanged).
+  Widget _mobileBody(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 36),
+      children: [
+        _topBar(context),
+        const SizedBox(height: 4),
+        _homeHeading(context),
+        const SizedBox(height: 16),
+        _featuredBanner(context),
+        const SizedBox(height: 22),
+        _sh('Quick Access',
+            onTap: () => _open(context, LibraryHomePage(user: _userOrGuest))),
+        const SizedBox(height: 12),
+        _quickAccessSection(context),
+        const SizedBox(height: 22),
+        _studentProgressCard(context),
+        const SizedBox(height: 24),
+        _sh('Featured Courses',
+            action: 'Browse All', onTap: () => _open(context, CoursesHomePage(user: _u))),
+        const SizedBox(height: 12),
+        _featuredCoursesSection(context),
+        const SizedBox(height: 24),
+        _sh('Study Tools',
+            onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
+        const SizedBox(height: 12),
+        _studyToolsSection(context),
+        const SizedBox(height: 24),
+        _scheduleAnnouncementsSection(context),
+      ],
+    );
+  }
+
+  // Desktop/web: a two-column dashboard (12-col feel). Primary flow on the
+  // left (banner → quick access → courses → tools), a de-emphasised "at a
+  // glance" rail on the right (progress → schedule/announcements). Reuses
+  // the exact same section widgets as mobile — no duplicated logic.
+  Widget _desktopBody(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 40),
+      children: [
+        _topBar(context),
+        const SizedBox(height: 4),
+        _homeHeading(context),
+        const SizedBox(height: 18),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 7,
+                child: Column(
+                  children: [
+                    _featuredBanner(context),
+                    const SizedBox(height: 22),
+                    _sh('Quick Access',
+                        onTap: () => _open(context, LibraryHomePage(user: _userOrGuest))),
+                    const SizedBox(height: 12),
+                    _quickAccessSection(context),
+                    const SizedBox(height: 24),
+                    _sh('Featured Courses',
+                        action: 'Browse All',
+                        onTap: () => _open(context, CoursesHomePage(user: _u))),
+                    const SizedBox(height: 12),
+                    _featuredCoursesSection(context),
+                    const SizedBox(height: 24),
+                    _sh('Study Tools',
+                        onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
+                    const SizedBox(height: 12),
+                    _studyToolsSection(context),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                flex: 5,
+                child: Column(
+                  children: [
+                    _studentProgressCard(context),
+                    const SizedBox(height: 20),
+                    _scheduleAnnouncementsSection(context),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
