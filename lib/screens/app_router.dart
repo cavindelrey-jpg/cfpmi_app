@@ -46,7 +46,6 @@ import '../features/school/marks_page.dart';
 import '../features/school/student_records_page.dart';
 import '../features/classroom/classroom_teacher_page.dart';
 import '../features/classroom/student_classroom_page.dart';
-import '../features/onboarding/account_choice_screen.dart';
 import '../features/onboarding/voucher_entry_screen.dart';
 import 'dictionary_screen.dart';
 
@@ -108,123 +107,14 @@ class _SignedOutGateState extends State<_SignedOutGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (_browsingAsGuest) return const _GuestShell();
+    // Guests get the SAME application shell as signed-in users (desktop rail
+    // + global top bar on wide screens, bottom nav on phones) — just driven
+    // by AppUser.guest(), whose guest role gates what each section shows.
+    // Previously guests fell into a separate mobile-only _GuestShell that
+    // hardcoded a bottom nav bar at every width, so the desktop/web landing
+    // looked like a phone app stretched onto a 16:9 screen. One shell now.
+    if (_browsingAsGuest) return HomeShell(user: AppUser.guest());
     return VoucherEntryScreen(onBrowseAsGuest: () => setState(() => _browsingAsGuest = true));
-  }
-}
-
-/// Scaffold shown to signed-out Guests — same universal dashboard as
-/// signed-in accounts, wrapped with the drawer and a lightweight bottom
-/// nav. Tapping anything that needs an account routes to sign-up/sign-in.
-class _GuestShell extends StatefulWidget {
-  const _GuestShell();
-  @override State<_GuestShell> createState() => _GuestShellState();
-}
-
-class _GuestShellState extends State<_GuestShell> {
-  int _tab = 0;
-
-  void _guestGate(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => const AccountChoiceScreen()));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ac = AppColors.of(context);
-    final pages = [
-      const UniversalHomePage(),
-      ClubsPage(user: AppUser.guest()),
-      const UniversalHomePage(),
-      _GuestGateTab(onTap: () => _guestGate(context), label: 'Messages'),
-      _GuestGateTab(onTap: () => _guestGate(context), label: 'Profile'),
-    ];
-    return Scaffold(
-      drawer: AppDrawer(user: null, onHomeTap: () => setState(() => _tab = 0)),
-      body: SafeArea(
-        child: Column(
-          children: [
-            const _OfflineBanner(),
-            Expanded(child: IndexedStack(index: _tab, children: pages)),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: ac.gold,
-        onPressed: () => _guestGate(context),
-        child: Icon(Icons.add_rounded, color: ac.navy),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        color: ac.surf,
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-          _navIcon(ac, Icons.home_rounded, 'Home', 0),
-          _navIcon(ac, Icons.groups_rounded, 'Groups', 1),
-          const SizedBox(width: 40),
-          _navIcon(ac, Icons.chat_bubble_outline_rounded, 'Messages', 3),
-          _navIcon(ac, Icons.person_outline_rounded, 'Profile', 4),
-        ]),
-      ),
-    );
-  }
-
-  Widget _navIcon(AppColors ac, IconData icon, String label, int index) {
-    final selected = _tab == index;
-    return InkWell(
-      onTap: () => setState(() => _tab = index),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 22, color: selected ? ac.primary : ac.muted),
-          const SizedBox(height: 2),
-          Text(label, style: GoogleFonts.inter(
-              fontSize: 9.5, color: selected ? ac.primary : ac.muted,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
-        ]),
-      ),
-    );
-  }
-}
-
-class _GuestGateTab extends StatelessWidget {
-  final VoidCallback onTap;
-  final String label;
-  const _GuestGateTab({required this.onTap, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.lock_outline_rounded, size: 48, color: ac.muted),
-            const SizedBox(height: 16),
-            Text('Sign in to access $label',
-                style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt)),
-            const SizedBox(height: 8),
-            Text('Create a free account to join groups, message, and post.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 13, color: ac.txt2)),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: onTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ac.navy, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Rad.md)),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Text('Create Free Account'),
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
   }
 }
 
