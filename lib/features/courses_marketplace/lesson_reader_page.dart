@@ -104,7 +104,12 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
         iconTheme: IconThemeData(color: ac.txt),
         title: Text(lesson.title, style: AppText.title.copyWith(fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
-      body: AppBackground(child: Column(children: [
+      // Reading workspace: a deliberate max width so lesson text never
+      // stretches across a wide monitor (comfortable line length); full
+      // width on phones. Nav/appbar stay full width above.
+      body: AppBackground(child: Center(child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 860),
+        child: Column(children: [
         if (hasVideo)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -135,7 +140,8 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
             ),
           ]),
         ),
-      ])),
+        ]),
+      ))),
     );
   }
 }

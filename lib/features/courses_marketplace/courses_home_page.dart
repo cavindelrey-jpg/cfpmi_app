@@ -622,6 +622,50 @@ class _LevelCard extends StatelessWidget {
   }
 }
 
+// A deliberate course-cover fallback (never a flat dark rectangle): a
+// subject-derived two-tone gradient + a themed icon, so a cover-less course
+// still looks designed. Seeded by the course title for stable variety.
+Widget courseCoverFallback(String seed) {
+  const palettes = <List<Color>>[
+    [Color(0xFF0B1F3A), Color(0xFF087F5B)],
+    [Color(0xFF087F5B), Color(0xFF0E7C7B)],
+    [Color(0xFF14213D), Color(0xFF3A2C6B)],
+    [Color(0xFF0E4D64), Color(0xFF0B1F3A)],
+    [Color(0xFF5B3A1E), Color(0xFF2A1A10)],
+  ];
+  final s = seed.toLowerCase();
+  final colors = palettes[seed.hashCode.abs() % palettes.length];
+  IconData icon = Icons.school_rounded;
+  if (s.contains('math')) {
+    icon = Icons.functions_rounded;
+  } else if (s.contains('phys')) {
+    icon = Icons.science_rounded;
+  } else if (s.contains('chem')) {
+    icon = Icons.biotech_rounded;
+  } else if (s.contains('bio')) {
+    icon = Icons.eco_rounded;
+  } else if (s.contains('eng') || s.contains('lit') || s.contains('french')) {
+    icon = Icons.menu_book_rounded;
+  } else if (s.contains('hist')) {
+    icon = Icons.account_balance_rounded;
+  } else if (s.contains('geo')) {
+    icon = Icons.public_rounded;
+  } else if (s.contains('comp') || s.contains('ict') || s.contains('program') || s.contains('code')) {
+    icon = Icons.code_rounded;
+  }
+  return Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
+    ),
+    child: Stack(
+      children: [
+        Positioned(right: -8, bottom: -8, child: Icon(icon, size: 64, color: Colors.white.withValues(alpha: 0.14))),
+        Center(child: Icon(icon, color: Colors.white.withValues(alpha: 0.92), size: 26)),
+      ],
+    ),
+  );
+}
+
 class _RecommendedCard extends StatelessWidget {
   final PublicCourse course;
   final AppUser? currentUser;
@@ -647,8 +691,8 @@ class _RecommendedCard extends StatelessWidget {
                 height: 96, width: double.infinity,
                 child: (course.coverImageUrl ?? '').isNotEmpty
                     ? Image.network(course.coverImageUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(color: ac.navy))
-                    : Container(color: ac.navy, child: Icon(Icons.school_rounded, color: ac.gold, size: 28)),
+                        errorBuilder: (_, __, ___) => courseCoverFallback(course.title))
+                    : courseCoverFallback(course.title),
               ),
               if (currentUser != null)
                 Positioned(top: 6, right: 6, child: _BookmarkDot(course: course, userId: currentUser!.id)),
