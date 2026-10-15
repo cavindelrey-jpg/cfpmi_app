@@ -102,46 +102,185 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
       appBar: AppBar(
         backgroundColor: ac.bg, elevation: 0,
         iconTheme: IconThemeData(color: ac.txt),
-        title: Text(lesson.title, style: AppText.title.copyWith(fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+        // The bar identifies the COURSE (context); the lesson title is the
+        // reading column's own heading below.
+        title: Text(widget.course.title,
+            style: AppText.subtitle.copyWith(fontSize: 14, color: ac.txt2),
+            maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
-      // Reading workspace: a deliberate max width so lesson text never
-      // stretches across a wide monitor (comfortable line length); full
-      // width on phones. Nav/appbar stay full width above.
-      body: AppBackground(child: Center(child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 860),
-        child: Column(children: [
-        if (hasVideo)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: _LockedVideoCard(lesson: lesson, currentUser: widget.currentUser),
-          ),
+      // Reading workspace. Phone/tablet: a single comfortable reading column
+      // (never stretched). Desktop: the reading column beside a table-of-
+      // contents / lesson-context panel — the reading area stays dominant.
+      body: AppBackground(child: LayoutBuilder(
+        builder: (ctx, c) {
+          final reader = _readerColumn(ac, lesson, hasVideo);
+          if (c.maxWidth < 1080) {
+            return Center(child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 860),
+              child: reader,
+            ));
+          }
+          return Center(child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1180),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: reader,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 24),
+              SizedBox(width: 300, child: _contextPanel(ac, lesson)),
+            ]),
+          ));
+        },
+      )),
+    );
+  }
+
+  // The reading column: lesson title, video (if any), tabbed content.
+  Widget _readerColumn(AppColors ac, CourseLesson lesson, bool hasVideo) {
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 2),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(lesson.title,
+              style: AppText.h1.copyWith(fontSize: 24, color: ac.txt, height: 1.2)),
+        ),
+      ),
+      if (hasVideo)
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: TabBar(
-            controller: _tabCtrl,
-            labelColor: ac.primary, unselectedLabelColor: ac.muted,
-            indicatorColor: ac.primary,
-            labelStyle: AppText.subtitle.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
-            unselectedLabelStyle: AppText.subtitle.copyWith(fontSize: 13),
-            tabs: const [
-              Tab(text: 'Overview'), Tab(text: 'Resources'), Tab(text: 'Notes'), Tab(text: 'Comments'),
-            ],
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: _LockedVideoCard(lesson: lesson, currentUser: widget.currentUser),
+        ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: TabBar(
+          controller: _tabCtrl,
+          isScrollable: false,
+          labelColor: ac.primary, unselectedLabelColor: ac.muted,
+          indicatorColor: ac.primary,
+          labelStyle: AppText.subtitle.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
+          unselectedLabelStyle: AppText.subtitle.copyWith(fontSize: 13),
+          tabs: const [
+            Tab(text: 'Overview'), Tab(text: 'Resources'), Tab(text: 'Notes'), Tab(text: 'Comments'),
+          ],
+        ),
+      ),
+      Expanded(
+        child: TabBarView(controller: _tabCtrl, children: [
+          _OverviewTab(course: widget.course, lesson: lesson, hasVideo: hasVideo, currentUser: widget.currentUser,
+              onContinue: () => _continue(context)),
+          const _EmptyTab(message: 'No resources have been added to this lesson yet.'),
+          const _EmptyTab(message: 'Your personal notes for this lesson will appear here.'),
+          _CommentsTab(
+            course: widget.course, currentUser: widget.currentUser,
+            commentCtrl: _commentCtrl, posting: _postingComment, onPost: _postComment,
+          ),
+        ]),
+      ),
+    ]);
+  }
+
+  // Desktop contextual panel: the course's lessons as a table of contents,
+  // current lesson highlighted; tapping another opens it in place.
+  Widget _contextPanel(AppColors ac, CourseLesson lesson) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 14, 8, 16),
+      decoration: BoxDecoration(
+        color: ac.surf,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ac.bdr),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 2),
+          child: Text('In this course', style: AppText.h2.copyWith(fontSize: 15, color: ac.txt)),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+          child: Text(widget.course.title,
+              style: AppText.caption.copyWith(fontSize: 11.5, color: ac.txt2),
+              maxLines: 2, overflow: TextOverflow.ellipsis),
+        ),
+        Divider(height: 1, color: ac.bdr),
+        Expanded(
+          child: FutureBuilder<List<CourseLesson>>(
+            future: CourseLessonRepository.instance.lessonsOnce(widget.course.id),
+            builder: (ctx, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return ListView(
+                  padding: const EdgeInsets.all(12),
+                  children: List.generate(5, (_) => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 7),
+                    child: ShimmerLine(height: 16),
+                  )),
+                );
+              }
+              final lessons = snap.data ?? const <CourseLesson>[];
+              if (lessons.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Text('No other lessons yet.', style: AppText.bodySm.copyWith(color: ac.txt2)),
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                itemCount: lessons.length,
+                itemBuilder: (_, i) => _tocRow(ac, lessons[i], i + 1, lessons[i].id == lesson.id),
+              );
+            },
           ),
         ),
-        Expanded(
-          child: TabBarView(controller: _tabCtrl, children: [
-            _OverviewTab(course: widget.course, lesson: lesson, hasVideo: hasVideo, currentUser: widget.currentUser,
-                onContinue: () => _continue(context)),
-            const _EmptyTab(message: 'No resources have been added to this lesson yet.'),
-            const _EmptyTab(message: 'Your personal notes for this lesson will appear here.'),
-            _CommentsTab(
-              course: widget.course, currentUser: widget.currentUser,
-              commentCtrl: _commentCtrl, posting: _postingComment, onPost: _postComment,
-            ),
-          ]),
+      ]),
+    );
+  }
+
+  Widget _tocRow(AppColors ac, CourseLesson l, int number, bool current) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Material(
+        color: current ? ac.primary.withValues(alpha: 0.10) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: current
+              ? null
+              : () => Navigator.of(context).pushReplacement(MaterialPageRoute(
+                  builder: (_) => LessonReaderPage(course: widget.course, lesson: l, currentUser: widget.currentUser))),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 22, height: 22,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: current ? ac.primary : ac.surf2,
+                  shape: BoxShape.circle,
+                  border: current ? null : Border.all(color: ac.bdr),
+                ),
+                child: Text('$number',
+                    style: AppText.label.copyWith(
+                        fontSize: 11, fontWeight: FontWeight.w700,
+                        color: current ? Colors.white : ac.txt2)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(l.title,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: AppText.bodySm.copyWith(
+                        fontSize: 13,
+                        color: current ? ac.txt : ac.txt2,
+                        fontWeight: current ? FontWeight.w700 : FontWeight.w500)),
+              ),
+            ]),
+          ),
         ),
-        ]),
-      ))),
+      ),
     );
   }
 }

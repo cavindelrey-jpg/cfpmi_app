@@ -16,8 +16,6 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
-import '../../pages/notifications_page.dart';
-import '../../pages/profile_page.dart';
 import 'level_subjects_page.dart';
 import 'course_lessons_page.dart';
 import 'course_search_page.dart';
@@ -75,56 +73,261 @@ class _CoursesHomePageState extends State<CoursesHomePage> {
     return Scaffold(
       backgroundColor: ac.bg,
       body: AppBackground(child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 24),
-          children: [
-            _header(context, ac),
-            _searchBar(context, ac),
-            const SizedBox(height: 18),
-            _levelRow(context, ac),
-            const SizedBox(height: 26),
-            _sectionHeader('Recommended for You', ac, showNav: true,
-                onSeeAll: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => RecommendedCoursesPage(user: widget.user)))),
-            const SizedBox(height: 12),
-            _recommendedRow(context, ac),
-            const SizedBox(height: 24),
-            _sectionHeader('Recent Reads', ac),
-            const SizedBox(height: 12),
-            _recentReads(context, ac),
-            const SizedBox(height: 24),
-            _sectionHeader('Downloaded Courses', ac),
-            const SizedBox(height: 12),
-            _downloadedCoursesSection(context, ac),
-          ],
+        // Two deliberately different layouts: a desktop discovery workspace
+        // (grids, two-column lower region) vs. the phone's vertical rails.
+        child: LayoutBuilder(
+          builder: (ctx, c) =>
+              c.maxWidth >= 760 ? _desktopBody(context, ac) : _mobileBody(context, ac),
         ),
       )),
     );
   }
 
+  // ── Phone: stacked sections + horizontal rails ────────────────────
+  Widget _mobileBody(BuildContext context, AppColors ac) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        _header(context, ac),
+        _searchBar(context, ac),
+        const SizedBox(height: 18),
+        _levelRow(context, ac),
+        const SizedBox(height: 26),
+        _sectionHeader('Recommended for You', ac, showNav: true,
+            onSeeAll: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => RecommendedCoursesPage(user: widget.user)))),
+        const SizedBox(height: 12),
+        _recommendedRow(context, ac),
+        const SizedBox(height: 24),
+        _sectionHeader('Recent Reads', ac),
+        const SizedBox(height: 12),
+        _recentReads(context, ac),
+        const SizedBox(height: 24),
+        _sectionHeader('Downloaded Courses', ac),
+        const SizedBox(height: 12),
+        _downloadedCoursesSection(context, ac),
+      ],
+    );
+  }
+
+  // ── Desktop: course-discovery workspace ───────────────────────────
+  Widget _desktopBody(BuildContext context, AppColors ac) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1240),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(32, 28, 32, 48),
+          children: [
+            _desktopHeading(ac),
+            const SizedBox(height: 20),
+            _desktopSearchFilter(context, ac),
+            const SizedBox(height: 30),
+            _deskSection('Education levels', ac),
+            const SizedBox(height: 14),
+            _levelWrap(context, ac),
+            const SizedBox(height: 32),
+            _deskSection('Recommended for You', ac,
+                onSeeAll: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => RecommendedCoursesPage(user: widget.user)))),
+            const SizedBox(height: 14),
+            _recommendedWrap(context, ac),
+            const SizedBox(height: 34),
+            _recentAndDownloads(context, ac),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _desktopHeading(AppColors ac) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Academia Courses', style: AppText.h1.copyWith(fontSize: 28, color: ac.txt)),
+      const SizedBox(height: 6),
+      Text('Browse by education level, pick up where you left off, and discover new courses.',
+          style: AppText.bodySm.copyWith(color: ac.txt2)),
+    ]);
+  }
+
+  Widget _desktopSearchFilter(BuildContext context, AppColors ac) {
+    void openSearch() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => CourseSearchPage(user: widget.user)));
+    return Row(children: [
+      SizedBox(
+        width: 440,
+        child: Material(
+          color: ac.surf2,
+          borderRadius: BorderRadius.circular(Rad.sm),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(Rad.sm),
+            onTap: openSearch,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                  color: ac.surf2,
+                  borderRadius: BorderRadius.circular(Rad.sm),
+                  border: Border.all(color: ac.bdr)),
+              child: Row(children: [
+                Icon(Icons.search_rounded, size: 18, color: ac.muted),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Search courses, topics, subjects…',
+                    style: AppText.bodySm.copyWith(color: ac.muted))),
+              ]),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(width: 12),
+      OutlinedButton.icon(
+        onPressed: openSearch,
+        icon: const Icon(Icons.tune_rounded, size: 18),
+        label: const Text('Filters'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: ac.txt2,
+          side: BorderSide(color: ac.bdr),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        ),
+      ),
+    ]);
+  }
+
+  // A section heading for the desktop workspace (no extra horizontal padding —
+  // the workspace ListView already pads; keeps card edges aligned).
+  Widget _deskSection(String title, AppColors ac, {VoidCallback? onSeeAll}) {
+    return Row(children: [
+      Container(width: 4, height: 20,
+          decoration: BoxDecoration(color: ac.primary, borderRadius: BorderRadius.circular(2))),
+      const SizedBox(width: 10),
+      Expanded(child: Text(title, style: AppText.h2.copyWith(fontSize: 18, color: ac.txt))),
+      if (onSeeAll != null)
+        TextButton(
+          onPressed: onSeeAll,
+          child: Text('See all',
+              style: AppText.subtitle.copyWith(color: ac.primary, fontWeight: FontWeight.w700, fontSize: 13)),
+        ),
+    ]);
+  }
+
+  Widget _levelWrap(BuildContext context, AppColors ac) {
+    return FutureBuilder<List<CourseLevelInfo>>(
+      future: PublicCourseRepository.instance.levelsOnce(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return Wrap(spacing: 12, runSpacing: 12, children: List.generate(
+              5, (_) => const ShimmerBlock(width: 108, height: 118, borderRadius: 16)));
+        }
+        final levels = snap.data ?? const <CourseLevelInfo>[];
+        if (levels.isEmpty) {
+          return Text('No education levels configured yet.',
+              style: AppText.bodySm.copyWith(color: ac.txt2));
+        }
+        return FutureBuilder<Map<String, CurriculumIcon>>(
+          future: _iconsFuture,
+          builder: (context, iconSnap) {
+            final icons = iconSnap.data ?? const <String, CurriculumIcon>{};
+            return Wrap(spacing: 12, runSpacing: 12, children: [
+              for (final lv in levels)
+                _LevelCard(
+                  level: lv,
+                  icon: icons[PublicCourseRepository.eduLevelIconKey(lv.name)] ?? CurriculumIcon.none,
+                  canManage: widget.user?.canUploadContent ?? false,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => LevelSubjectsPage(level: lv.name, user: widget.user)));
+                  },
+                  onChanged: _reloadIcons,
+                ),
+            ]);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _recommendedWrap(BuildContext context, AppColors ac) {
+    return FutureBuilder<List<PublicCourse>>(
+      future: _recommendedFuture,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return Wrap(spacing: 14, runSpacing: 14, children: List.generate(
+              5, (_) => const ShimmerBlock(width: 160, height: 190)));
+        }
+        final courses = snap.data ?? const <PublicCourse>[];
+        if (courses.isEmpty) {
+          return Text('No courses to recommend yet — check back soon.',
+              style: AppText.bodySm.copyWith(color: ac.txt2));
+        }
+        return Wrap(spacing: 14, runSpacing: 14, children: [
+          for (final c in courses)
+            _RecommendedCard(course: c, currentUser: widget.user, onTap: () => _openCourse(context, c)),
+        ]);
+      },
+    );
+  }
+
+  // Lower region: Recent Reads and Downloaded side by side on desktop.
+  Widget _recentAndDownloads(BuildContext context, AppColors ac) {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _deskSection('Recent Reads', ac),
+          const SizedBox(height: 12),
+          _recentReads(context, ac),
+        ]),
+      ),
+      const SizedBox(width: 28),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _deskSection('Downloaded Courses', ac),
+          const SizedBox(height: 12),
+          _downloadedWrap(context, ac),
+        ]),
+      ),
+    ]);
+  }
+
+  Widget _downloadedWrap(BuildContext context, AppColors ac) {
+    return StreamBuilder<List<PublicCourse>>(
+      stream: CourseOfflineService.instance.watchDownloadedCourses(),
+      builder: (context, snap) {
+        final downloaded = snap.data ?? const <PublicCourse>[];
+        if (downloaded.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+                color: ac.surf,
+                borderRadius: BorderRadius.circular(Rad.md),
+                border: Border.all(color: ac.bdr2)),
+            child: Row(children: [
+              Container(width: 44, height: 44,
+                  decoration: BoxDecoration(color: ac.primaryBg, borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.download_for_offline_outlined, color: ac.primary, size: 24)),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('No downloaded courses yet',
+                    style: AppText.subtitle.copyWith(fontSize: 14, color: ac.txt)),
+                const SizedBox(height: 2),
+                Text('Download any course to read all lessons offline.',
+                    style: AppText.caption.copyWith(fontSize: 11, color: ac.txt2)),
+              ])),
+            ]),
+          );
+        }
+        return Wrap(spacing: 14, runSpacing: 14, children: [
+          for (final course in downloaded)
+            _DownloadedCourseCard(course: course, currentUser: widget.user, onTap: () => _openCourse(context, course)),
+        ]);
+      },
+    );
+  }
+
+  // The shell's global top bar now owns search / notifications / account, so
+  // the page header is just its title — no duplicated global controls.
   Widget _header(BuildContext context, AppColors ac) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      child: Row(children: [
-        Expanded(child: Text('Academia Courses', style: AppText.h1.copyWith(fontSize: 22, color: ac.txt))),
-        IconButton(
-          icon: Icon(Icons.search_rounded, color: ac.txt2),
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => CourseSearchPage(user: widget.user))),
-        ),
-        if (widget.user != null)
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: ac.txt2),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => NotificationsPage(user: widget.user!))),
-          ),
-        UserAvatar(
-          initials: (widget.user?.name.isNotEmpty ?? false) ? widget.user!.name[0].toUpperCase() : '?',
-          radius: 18, photoUrl: widget.user?.photoUrl,
-          onTap: widget.user == null ? null : () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => ProfilePage(user: widget.user!))),
-        ),
-      ]),
+      child: Text('Academia Courses', style: AppText.h1.copyWith(fontSize: 22, color: ac.txt)),
     );
   }
 
