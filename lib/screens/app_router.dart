@@ -33,6 +33,17 @@ import '../features/magazine/magazine_feed_page.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/create_content_sheet.dart';
 import '../features/clubs/clubs_page.dart';
+import '../features/school/school_connect_page.dart';
+import '../features/school/timetable_page.dart';
+import '../features/school/daily_notices/daily_notices_page.dart';
+import '../features/school/school_calendar_page.dart';
+import '../features/school/attendance_page.dart';
+import '../features/school/attendance_summary_page.dart';
+import '../features/school/fees_page.dart';
+import '../features/school/marks_page.dart';
+import '../features/school/student_records_page.dart';
+import '../features/classroom/classroom_teacher_page.dart';
+import '../features/classroom/student_classroom_page.dart';
 import '../features/onboarding/account_choice_screen.dart';
 import '../features/onboarding/voucher_entry_screen.dart';
 import 'dictionary_screen.dart';
@@ -431,37 +442,124 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  // ── Desktop/web: persistent left sidebar shell ─────────────────────
+  // ── Desktop/web: persistent icon rail + (optional) contextual nav ──
   Widget _desktopScaffold(AppColors ac, List<_NavDef> nav, int safeTab, Widget content) {
+    final homeIndex = nav.indexWhere((n) => n.label == 'Home');
     return Scaffold(
-      // The drawer still holds the deeper "My School" links (Attendance,
-      // Fees, Marks…); the sidebar's menu button opens it.
+      // The drawer still holds every link; the rail's menu button opens it.
       drawer: AppDrawer(user: widget.user, onHomeTap: () => setState(() => _tab = 0)),
       body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _desktopSidebar(ac, nav, safeTab),
-            Expanded(
-              child: Column(
-                children: [
-                  const _OfflineBanner(),
-                  // Constrain + centre the content so wide monitors read
-                  // like a designed page, not an edge-to-edge phone stretch.
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1180),
-                        child: content,
+        child: LayoutBuilder(
+          builder: (ctx, c) {
+            // Contextual secondary nav (the "School" rail) appears only for
+            // school members, on the Home section, and only when there's
+            // room — so it never crushes the workspace (spec: optional panel).
+            final showSecondary =
+                widget.user.isSchoolMember && safeTab == homeIndex && c.maxWidth >= 1100;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _desktopSidebar(ac, nav, safeTab),
+                if (showSecondary) _contextualSchoolNav(ac),
+                Expanded(
+                  child: Column(
+                    children: [
+                      const _OfflineBanner(),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1180),
+                            child: content,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _push(Widget page) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+
+  // Contextual secondary navigation for the School context — role-aware,
+  // every item a real wired destination (surfaces tools otherwise buried in
+  // the drawer into a persistent panel on desktop).
+  Widget _contextualSchoolNav(AppColors ac) {
+    final u = widget.user;
+    final staff = u.canRecordAnyMarks || (u.isSchoolMember && !u.isStudent && !u.isParent);
+    final items = <(IconData, String, VoidCallback)>[
+      (Icons.forum_outlined, 'School Connect', () => _push(SchoolConnectPage(user: u))),
+      (Icons.event_note_outlined, 'Timetable', () => _push(TimetablePage(user: u))),
+      (Icons.campaign_outlined, 'Daily Notices', () => _push(DailyNoticesPage(user: u))),
+      (Icons.calendar_month_outlined, 'Calendar', () => _push(SchoolCalendarPage(user: u))),
+      if (staff) ...[
+        (Icons.fact_check_outlined, 'Attendance', () => _push(AttendancePage(user: u))),
+        (Icons.query_stats_rounded, 'Attendance Summary', () => _push(AttendanceSummaryPage(user: u))),
+        (Icons.account_balance_wallet_outlined, 'Fees', () => _push(FeesPage(user: u))),
+        (Icons.assessment_outlined, 'Marks', () => _push(MarksPage(user: u))),
+        (Icons.cast_for_education_rounded, 'Classroom', () => _push(ClassroomTeacherPage(user: u))),
+      ] else ...[
+        (Icons.badge_outlined, 'My Records', () => _push(StudentRecordsPage(user: u))),
+        (Icons.assessment_outlined, 'My Marks', () => _push(MarksPage(user: u))),
+        (Icons.sensors_rounded, 'Live Class', () => _push(StudentClassroomPage(user: u))),
+      ],
+    ];
+    return Container(
+      width: 232,
+      decoration: BoxDecoration(
+        color: ac.surf,
+        border: Border(right: BorderSide(color: ac.bdr)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+            child: Text('School',
+                style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt)),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              children: [
+                for (final (icon, label, onTap) in items)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 1),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: onTap,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                          child: Row(
+                            children: [
+                              Icon(icon, size: 19, color: ac.txt2),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                        fontSize: 13.5, fontWeight: FontWeight.w500, color: ac.txt)),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
