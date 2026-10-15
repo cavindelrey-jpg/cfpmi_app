@@ -70,24 +70,26 @@ alter table public.classroom_resources enable row level security;
 -- Helper predicates inlined per policy (no functions, to match this repo's style).
 
 -- Sessions: any member of the school reads; staff of the school write.
+drop policy if exists "classroom sessions select" on public.classroom_sessions;
 create policy "classroom sessions select" on public.classroom_sessions
   for select
   using (
-    school_id in (select coalesce(institution_id, id) from public.users where id = auth.uid())
+    school_id in (select coalesce(institution_id::text, id::text) from public.users where id = auth.uid())
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
+drop policy if exists "classroom sessions write" on public.classroom_sessions;
 create policy "classroom sessions write" on public.classroom_sessions
   for all
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   )
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
@@ -95,32 +97,34 @@ create policy "classroom sessions write" on public.classroom_sessions
 
 -- Resources: staff read all; students read every non-teacher_only row of
 -- their school (so hidden/after_class can be pre-cached), UI gates display.
+drop policy if exists "classroom resources select" on public.classroom_resources;
 create policy "classroom resources select" on public.classroom_resources
   for select
   using (
     exists (
       select 1 from public.users u where u.id = auth.uid()
         and u.role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
-        and school_id in (select coalesce(u.institution_id, u.id))
+        and school_id in (select coalesce(u.institution_id::text, u.id::text))
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
     or (
       visibility <> 'teacher_only'
-      and school_id in (select coalesce(institution_id, id) from public.users where id = auth.uid())
+      and school_id in (select coalesce(institution_id::text, id::text) from public.users where id = auth.uid())
     )
   );
+drop policy if exists "classroom resources write" on public.classroom_resources;
 create policy "classroom resources write" on public.classroom_resources
   for all
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   )
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
@@ -129,5 +133,5 @@ create policy "classroom resources write" on public.classroom_resources
 -- Live sync: the three views subscribe via supabase .stream(), which needs
 -- these tables in the realtime publication (new tables are not realtime by
 -- default). Safe to ignore "already member of publication" on a re-run.
-alter publication supabase_realtime add table public.classroom_sessions;
-alter publication supabase_realtime add table public.classroom_resources;
+do $$ begin alter publication supabase_realtime add table public.classroom_sessions; exception when duplicate_object then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.classroom_resources; exception when duplicate_object then null; end $$;

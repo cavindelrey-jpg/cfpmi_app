@@ -34,49 +34,53 @@ create index if not exists fee_ledger_student_idx
 
 alter table public.fee_ledger enable row level security;
 
+drop policy if exists "fee select" on public.fee_ledger;
 create policy "fee select" on public.fee_ledger
   for select
   using (
     student_id = auth.uid()::text
     or school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "fee insert" on public.fee_ledger;
 create policy "fee insert" on public.fee_ledger
   for insert
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "fee update" on public.fee_ledger;
 create policy "fee update" on public.fee_ledger
   for update
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   )
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "fee delete" on public.fee_ledger;
 create policy "fee delete" on public.fee_ledger
   for delete
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')

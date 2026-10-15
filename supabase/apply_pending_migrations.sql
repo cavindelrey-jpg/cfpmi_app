@@ -1,11 +1,7 @@
 -- CFPMI — pending migrations to apply to Supabase (project ccumxxysaaphhgdzlagk).
--- Paste this whole file into Supabase Dashboard -> SQL Editor -> Run.
--- Safe to run ONCE. On a re-run you may see 'already exists' / 'already member
--- of publication' on policies/realtime — ignore those.
+-- Paste this whole file into Supabase Dashboard -> SQL Editor -> Run. Re-runnable.
 
--- ============================================================
--- 20261014120000_attendance_records.sql
--- ============================================================
+-- ====== 20261014120000_attendance_records.sql ======
 -- 20261014120000_attendance_records.sql
 -- Daily student attendance — the core school-management operation that was
 -- missing (the initial schema explicitly flagged attendance as a gap:
@@ -45,57 +41,59 @@ alter table public.attendance_records enable row level security;
 
 -- Staff of the row's school (or super_admin) read/write; a student reads
 -- only their own rows.
+drop policy if exists "attendance select" on public.attendance_records;
 create policy "attendance select" on public.attendance_records
   for select
   using (
     student_id = auth.uid()::text
     or school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "attendance insert" on public.attendance_records;
 create policy "attendance insert" on public.attendance_records
   for insert
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "attendance update" on public.attendance_records;
 create policy "attendance update" on public.attendance_records
   for update
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   )
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "attendance delete" on public.attendance_records;
 create policy "attendance delete" on public.attendance_records
   for delete
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
--- ============================================================
--- 20261014130000_fee_ledger.sql
--- ============================================================
+-- ====== 20261014130000_fee_ledger.sql ======
 -- 20261014130000_fee_ledger.sql
 -- School fees as a RECORD-ONLY ledger. The app never processes money and has
 -- no payment gateway: staff RECORD charges (fee obligations) and payments that
@@ -132,57 +130,59 @@ create index if not exists fee_ledger_student_idx
 
 alter table public.fee_ledger enable row level security;
 
+drop policy if exists "fee select" on public.fee_ledger;
 create policy "fee select" on public.fee_ledger
   for select
   using (
     student_id = auth.uid()::text
     or school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "fee insert" on public.fee_ledger;
 create policy "fee insert" on public.fee_ledger
   for insert
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "fee update" on public.fee_ledger;
 create policy "fee update" on public.fee_ledger
   for update
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   )
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "fee delete" on public.fee_ledger;
 create policy "fee delete" on public.fee_ledger
   for delete
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
--- ============================================================
--- 20261014140000_academia_classroom.sql
--- ============================================================
+-- ====== 20261014140000_academia_classroom.sql ======
 -- 20261014140000_academia_classroom.sql
 -- Academia Classroom: a teacher-controlled, offline-first live lesson with
 -- three synchronized views (laptop control / TV display / student mobile).
@@ -255,24 +255,26 @@ alter table public.classroom_resources enable row level security;
 -- Helper predicates inlined per policy (no functions, to match this repo's style).
 
 -- Sessions: any member of the school reads; staff of the school write.
+drop policy if exists "classroom sessions select" on public.classroom_sessions;
 create policy "classroom sessions select" on public.classroom_sessions
   for select
   using (
-    school_id in (select coalesce(institution_id, id) from public.users where id = auth.uid())
+    school_id in (select coalesce(institution_id::text, id::text) from public.users where id = auth.uid())
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
+drop policy if exists "classroom sessions write" on public.classroom_sessions;
 create policy "classroom sessions write" on public.classroom_sessions
   for all
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   )
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
@@ -280,32 +282,34 @@ create policy "classroom sessions write" on public.classroom_sessions
 
 -- Resources: staff read all; students read every non-teacher_only row of
 -- their school (so hidden/after_class can be pre-cached), UI gates display.
+drop policy if exists "classroom resources select" on public.classroom_resources;
 create policy "classroom resources select" on public.classroom_resources
   for select
   using (
     exists (
       select 1 from public.users u where u.id = auth.uid()
         and u.role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
-        and school_id in (select coalesce(u.institution_id, u.id))
+        and school_id in (select coalesce(u.institution_id::text, u.id::text))
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
     or (
       visibility <> 'teacher_only'
-      and school_id in (select coalesce(institution_id, id) from public.users where id = auth.uid())
+      and school_id in (select coalesce(institution_id::text, id::text) from public.users where id = auth.uid())
     )
   );
+drop policy if exists "classroom resources write" on public.classroom_resources;
 create policy "classroom resources write" on public.classroom_resources
   for all
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   )
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
@@ -314,6 +318,6 @@ create policy "classroom resources write" on public.classroom_resources
 -- Live sync: the three views subscribe via supabase .stream(), which needs
 -- these tables in the realtime publication (new tables are not realtime by
 -- default). Safe to ignore "already member of publication" on a re-run.
-alter publication supabase_realtime add table public.classroom_sessions;
-alter publication supabase_realtime add table public.classroom_resources;
+do $$ begin alter publication supabase_realtime add table public.classroom_sessions; exception when duplicate_object then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.classroom_resources; exception when duplicate_object then null; end $$;
 

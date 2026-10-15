@@ -37,49 +37,53 @@ alter table public.attendance_records enable row level security;
 
 -- Staff of the row's school (or super_admin) read/write; a student reads
 -- only their own rows.
+drop policy if exists "attendance select" on public.attendance_records;
 create policy "attendance select" on public.attendance_records
   for select
   using (
     student_id = auth.uid()::text
     or school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "attendance insert" on public.attendance_records;
 create policy "attendance insert" on public.attendance_records
   for insert
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "attendance update" on public.attendance_records;
 create policy "attendance update" on public.attendance_records
   for update
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   )
   with check (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
 
+drop policy if exists "attendance delete" on public.attendance_records;
 create policy "attendance delete" on public.attendance_records
   for delete
   using (
     school_id in (
-      select coalesce(institution_id, id) from public.users
+      select coalesce(institution_id::text, id::text) from public.users
       where id = auth.uid() and role in ('lecturer', 'department_admin', 'school_admin', 'super_admin')
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
