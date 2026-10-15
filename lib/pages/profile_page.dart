@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../config/branding.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
+import '../widgets/academia_app_bar.dart';
 import '../models/models.dart';
 import '../services/auth_service.dart';
 import '../features/timetable/personal_study_page.dart';
@@ -48,10 +49,9 @@ class ProfilePage extends StatelessWidget {
     final rc   = _roleColor(ac, user.role);
     return Scaffold(
       backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg,
-        title: Text('Profile', style: GoogleFonts.sora(fontWeight: FontWeight.w700, color: ac.txt)),
-        automaticallyImplyLeading: false,
+      appBar: AcademiaAppBar(
+        title: 'Profile',
+        user: user,
         actions: [
           IconButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
