@@ -67,3 +67,16 @@ jobs:
           name: cfpmi-release-apk
           path: build/app/outputs/flutter-apk/*.apk
           retention-days: 7
+
+      # ── Android App Bundle (.aab) — the artifact uploaded to Google Play.
+      # Signed with the committed upload key (android/key.properties +
+      # android/app/upload-keystore.jks); applicationId com.cfpmi.app.
+      - name: Build Android App Bundle (AAB, CFPMI)
+        run: flutter build appbundle --release --flavor cfpmi --dart-define=BRAND_ID=cfpmi
+
+      - name: Upload AAB (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfpmi-release-aab
+          path: build/app/outputs/bundle/**/*.aab
+          retention-days: 14

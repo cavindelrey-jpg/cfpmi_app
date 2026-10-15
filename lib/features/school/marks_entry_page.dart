@@ -733,32 +733,76 @@ class _MarksEntryPageState extends State<MarksEntryPage> {
     ]);
   }
 
+  // Initials for the roster avatar (first + last word).
+  String _initialsOf(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
+  }
+
+  // Letter grade from the currently-typed score, for an at-a-glance badge.
+  (String, Color)? _gradeChip(AppColors ac, String id) {
+    final raw = (_ctrls[id]?.text ?? '').trim().replaceAll(',', '.');
+    if (raw.isEmpty) return null;
+    final v = double.tryParse(raw);
+    if (v == null || _maxScore <= 0) return null;
+    final pct = (v / _maxScore).clamp(0.0, 1.0);
+    if (pct >= 0.8) return ('A', ac.grn);
+    if (pct >= 0.6) return ('B', ac.primary);
+    if (pct >= 0.5) return ('C', ac.gold);
+    if (pct >= 0.4) return ('D', ac.org);
+    return ('F', ac.red);
+  }
+
   Widget _studentRow(AppColors ac, List<RosterStudent> visible, int i) {
     final s = visible[i];
     final dirty = _isDirty(s.id);
     final error = _fieldError(s.id);
     final saved = !dirty && _existing.containsKey(s.id);
+    final grade = _gradeChip(ac, s.id);
     return Container(
       key: ValueKey(s.id),
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+      margin: const EdgeInsets.only(bottom: 7),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
         color: error != null ? ac.redBg : ac.surf,
-        borderRadius: BorderRadius.circular(Rad.sm),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: error != null ? ac.red : dirty ? ac.primary : ac.bdr2),
       ),
       child: Row(children: [
-        SizedBox(width: 28, child: Text('${_roster.indexOf(s) + 1}', style: GoogleFonts.inter(fontSize: 11.5, color: ac.muted))),
+        SizedBox(width: 22, child: Text('${_roster.indexOf(s) + 1}', style: GoogleFonts.inter(fontSize: 11, color: ac.muted))),
+        Container(
+          width: 36, height: 36,
+          decoration: BoxDecoration(color: ac.primaryBg, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: Text(_initialsOf(s.name),
+              style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w700, color: ac.primary)),
+        ),
+        const SizedBox(width: 11),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(s.name, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(fontSize: 13.5, fontWeight: FontWeight.w600, color: ac.txt)),
           if (error != null)
             Text(error, style: GoogleFonts.inter(fontSize: 11, color: ac.red))
           else if (saved)
-            Text('Saved', style: GoogleFonts.inter(fontSize: 11, color: ac.grn))
+            Row(children: [
+              Icon(Icons.check_circle_rounded, size: 12, color: ac.grn),
+              const SizedBox(width: 3),
+              Text('Saved', style: GoogleFonts.inter(fontSize: 11, color: ac.grn)),
+            ])
           else if (dirty)
             Text('Not saved yet', style: GoogleFonts.inter(fontSize: 11, color: ac.primary)),
         ])),
+        if (grade != null) ...[
+          Container(
+            width: 26, height: 26,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(color: grade.$2.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(8)),
+            alignment: Alignment.center,
+            child: Text(grade.$1, style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w800, color: grade.$2)),
+          ),
+        ],
         SizedBox(
           width: 84,
           child: TextField(

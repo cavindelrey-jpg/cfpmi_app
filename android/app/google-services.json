@@ -88,7 +88,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:415070142496:android:77f1be36a89a6fd7657c45",
         "android_client_info": {
-          "package_name": "com.example.academia_app.cfpmi"
+          "package_name": "com.cfpmi.app"
         }
       },
       "oauth_client": [],

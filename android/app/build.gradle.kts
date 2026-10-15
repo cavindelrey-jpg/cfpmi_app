@@ -1,8 +1,21 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
+}
+
+// Upload-key signing for Google Play. If android/key.properties + the
+// keystore are present (committed for the CI release build), release
+// artifacts are signed with the upload key; otherwise they fall back to
+// the debug key (local dev).
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -33,7 +46,7 @@ android {
         // package so a flavor-less `flutter run`/`flutter build` (no
         // --flavor flag) matches this repo's primary identity, same
         // reasoning as BRAND_ID's default in lib/config/branding.dart.
-        applicationId = "com.example.academia_app.cfpmi"
+        applicationId = "com.cfpmi.app"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         // No manual ndk.abiFilters here -- Flutter's own --split-per-abi
@@ -44,9 +57,23 @@ android {
         // flavor comment below for the full command).
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keystorePropertiesFile.exists())
+                signingConfigs.getByName("release")
+            else
+                signingConfigs.getByName("debug")
             // Was unset -- release builds were shipping completely
             // unshrunk (no R8, no unused-resource removal), which is
             // most of why app-*-release.apk was ~80MB.
@@ -79,7 +106,7 @@ android {
     productFlavors {
         create("cfpmi") {
             dimension = "brand"
-            applicationId = "com.example.academia_app.cfpmi"
+            applicationId = "com.cfpmi.app"
             resValue("string", "app_name", "CFPMI")
         }
     }

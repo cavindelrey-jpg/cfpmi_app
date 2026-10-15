@@ -69,38 +69,53 @@ class _LiveClass extends StatelessWidget {
       length: 3,
       child: Column(
         children: [
-          // LIVE banner
+          // Polished live header card — status pill, topic, teacher/subject.
           Container(
             width: double.infinity,
-            color: ac.red.withValues(alpha: 0.08),
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-            child: Row(children: [
-              Container(width: 9, height: 9, decoration: BoxDecoration(color: ac.red, shape: BoxShape.circle)),
-              const SizedBox(width: 8),
-              Text('LIVE CLASS', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: ac.red)),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  '${session.teacherName.isEmpty ? 'Teacher' : session.teacherName} · ${session.subject}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right,
-                  style: GoogleFonts.inter(fontSize: 12, color: ac.txt2),
-                ),
+            margin: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [ac.navy, ac.navy2],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(color: ac.red, borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(width: 7, height: 7, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Text('LIVE', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.6)),
+                  ]),
+                ),
+                const Spacer(),
+                Flexible(child: Text(session.subject,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.85)))),
+              ]),
+              if (session.topic.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(session.topic,
+                    style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+              ],
+              const SizedBox(height: 8),
+              Row(children: [
+                Icon(Icons.person_rounded, size: 14, color: ac.gold),
+                const SizedBox(width: 6),
+                Text(session.teacherName.isEmpty ? 'Teacher' : session.teacherName,
+                    style: GoogleFonts.inter(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.85))),
+              ]),
             ]),
           ),
-          if (session.topic.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(session.topic,
-                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt)),
-              ),
-            ),
           TabBar(
             labelColor: ac.primary,
             unselectedLabelColor: ac.txt2,
             indicatorColor: ac.primary,
+            labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
             tabs: const [
               Tab(text: 'Presentation'),
               Tab(text: 'My Notes'),
@@ -123,14 +138,31 @@ class _LiveClass extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: ClassroomSlide(
-                  url: session.currentSlideUrl, index: session.currentSlide, total: session.slideCount, topic: session.topic),
+            Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: ac.bdr),
+                boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 6))],
+              ),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: ClassroomSlide(
+                    url: session.currentSlideUrl, index: session.currentSlide, total: session.slideCount, topic: session.topic),
+              ),
             ),
-            const SizedBox(height: 10),
-            Text(session.slideCount == 0 ? 'Waiting for the teacher…' : 'Slide ${session.currentSlide + 1} of ${session.slideCount}',
-                style: GoogleFonts.inter(fontSize: 12.5, color: ac.txt2)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(20), border: Border.all(color: ac.bdr)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.slideshow_rounded, size: 15, color: ac.primary),
+                const SizedBox(width: 7),
+                Text(session.slideCount == 0 ? 'Waiting for the teacher…' : 'Slide ${session.currentSlide + 1} of ${session.slideCount}',
+                    style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: ac.txt2)),
+              ]),
+            ),
           ],
         ),
       );
