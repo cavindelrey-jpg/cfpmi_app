@@ -9,7 +9,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../config/branding.dart';
 import '../models/app_user.dart';
 import '../theme/app_colors.dart';
 import '../pages/search_page.dart';
@@ -19,7 +18,7 @@ import '../services/auth_service.dart';
 class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final AppUser user;
 
-  /// Opens the navigation drawer (mobile) or toggles the rail (desktop).
+  /// Opens the complete application menu (drawer).
   final VoidCallback onMenu;
 
   /// Selects the Profile section in the shell.
@@ -28,12 +27,17 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   /// Mobile layout: a hamburger + icon-only search, tighter padding.
   final bool compact;
 
+  /// The CURRENT PAGE title shown beside the menu button (e.g. "Home",
+  /// "Academia Library") — the page name, not the app name, no subtitle.
+  final String title;
+
   const AppTopBar({
     super.key,
     required this.user,
     required this.onMenu,
     required this.onProfile,
     this.compact = false,
+    this.title = '',
   });
 
   @override
@@ -54,28 +58,25 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
       padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 12),
       child: Row(
         children: [
-          // Menu button on every width (mobile opens the drawer, desktop
-          // toggles the nav rail) — sits beside the logo per the brief.
+          // One menu button at the extreme left — opens the complete app menu.
           IconButton(
             icon: Icon(Icons.menu_rounded, color: ac.txt),
             tooltip: 'Menu',
             onPressed: onMenu,
           ),
-          _logo(ac),
-          if (!compact && user.isSchoolMember && user.schoolName.isNotEmpty) ...[
-            const SizedBox(width: 14),
-            Container(width: 1, height: 22, color: ac.bdr),
-            const SizedBox(width: 14),
-            Flexible(
-              child: Text(
-                user.schoolName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                    fontSize: 13.5, fontWeight: FontWeight.w600, color: ac.txt2),
-              ),
+          // Current PAGE title (not the app name, no subtitle).
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.sora(
+                  fontSize: compact ? 18 : 20,
+                  fontWeight: FontWeight.w800,
+                  color: ac.txt,
+                  letterSpacing: -0.3),
             ),
-          ],
+          ),
           const Spacer(),
           if (compact)
             IconButton(
@@ -95,31 +96,6 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
           _profileMenu(context, ac),
         ],
       ),
-    );
-  }
-
-  Widget _logo(AppColors ac) {
-    // Crest + "CFPMI" wordmark, side by side. The wordmark always shows, so
-    // the brand name is present even if the crest asset fails to load.
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Image.asset(
-          Branding.current.logoAssetPath,
-          height: 32,
-          filterQuality: FilterQuality.medium,
-          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-        ),
-        const SizedBox(width: 9),
-        Text(
-          Branding.current.appName,
-          style: GoogleFonts.sora(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: ac.primary,
-              letterSpacing: -0.3),
-        ),
-      ],
     );
   }
 

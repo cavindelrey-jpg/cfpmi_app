@@ -92,6 +92,16 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
     }
   }
 
+  // Human-readable lesson length from a duration in seconds.
+  String _formatDuration(int seconds) {
+    if (seconds <= 0) return '';
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    if (m == 0) return '${s}s';
+    if (s == 0) return '$m min';
+    return '$m min ${s}s';
+  }
+
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
@@ -145,12 +155,27 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
   Widget _readerColumn(AppColors ac, CourseLesson lesson, bool hasVideo) {
     return Column(children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 2),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(lesson.title,
               style: AppText.h1.copyWith(fontSize: 24, color: ac.txt, height: 1.2)),
         ),
+      ),
+      // Trust signals near title: view count + duration (Mistake 9)
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+        child: Row(children: [
+          Icon(Icons.people_outline_rounded, size: 14, color: ac.muted),
+          const SizedBox(width: 4),
+          Text('${lesson.viewCount} students', style: AppText.caption),
+          if (lesson.durationSeconds != null && lesson.durationSeconds! > 0) ...[ 
+            const SizedBox(width: 12),
+            Icon(Icons.schedule_rounded, size: 14, color: ac.muted),
+            const SizedBox(width: 4),
+            Text(_formatDuration(lesson.durationSeconds!), style: AppText.caption),
+          ],
+        ]),
       ),
       if (hasVideo)
         Padding(

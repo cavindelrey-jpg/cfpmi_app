@@ -250,6 +250,22 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
+  // The title shown in the top bar for the current section — the PAGE name,
+  // not the app name, and with no subtitle.
+  String get _pageTitle {
+    switch (_section) {
+      case 'Home':     return 'Home';
+      case 'Courses':  return 'Academia Courses';
+      case 'Library':  return 'Academia Library';
+      case 'Magazine': return 'Academia Magazine';
+      case 'Groups':   return 'Groups';
+      case 'Tests':    return 'Academia Quizzes & Tests';
+      case 'School':   return 'School';
+      case 'Profile':  return 'Profile';
+      default:         return _section;
+    }
+  }
+
   // Canonical primary sections (desktop rail order), role-gated. `maxWidth`
   // is the desktop workspace constraint: null = full-bleed (the page manages
   // its own widths — used for already-redesigned/task-specific workspaces),
@@ -336,18 +352,21 @@ class _HomeShellState extends State<HomeShell> {
 
     return Scaffold(
       key: _scaffoldKey,
-      // One shared top bar (logo + global search/notifications/account),
-      // instead of each page drawing its own header.
-      appBar: AppTopBar(
-        user: widget.user,
-        compact: true,
-        onMenu: () => _scaffoldKey.currentState?.openDrawer(),
-        onProfile: () => _select('Profile'),
-      ),
       drawer: AppDrawer(user: widget.user, onHomeTap: () => _select('Home')),
+      // Top bar lives INSIDE a top SafeArea so it never bleeds under the
+      // phone's status bar (battery/wifi/clock). It shows the current page
+      // title (not the app name) beside the menu button.
       body: SafeArea(
-        top: false,
+        top: true,
+        bottom: false,
         child: Column(children: [
+          AppTopBar(
+            user: widget.user,
+            compact: true,
+            title: _pageTitle,
+            onMenu: () => _scaffoldKey.currentState?.openDrawer(),
+            onProfile: () => _select('Profile'),
+          ),
           const _OfflineBanner(),
           Expanded(child: _workspace(ac, sections, currentIdx, false)),
         ]),
@@ -388,14 +407,18 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: AppDrawer(user: widget.user, onHomeTap: () => _select('Home')),
-      body: Column(
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: Column(
         children: [
           // One global bar across the whole app width, sitting above the rail.
+          // Shows the current page title (not the app name). The menu button
+          // opens the COMPLETE application menu (the drawer, which lists every
+          // section incl. Classroom/Live Class).
           AppTopBar(
             user: widget.user,
-            // The top menu button opens the COMPLETE application menu (the
-            // drawer, which lists every section incl. Classroom/Live Class),
-            // not just a rail toggle — so everything is reachable from here.
+            title: _pageTitle,
             onMenu: () => _scaffoldKey.currentState?.openDrawer(),
             onProfile: () => _select('Profile'),
           ),
@@ -414,6 +437,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -563,20 +587,23 @@ class _HomeShellState extends State<HomeShell> {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
       width: exp ? 232 : 76,
+      // Permanent dark-navy rail (matches the design reference). It stays on
+      // every desktop screen; the top-bar menu button opens the full drawer.
       decoration: BoxDecoration(
-        color: ac.surf,
-        border: Border(right: BorderSide(color: ac.bdr)),
+        color: ac.navy,
+        border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.06))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Collapse/expand toggle (the brand/logo lives in the global top bar).
+          // Collapse/expand toggle.
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
             child: Align(
               alignment: exp ? Alignment.centerLeft : Alignment.center,
               child: IconButton(
-                icon: Icon(exp ? Icons.menu_open_rounded : Icons.menu_rounded, color: ac.txt2),
+                icon: Icon(exp ? Icons.menu_open_rounded : Icons.menu_rounded,
+                    color: Colors.white.withValues(alpha: 0.75)),
                 tooltip: exp ? 'Collapse menu' : 'Expand menu',
                 onPressed: () => setState(() => _railExpanded = !_railExpanded),
               ),
@@ -636,11 +663,13 @@ class _HomeShellState extends State<HomeShell> {
   // Active state keeps 2+ distinct changes either way (tinted pill + brand
   // colour + filled icon [+ bold label / left bar when expanded]).
   Widget _desktopNavTile(AppColors ac, _NavDef def, bool selected, bool expanded) {
-    final color = selected ? ac.primary : ac.txt2;
+    // Light content on the dark-navy rail: gold for the selected item, a
+    // soft white for the rest.
+    final color = selected ? ac.gold : Colors.white.withValues(alpha: 0.78);
     final tile = Container(
       height: 46,
       decoration: BoxDecoration(
-        color: selected ? ac.primary.withValues(alpha: 0.10) : Colors.transparent,
+        color: selected ? Colors.white.withValues(alpha: 0.12) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: expanded
@@ -650,7 +679,7 @@ class _HomeShellState extends State<HomeShell> {
                   width: 3,
                   height: 22,
                   decoration: BoxDecoration(
-                    color: selected ? ac.primary : Colors.transparent,
+                    color: selected ? ac.gold : Colors.transparent,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),

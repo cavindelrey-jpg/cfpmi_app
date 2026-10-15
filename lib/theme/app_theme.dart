@@ -120,7 +120,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         minimumSize: const Size(double.infinity, 52),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        textStyle: AppText.button,
         overlayColor: Colors.black.withValues(alpha: .08),
         animationDuration: Dur.fast,
       ),
@@ -176,11 +176,11 @@ class AppTheme {
     chipTheme: ChipThemeData(
       backgroundColor: C.surf3,
       selectedColor: C.primaryBg,
-      labelStyle: const TextStyle(fontSize: 12),
-      side: const BorderSide(color: C.bdr),
+      labelStyle: const TextStyle(fontSize: 12, letterSpacing: 0.2),
+      side: BorderSide(color: C.bdr.withValues(alpha: 0.8), width: 0.8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
-    dividerColor: C.bdr,
+    dividerColor: C.bdr.withValues(alpha: 0.7),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: C.gold,
       foregroundColor: C.navy,
@@ -248,7 +248,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         minimumSize: const Size(double.infinity, 52),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        textStyle: AppText.button,
         overlayColor: Colors.white.withValues(alpha: .08),
         animationDuration: Dur.fast,
       ),
@@ -305,11 +305,11 @@ class AppTheme {
     chipTheme: ChipThemeData(
       backgroundColor: _dc.surf3,
       selectedColor: _dc.primaryBg,
-      labelStyle: const TextStyle(fontSize: 12),
-      side: BorderSide(color: _dc.bdr),
+      labelStyle: const TextStyle(fontSize: 12, letterSpacing: 0.2),
+      side: BorderSide(color: _dc.bdr.withValues(alpha: 0.8), width: 0.8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
-    dividerColor: _dc.bdr,
+    dividerColor: _dc.bdr.withValues(alpha: 0.7),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: _dc.gold,
       foregroundColor: _dc.navy,
@@ -375,6 +375,14 @@ class Shad {
         blurRadius: 6, offset: const Offset(0, 2)),
     BoxShadow(color: Colors.black.withValues(alpha: .11),
         blurRadius: 32, offset: const Offset(0, 12)),
+  ];
+  /// Card-specific shadow — between [sm] and [md]; gives cards real depth
+  /// without the heavier ambient of [md]. Use for ACard / content tiles.
+  static List<BoxShadow> get card => [
+    BoxShadow(color: Colors.black.withValues(alpha: .04),
+        blurRadius: 2, offset: const Offset(0, 1)),
+    BoxShadow(color: Colors.black.withValues(alpha: .06),
+        blurRadius: 12, offset: const Offset(0, 4)),
   ];
 }
 
@@ -464,11 +472,11 @@ class AppText {
 
   /// Long-form reading text — article bodies, descriptions.
   static TextStyle get body => GoogleFonts.inter(
-      fontSize: 15, fontWeight: FontWeight.w400, height: 1.65, color: _txt);
+      fontSize: 15, fontWeight: FontWeight.w400, height: 1.7, color: _txt);
 
   /// Compact body text — comments, list secondary text.
   static TextStyle get bodySm => GoogleFonts.inter(
-      fontSize: 13, fontWeight: FontWeight.w400, height: 1.5, color: _txt2);
+      fontSize: 13, fontWeight: FontWeight.w400, height: 1.55, color: _txt2);
 
   /// Timestamps, counts, fine print.
   static TextStyle get caption => GoogleFonts.inter(
@@ -477,9 +485,10 @@ class AppText {
   /// Badges, overline tags, all-caps labels.
   static TextStyle get label => GoogleFonts.inter(
       fontSize: 10.5, fontWeight: FontWeight.w700, height: 1.2,
-      letterSpacing: 0.6, color: _muted);
+      letterSpacing: 0.8, color: _muted);
 
   /// Button label text.
   static TextStyle get button => GoogleFonts.sora(
-      fontSize: 15, fontWeight: FontWeight.w700, height: 1.2, color: Colors.white);
+      fontSize: 15, fontWeight: FontWeight.w700, height: 1.2,
+      letterSpacing: -0.1, color: Colors.white);
 }

@@ -12,10 +12,12 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:http/http.dart' as http;
 import 'package:pdfrx/pdfrx.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import '../../core/docx_parser.dart';
 import '../../core/epub_parser.dart';
@@ -24,8 +26,9 @@ import '../../repositories/academic_content_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart' show showToast;
+import '../../widgets/web_embed/web_embed.dart';
 
-enum ViewableFileKind { image, pdf, video, docx, epub }
+enum ViewableFileKind { image, pdf, video, docx, pptx, epub }
 
 /// Maps a file's extension to a kind this viewer can render, or null if
 /// it should fall back to opening externally.
@@ -36,11 +39,13 @@ ViewableFileKind? viewableKindFor(String url) {
   const pdfExts = {'pdf'};
   const videoExts = {'mp4', 'mov', 'avi', 'm4v'};
   const docxExts = {'docx'};
+  const pptxExts = {'pptx', 'ppt'};
   const epubExts = {'epub'};
   if (imageExts.contains(ext)) return ViewableFileKind.image;
   if (pdfExts.contains(ext)) return ViewableFileKind.pdf;
   if (videoExts.contains(ext)) return ViewableFileKind.video;
   if (docxExts.contains(ext)) return ViewableFileKind.docx;
+  if (pptxExts.contains(ext)) return ViewableFileKind.pptx;
   if (epubExts.contains(ext)) return ViewableFileKind.epub;
   return null;
 }
@@ -94,27 +99,110 @@ class ContentViewerPage extends StatelessWidget {
           ),
         ],
       ),
-      body: SelectionArea(
-        child: switch (kind) {
-          ViewableFileKind.image => _ImageViewer(url: fileUrl, localFilePath: localFilePath),
-          ViewableFileKind.pdf => _PdfViewer(
-              url: fileUrl,
-              localFilePath: localFilePath,
-              contentId: contentId,
-              userId: userId,
+      // On the WEB, the native pdfrx/local-file path can't work (no device
+      // filesystem), so documents are rendered in a browser <iframe> — PDFs
+      // inline, Office files (.pptx/.docx) via the Office Online viewer. This
+      // is what makes files openable on desktop and PowerPoints viewable.
+      body: (kIsWeb && (kind == ViewableFileKind.pdf ||
+                        kind == ViewableFileKind.docx ||
+                        kind == ViewableFileKind.pptx))
+          ? _WebDocBody(fileUrl: fileUrl, kind: kind)
+          : SelectionArea(
+              child: switch (kind) {
+                ViewableFileKind.image => _ImageViewer(url: fileUrl, localFilePath: localFilePath),
+                ViewableFileKind.pdf => _PdfViewer(
+                    url: fileUrl,
+                    localFilePath: localFilePath,
+                    contentId: contentId,
+                    userId: userId,
+                  ),
+                ViewableFileKind.video => _VideoViewer(url: fileUrl, localFilePath: localFilePath),
+                ViewableFileKind.docx => _DocxViewer(
+                    url: fileUrl,
+                    localFilePath: localFilePath,
+                    contentId: contentId,
+                  ),
+                ViewableFileKind.pptx => _ExternalDocFallback(fileUrl: fileUrl),
+                ViewableFileKind.epub => _EpubViewer(
+                    url: fileUrl,
+                    localFilePath: localFilePath,
+                    contentId: contentId,
+                  ),
+              },
             ),
-          ViewableFileKind.video => _VideoViewer(url: fileUrl, localFilePath: localFilePath),
-          ViewableFileKind.docx => _DocxViewer(
-              url: fileUrl,
-              localFilePath: localFilePath,
-              contentId: contentId,
+    );
+  }
+}
+
+// Web document body: renders the file inside a browser iframe. PDFs load
+// inline; Office files go through the Office Online embed viewer. A toolbar
+// row offers "Open in new tab" as a guaranteed fallback.
+class _WebDocBody extends StatelessWidget {
+  final String fileUrl;
+  final ViewableFileKind kind;
+  const _WebDocBody({required this.fileUrl, required this.kind});
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    final embedUrl = kind == ViewableFileKind.pdf ? fileUrl : officeViewerUrl(fileUrl);
+    return Column(
+      children: [
+        Container(
+          color: ac.surf,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(children: [
+            Icon(
+              kind == ViewableFileKind.pptx
+                  ? Icons.slideshow_rounded
+                  : kind == ViewableFileKind.docx
+                      ? Icons.description_rounded
+                      : Icons.picture_as_pdf_rounded,
+              size: 18, color: ac.primary),
+            const SizedBox(width: 8),
+            Expanded(child: Text(
+              kind == ViewableFileKind.pptx ? 'Presentation' : kind == ViewableFileKind.docx ? 'Document' : 'PDF',
+              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: ac.txt2))),
+            TextButton.icon(
+              onPressed: () => launchUrl(Uri.parse(embedUrl), mode: LaunchMode.externalApplication),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: const Text('Open in new tab'),
             ),
-          ViewableFileKind.epub => _EpubViewer(
-              url: fileUrl,
-              localFilePath: localFilePath,
-              contentId: contentId,
-            ),
-        },
+          ]),
+        ),
+        Divider(height: 1, color: ac.bdr),
+        Expanded(child: WebDocEmbed(url: embedUrl)),
+      ],
+    );
+  }
+}
+
+// Non-web fallback for presentations (no in-app renderer on mobile): opens
+// the Office Online viewer in the device browser.
+class _ExternalDocFallback extends StatelessWidget {
+  final String fileUrl;
+  const _ExternalDocFallback({required this.fileUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.slideshow_rounded, size: 52, color: ac.muted),
+          const SizedBox(height: 14),
+          Text('Presentation', style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt)),
+          const SizedBox(height: 6),
+          Text('Open this presentation in your browser to view all slides.',
+              textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12.5, color: ac.txt2)),
+          const SizedBox(height: 18),
+          ElevatedButton.icon(
+            onPressed: () => launchUrl(Uri.parse(officeViewerUrl(fileUrl)), mode: LaunchMode.externalApplication),
+            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            label: const Text('Open presentation'),
+          ),
+        ]),
       ),
     );
   }

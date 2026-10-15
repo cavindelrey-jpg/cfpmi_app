@@ -931,20 +931,22 @@ class _BookmarkDot extends StatelessWidget {
       stream: PublicCourseRepository.instance.watchIsBookmarked(course.id, userId),
       builder: (context, snap) {
         final saved = snap.data ?? false;
-        return Material(
-          color: Colors.black38,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () {
-              HapticFeedback.lightImpact();
-              PublicCourseRepository.instance.toggleBookmark(course.id, userId);
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(5),
-              child: Icon(saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                  size: 15, color: saved ? ac.gold : Colors.white),
+        // Mistake 1 fix: frosted container with border so the icon never gets
+        // lost against busy cover imagery.
+        return GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            PublicCourseRepository.instance.toggleBookmark(course.id, userId);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: Colors.black45,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
             ),
+            child: Icon(saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                size: 16, color: saved ? ac.gold : Colors.white),
           ),
         );
       },
@@ -974,10 +976,12 @@ class _RecentReadTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               child: SizedBox(
                 width: 56, height: 56,
+                // Mistake 2 fix: gradient fallback instead of flat solid bg —
+                // never a plain rectangle; still looks designed without a cover.
                 child: (course.coverImageUrl ?? '').isNotEmpty
                     ? Image.network(course.coverImageUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(color: ac.surf3))
-                    : Container(color: ac.primaryBg, child: Icon(Icons.menu_book_rounded, color: ac.primary, size: 22)),
+                        errorBuilder: (_, __, ___) => _recentReadFallback(ac))
+                    : _recentReadFallback(ac),
               ),
             ),
             const SizedBox(width: 12),
@@ -997,4 +1001,19 @@ class _RecentReadTile extends StatelessWidget {
       ),
     );
   }
+
+  /// Mistake 2 fix: gradient + icon fallback so covers are never a plain
+  /// flat rectangle even when a URL is absent or fails to load.
+  Widget _recentReadFallback(AppColors ac) => Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [ac.primary.withValues(alpha: .85), ac.navy.withValues(alpha: .95)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Icon(Icons.menu_book_rounded, color: Colors.white.withValues(alpha: .9), size: 22),
+      );
 }

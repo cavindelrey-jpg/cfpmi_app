@@ -288,9 +288,12 @@ class _LessonTile extends StatelessWidget {
     return parts.join(' • ');
   }
 
+  // Mistake 1: wrap overlay icons in a frosted semi-transparent badge so they
+  // don't disappear into the cover image.
   Widget _thumb(AppColors ac, {required double? size}) {
+    final hasVideo = (lesson.videoUrl ?? '').isNotEmpty;
     final hasCover = (lesson.coverImageUrl ?? '').isNotEmpty;
-    final child = hasCover
+    final imageChild = hasCover
         ? Image.network(
             lesson.coverImageUrl!,
             fit: BoxFit.cover,
@@ -300,18 +303,63 @@ class _LessonTile extends StatelessWidget {
             errorBuilder: (_, __, ___) => _fallback(ac, size),
           )
         : _fallback(ac, size);
-    return ClipRRect(borderRadius: BorderRadius.circular(10), child: child);
+
+    // Only add the overlay icon badge when there's an actual cover image to
+    // contrast against — the fallback already shows the icon centred.
+    final Widget content = hasCover
+        ? Stack(
+            alignment: Alignment.center,
+            children: [
+              imageChild,
+              // Semi-transparent frosted badge (Mistake 1)
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                ),
+                child: Icon(
+                  hasVideo
+                      ? Icons.play_circle_outline_rounded
+                      : Icons.article_outlined,
+                  color: Colors.white,
+                  size: size != null ? 18 : 22,
+                  semanticLabel: hasVideo ? 'Video lesson' : 'Article lesson',
+                ),
+              ),
+            ],
+          )
+        : imageChild;
+
+    return ClipRRect(borderRadius: BorderRadius.circular(10), child: content);
   }
 
-  Widget _fallback(AppColors ac, double? size) => Container(
+  // Mistake 2: gradient fallback instead of a flat primaryBg colour.
+  Widget _fallback(AppColors ac, double? size) {
+    final hasVideo = (lesson.videoUrl ?? '').isNotEmpty;
+    return Container(
       width: size,
       height: size,
-      color: ac.primaryBg,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            ac.primary.withValues(alpha: 0.8),
+            ac.navy.withValues(alpha: 0.9),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
       alignment: Alignment.center,
       child: Icon(
-          (lesson.videoUrl ?? '').isNotEmpty ? Icons.play_circle_outline_rounded : Icons.article_outlined,
-          color: ac.primary,
-          size: 26));
+        hasVideo ? Icons.play_circle_outline_rounded : Icons.article_outlined,
+        color: Colors.white.withValues(alpha: 0.85),
+        size: 26,
+        semanticLabel: hasVideo ? 'Video lesson' : 'Article lesson',
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -324,20 +372,37 @@ class _LessonTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(Rad.md),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.all(10),
+            // Mistake 8: tighter bottom padding for better vertical balance.
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Rad.md),
-              border: Border.all(color: isCompleted ? Colors.green.withValues(alpha: 0.6) : ac.bdr2),
+              // Mistake 7: softer border — ac.bdr with reduced alpha instead of bdr2.
+              border: Border.all(color: isCompleted ? Colors.green.withValues(alpha: 0.6) : ac.bdr.withValues(alpha: 0.6)),
             ),
             child: Stack(
               children: [
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Expanded(child: SizedBox(width: double.infinity, child: _thumb(ac, size: null))),
                   const SizedBox(height: 6),
+                  // Mistake 7: stronger title hierarchy via AppText.title.
                   Text(lesson.title,
-                      style: AppText.bodySm.copyWith(fontWeight: FontWeight.w700, fontSize: 12.5),
+                      style: AppText.title.copyWith(fontSize: 13),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  // Mistake 6: proper "Course" badge instead of a plain caption.
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: ac.primaryBg,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Course',
+                      style: AppText.label.copyWith(color: ac.primary, letterSpacing: 0.5),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
                   Text(_meta, style: AppText.caption.copyWith(fontSize: 10)),
                 ]),
                 if (isCompleted)
@@ -347,7 +412,9 @@ class _LessonTile extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(3),
                       decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
-                      child: const Icon(Icons.check, size: 12, color: Colors.white),
+                      // Mistake 10: rounded icon variant + semantic label.
+                      child: const Icon(Icons.check_rounded, size: 12, color: Colors.white,
+                          semanticLabel: 'Completed'),
                     ),
                   ),
               ],
@@ -363,10 +430,12 @@ class _LessonTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(Rad.md),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          // Mistake 3: consistent 16px horizontal, 12px vertical margins.
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: isCompleted ? Colors.green.withValues(alpha: 0.6) : ac.bdr2),
+            // Mistake 7 (list): softer border consistent with grid tile.
+            border: Border.all(color: isCompleted ? Colors.green.withValues(alpha: 0.6) : ac.bdr.withValues(alpha: 0.6)),
           ),
           child: Row(children: [
             _thumb(ac, size: 48),
@@ -379,22 +448,44 @@ class _LessonTile extends StatelessWidget {
               ]),
             ),
             if (isCompleted) ...[
-              const Icon(Icons.check_circle_rounded, size: 18, color: Colors.green),
+              // Mistake 10: semantic label on status icon.
+              const Icon(Icons.check_circle_rounded, size: 18, color: Colors.green,
+                  semanticLabel: 'Completed'),
               const SizedBox(width: 8),
             ],
             // Clear "open lesson" button so the way in is obvious.
+            // Mistake 15: gradient CTA instead of flat primary colour.
             Container(
               height: 34,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(color: ac.primary, borderRadius: BorderRadius.circular(18)),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [ac.primary, ac.navy2],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
               alignment: Alignment.center,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon((lesson.videoUrl ?? '').isNotEmpty ? Icons.play_arrow_rounded : Icons.menu_book_rounded,
-                    size: 16, color: Colors.white),
-                const SizedBox(width: 5),
-                Text(isCompleted ? 'Review' : 'Open',
-                    style: AppText.button.copyWith(fontSize: 12.5, color: Colors.white)),
-              ]),
+              // Mistake 9: trust signal — show view count below action label.
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon((lesson.videoUrl ?? '').isNotEmpty ? Icons.play_arrow_rounded : Icons.menu_book_rounded,
+                        size: 16, color: Colors.white,
+                        semanticLabel: (lesson.videoUrl ?? '').isNotEmpty ? 'Play video' : 'Open article'),
+                    const SizedBox(width: 5),
+                    Text(isCompleted ? 'Review' : 'Open',
+                        style: AppText.button.copyWith(fontSize: 12.5, color: Colors.white)),
+                  ]),
+                  if (lesson.viewCount > 0)
+                    Text(
+                      '${lesson.viewCount} enrolled',
+                      style: const TextStyle(fontSize: 10, color: Colors.white70, height: 1.1),
+                    ),
+                ],
+              ),
             ),
           ]),
         ),

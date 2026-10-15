@@ -1,0 +1,7 @@
+# Cloudflare Pages SPA fallback: every path serves the Flutter app shell
+# (index.html) with a 200, so deep links, browser refreshes and bookmarks
+# work instead of 404ing. The real policy pages are static files and are
+# matched before this catch-all.
+/privacy.html      /privacy.html      200
+/delete-account.html  /delete-account.html  200
+/*                 /index.html        200

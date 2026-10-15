@@ -129,8 +129,8 @@ class _HierarchyBrowseScaffoldState<T> extends State<HierarchyBrowseScaffold<T>>
                 style: AppText.bodySm.copyWith(color: ac.txt),
                 decoration: InputDecoration(
                   hintText: widget.searchHint,
-                  hintStyle: AppText.bodySm.copyWith(color: ac.muted),
-                  prefixIcon: Icon(Icons.search_rounded, size: 18, color: ac.muted),
+                  hintStyle: AppText.bodySm.copyWith(color: ac.muted, fontSize: 14),
+                  prefixIcon: Icon(Icons.search_rounded, size: 20, color: ac.muted),
                   filled: true,
                   fillColor: ac.surf2,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -147,16 +147,16 @@ class _HierarchyBrowseScaffoldState<T> extends State<HierarchyBrowseScaffold<T>>
     if (widget.loading) {
       return _isGrid
           ? GridView.builder(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               itemCount: 6,
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: 260, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.9),
               itemBuilder: (_, __) => const ShimmerBlock(width: double.infinity, height: double.infinity),
             )
           : ListView.separated(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               itemCount: 5,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (_, __) => const ShimmerBlock(width: double.infinity, height: 72),
             );
     }
@@ -165,14 +165,21 @@ class _HierarchyBrowseScaffoldState<T> extends State<HierarchyBrowseScaffold<T>>
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(_query.isNotEmpty ? 'No matches for "$_query".' : widget.emptyMessage,
-              textAlign: TextAlign.center, style: AppText.bodySm.copyWith(color: ac.txt2)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.search_off_rounded, size: 48, color: ac.muted.withValues(alpha: .5)),
+              const SizedBox(height: 12),
+              Text(_query.isNotEmpty ? 'No matches for "$_query".' : widget.emptyMessage,
+                  textAlign: TextAlign.center, style: AppText.bodySm.copyWith(color: ac.txt2)),
+            ],
+          ),
         ),
       );
     }
     if (_isGrid) {
       return GridView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         itemCount: items.length,
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 260, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.9),
@@ -180,9 +187,9 @@ class _HierarchyBrowseScaffoldState<T> extends State<HierarchyBrowseScaffold<T>>
       );
     }
     return ListView.separated(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, i) => widget.listTileBuilder(context, items[i]),
     );
   }

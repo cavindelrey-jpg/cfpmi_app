@@ -99,9 +99,17 @@ class _CourseTile extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(child: SizedBox(width: double.infinity, child: _thumb(ac, size: null))),
               const SizedBox(height: 6),
-              Text(course.title, style: AppText.bodySm.copyWith(fontWeight: FontWeight.w700, fontSize: 12.5),
+              Text(course.title, style: AppText.title.copyWith(fontSize: 13),
                   maxLines: 2, overflow: TextOverflow.ellipsis),
-              Text('Course', style: AppText.caption.copyWith(fontSize: 10.5)),
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: ac.primaryBg,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text('Course', style: AppText.label.copyWith(color: ac.primary, letterSpacing: 0.6)),
+              ),
             ]),
           ),
         ),
