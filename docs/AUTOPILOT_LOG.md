@@ -5652,3 +5652,28 @@ Defaults chosen (per autopilot rules; reversible via git):
   ConstrainedBox(1180) that forced one layout on every page.
 - Guest shell (_GuestShell) left on its existing nav this round; top bar to be
   wired there during the long-tail phase.
+
+### Verification (Playwright, offline preview harness) — shell + 3 flagship pages
+- Sandbox has NO network to Supabase, so the real sign-in flow can't reach the
+  authenticated shell and no live data loads. Built a TEMPORARY harness
+  (lib/preview_shell.dart, since deleted) that renders HomeShell with a stub
+  school-staff user via `flutter build web -t lib/preview_shell.dart`, served
+  on :8099, screenshotted with Playwright (installed chrome). Data shows
+  loading/empty states — verifies LAYOUT, not live data.
+- Verified at 1440 (desktop), 820 (tablet), 390 (mobile):
+  - Global top bar renders the real cfpmi_logo.png + school context + single
+    search/notifications/account. Icon rail with full destination set. ✓
+  - Courses: desktop discovery grid workspace, two-column lower region. ✓
+  - Library: two-pane (folder panel + workspace). ✓
+  - School: in-shell SECONDARY rail persists beside the primary rail — the
+    core fix (primary rail no longer drops on School tools). ✓
+  - Mobile: compact top bar + 5-item bottom nav + FAB, no overflow. ✓
+  - Tablet 820: mobile shell chrome + desktop content grid (sensible hybrid). ✓
+- FINDING fixed mid-verification: UniversalHomePage drew its OWN top bar
+  (hamburger/search/bell/avatar) under the new global bar — duplicate controls
+  on every screen. Fixed with an `embedded` flag (shell passes embedded:true;
+  guest shell, which has no global bar, keeps the page top bar). Re-verified.
+- NOT verified live: LessonReaderPage is a pushed detail page reached by
+  opening a course lesson, which needs live course data — unreachable offline.
+  Its two-column reading+TOC layout is analyze-clean and code-verified only.
+- Guest shell still on its own nav (no global top bar) — deferred to long-tail.
