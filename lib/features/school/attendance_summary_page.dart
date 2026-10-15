@@ -13,6 +13,7 @@ import '../../models/student_record.dart';
 import '../../repositories/attendance_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_skeleton.dart';
 import 'widgets/management_scaffold.dart';
 
 class _Row {
@@ -170,7 +171,7 @@ class _AttendanceSummaryPageState extends State<AttendanceSummaryPage> {
   }
 
   Widget _body() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SkeletonList();
     if (_rows.isEmpty) {
       return Center(child: Padding(
         padding: const EdgeInsets.all(28),

@@ -14,6 +14,7 @@ import '../../repositories/attendance_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../core/result.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_skeleton.dart';
 import 'widgets/management_scaffold.dart';
 
 class AttendancePage extends StatefulWidget {
@@ -253,7 +254,7 @@ class _AttendancePageState extends State<AttendancePage> {
       );
 
   Widget _registerBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SkeletonList();
     if (_class == null || _classes.isEmpty) {
       return _empty('No classes with students yet.', 'Add students to the roster first, then take attendance.');
     }

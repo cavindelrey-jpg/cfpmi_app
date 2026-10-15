@@ -880,118 +880,80 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
   }
 
   // ── Quick Access (4 feature cards, horizontally scrollable) ─────────
-  Widget _quickAccessSection(BuildContext context) {
-    return SizedBox(
-      height: 150,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _featureCard(
-            icon: Icons.menu_book_rounded,
-            iconColor: _cGreen,
-            iconBg: _cPaleGreen,
-            title: 'My Courses',
-            subtitle: 'Access your lessons',
-            onTap: () => _open(context, CoursesHomePage(user: _u)),
+  // A responsive card row: a wrapping grid on desktop/web (uses the width),
+  // a horizontal scroller on phones — not both directions on one screen.
+  Widget _cardRow(List<Widget> cards) {
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        if (c.maxWidth >= 600) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(spacing: 10, runSpacing: 10, children: cards),
+          );
+        }
+        final children = <Widget>[];
+        for (var i = 0; i < cards.length; i++) {
+          if (i > 0) children.add(const SizedBox(width: 10));
+          children.add(cards[i]);
+        }
+        return SizedBox(
+          height: 150,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: children,
           ),
-          const SizedBox(width: 10),
-          _featureCard(
-            icon: Icons.assignment_turned_in_rounded,
-            iconColor: const Color(0xFFB7791F),
-            iconBg: _cPaleYellow,
-            title: 'My Marks',
-            subtitle: 'View your results',
-            onTap: () => _open(context, MarksPage(user: _userOrGuest)),
-          ),
-          const SizedBox(width: 10),
-          _featureCard(
-            icon: Icons.description_rounded,
-            iconColor: _cInfo,
-            iconBg: _cPaleBlue,
-            title: 'Past Papers',
-            subtitle: 'GCE, A-level & exams',
-            onTap: () => _open(context, LibraryHomePage(user: _userOrGuest)),
-          ),
-          const SizedBox(width: 10),
-          _featureCard(
-            icon: Icons.school_rounded,
-            iconColor: _cPurple,
-            iconBg: _cPalePurple,
-            title: 'Campus Info',
-            subtitle: 'Timetable & notices',
-            onTap: () => _open(context, TimetablePage(user: _userOrGuest)),
-          ),
-          const SizedBox(width: 10),
-          _featureCard(
-            icon: Icons.badge_rounded,
-            iconColor: _cGreen,
-            iconBg: _cPaleGreen,
-            title: 'My Records',
-            subtitle: 'Attendance & fees',
-            onTap: () => _open(context, StudentRecordsPage(user: _userOrGuest)),
-          ),
-          const SizedBox(width: 10),
-          _featureCard(
-            icon: Icons.sensors_rounded,
-            iconColor: _cPurple,
-            iconBg: _cPalePurple,
-            title: 'Live Class',
-            subtitle: 'Join the lesson',
-            onTap: () => _open(context, StudentClassroomPage(user: _userOrGuest)),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // ── Study Tools (4 feature cards) ───────────────────────────────────
-  Widget _studyToolsSection(BuildContext context) {
-    return SizedBox(
-      height: 150,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _featureCard(
-            icon: Icons.quiz_rounded,
-            iconColor: _cGreen,
-            iconBg: _cPaleGreen,
-            title: 'Quizzes',
-            subtitle: 'Test yourself',
-            onTap: () => _open(context, QuizCategoriesPage(user: _userOrGuest)),
-          ),
-          const SizedBox(width: 10),
-          _featureCard(
-            icon: Icons.style_rounded,
-            iconColor: _cInfo,
-            iconBg: _cPaleBlue,
-            title: 'Flashcards',
-            subtitle: 'Revise faster',
-            onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest)),
-          ),
-          const SizedBox(width: 10),
-          _featureCard(
-            icon: Icons.psychology_rounded,
-            iconColor: const Color(0xFFB7791F),
-            iconBg: _cPaleYellow,
-            title: 'Study Plan',
-            subtitle: 'Stay on track',
-            onTap: () => _open(context, PersonalStudyPage(user: _userOrGuest)),
-          ),
-          const SizedBox(width: 10),
-          _featureCard(
-            icon: Icons.cloud_download_rounded,
-            iconColor: _cPurple,
-            iconBg: _cPalePurple,
-            title: 'Offline Mode',
-            subtitle: 'Download now',
-            onTap: () => _open(context, LibraryHomePage(user: _userOrGuest)),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _quickAccessSection(BuildContext context) => _cardRow([
+        _featureCard(
+            icon: Icons.menu_book_rounded, iconColor: _cGreen, iconBg: _cPaleGreen,
+            title: 'My Courses', subtitle: 'Access your lessons',
+            onTap: () => _open(context, CoursesHomePage(user: _u))),
+        _featureCard(
+            icon: Icons.assignment_turned_in_rounded, iconColor: const Color(0xFFB7791F), iconBg: _cPaleYellow,
+            title: 'My Marks', subtitle: 'View your results',
+            onTap: () => _open(context, MarksPage(user: _userOrGuest))),
+        _featureCard(
+            icon: Icons.description_rounded, iconColor: _cInfo, iconBg: _cPaleBlue,
+            title: 'Past Papers', subtitle: 'GCE, A-level & exams',
+            onTap: () => _open(context, LibraryHomePage(user: _userOrGuest))),
+        _featureCard(
+            icon: Icons.school_rounded, iconColor: _cPurple, iconBg: _cPalePurple,
+            title: 'Campus Info', subtitle: 'Timetable & notices',
+            onTap: () => _open(context, TimetablePage(user: _userOrGuest))),
+        _featureCard(
+            icon: Icons.badge_rounded, iconColor: _cGreen, iconBg: _cPaleGreen,
+            title: 'My Records', subtitle: 'Attendance & fees',
+            onTap: () => _open(context, StudentRecordsPage(user: _userOrGuest))),
+        _featureCard(
+            icon: Icons.sensors_rounded, iconColor: _cPurple, iconBg: _cPalePurple,
+            title: 'Live Class', subtitle: 'Join the lesson',
+            onTap: () => _open(context, StudentClassroomPage(user: _userOrGuest))),
+      ]);
+
+  // ── Study Tools ─────────────────────────────────────────────────────
+  Widget _studyToolsSection(BuildContext context) => _cardRow([
+        _featureCard(
+            icon: Icons.quiz_rounded, iconColor: _cGreen, iconBg: _cPaleGreen,
+            title: 'Quizzes', subtitle: 'Test yourself',
+            onTap: () => _open(context, QuizCategoriesPage(user: _userOrGuest))),
+        _featureCard(
+            icon: Icons.style_rounded, iconColor: _cInfo, iconBg: _cPaleBlue,
+            title: 'Flashcards', subtitle: 'Revise faster',
+            onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
+        _featureCard(
+            icon: Icons.psychology_rounded, iconColor: const Color(0xFFB7791F), iconBg: _cPaleYellow,
+            title: 'Study Plan', subtitle: 'Stay on track',
+            onTap: () => _open(context, PersonalStudyPage(user: _userOrGuest))),
+        _featureCard(
+            icon: Icons.cloud_download_rounded, iconColor: _cPurple, iconBg: _cPalePurple,
+            title: 'Offline Mode', subtitle: 'Download now',
+            onTap: () => _open(context, LibraryHomePage(user: _userOrGuest))),
+      ]);
 
   Widget _featureCard({
     required IconData icon,

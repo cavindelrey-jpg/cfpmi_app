@@ -13,6 +13,7 @@ import '../../models/fee_ledger_entry.dart';
 import '../../repositories/attendance_repository.dart';
 import '../../repositories/fee_repository.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_skeleton.dart';
 
 class StudentRecordsPage extends StatelessWidget {
   final AppUser user;
@@ -79,7 +80,7 @@ class _MyAttendanceState extends State<_MyAttendance> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SkeletonList();
     if (_records.isEmpty) {
       return _empty(ac, Icons.fact_check_outlined, 'No attendance recorded yet.',
           'Your teachers haven\'t marked any sessions for you so far.');
@@ -197,7 +198,7 @@ class _MyFeesState extends State<_MyFees> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SkeletonList();
     if (_entries.isEmpty) {
       return _empty(ac, Icons.account_balance_wallet_outlined, 'No fee records yet.',
           'Your fee charges and payments will appear here once recorded.');

@@ -15,6 +15,7 @@ import '../../models/student_record.dart';
 import '../../repositories/fee_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_skeleton.dart';
 import 'widgets/management_scaffold.dart';
 
 class FeesPage extends StatefulWidget {
@@ -140,7 +141,7 @@ class _FeesPageState extends State<FeesPage> {
   }
 
   Widget _list() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SkeletonList();
     if (_class == null || _students.isEmpty) {
       return Center(
         child: Padding(
