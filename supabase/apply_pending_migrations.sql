@@ -1,6 +1,7 @@
 -- CFPMI — pending migrations to apply to Supabase (project ccumxxysaaphhgdzlagk).
 -- Paste this whole file into Supabase Dashboard -> SQL Editor -> Run.
--- Safe to run ONCE. On a re-run you may see 'already exists' on the policies — ignore those.
+-- Safe to run ONCE. On a re-run you may see 'already exists' / 'already member
+-- of publication' on policies/realtime — ignore those.
 
 -- ============================================================
 -- 20261014120000_attendance_records.sql
@@ -309,4 +310,10 @@ create policy "classroom resources write" on public.classroom_resources
     )
     or exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
   );
+
+-- Live sync: the three views subscribe via supabase .stream(), which needs
+-- these tables in the realtime publication (new tables are not realtime by
+-- default). Safe to ignore "already member of publication" on a re-run.
+alter publication supabase_realtime add table public.classroom_sessions;
+alter publication supabase_realtime add table public.classroom_resources;
 
