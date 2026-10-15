@@ -301,6 +301,9 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
+  // Desktop primary rail: collapsed icon rail (tooltips) by default,
+  // expandable to labels. Progressive disclosure, per the shell spec.
+  bool _railExpanded = false;
 
   @override
   void initState() {
@@ -465,8 +468,11 @@ class _HomeShellState extends State<HomeShell> {
 
   Widget _desktopSidebar(AppColors ac, List<_NavDef> nav, int safeTab) {
     final profileIndex = nav.indexWhere((n) => n.label == 'Profile');
-    return Container(
-      width: 248,
+    final exp = _railExpanded;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      width: exp ? 240 : 76,
       decoration: BoxDecoration(
         color: ac.surf,
         border: Border(right: BorderSide(color: ac.bdr)),
@@ -474,72 +480,103 @@ class _HomeShellState extends State<HomeShell> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Brand + menu (sidebar branding, like YouTube's top-left).
+          // Collapse/expand toggle (progressive disclosure) + brand when wide.
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 18, 16, 14),
+            padding: const EdgeInsets.fromLTRB(10, 16, 10, 10),
             child: Row(
               children: [
-                Builder(
-                  builder: (ctx) => IconButton(
-                    icon: Icon(Icons.menu_rounded, color: ac.txt2),
-                    tooltip: 'More',
-                    onPressed: () => Scaffold.of(ctx).openDrawer(),
-                  ),
+                IconButton(
+                  icon: Icon(exp ? Icons.menu_open_rounded : Icons.menu_rounded, color: ac.txt2),
+                  tooltip: exp ? 'Collapse menu' : 'Expand menu',
+                  onPressed: () => setState(() => _railExpanded = !_railExpanded),
                 ),
-                const SizedBox(width: 2),
-                Text('CFPMI',
-                    style: GoogleFonts.inter(
-                        fontSize: 20, fontWeight: FontWeight.w800, color: ac.primary, letterSpacing: -0.5)),
+                if (exp) ...[
+                  const SizedBox(width: 2),
+                  Flexible(
+                    child: Text('CFPMI',
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        style: GoogleFonts.inter(
+                            fontSize: 19, fontWeight: FontWeight.w800, color: ac.primary, letterSpacing: -0.5)),
+                  ),
+                ],
               ],
             ),
           ),
-          // One CTA colour, reachable (the gold "+") — the only accent button.
+          // One CTA colour, reachable (the gold "+"): a pill when expanded,
+          // a round icon with a tooltip when collapsed.
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 2, 14, 10),
-            child: FilledButton.icon(
-              onPressed: () => showCreateContentSheet(context, widget.user),
-              style: FilledButton.styleFrom(
-                backgroundColor: ac.gold,
-                foregroundColor: ac.navy,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              ),
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text('Create', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
+            child: exp
+                ? FilledButton.icon(
+                    onPressed: () => showCreateContentSheet(context, widget.user),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ac.gold,
+                      foregroundColor: ac.navy,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 20),
+                    label: const Text('Create', style: TextStyle(fontWeight: FontWeight.w700)),
+                  )
+                : Center(
+                    child: Tooltip(
+                      message: 'Create',
+                      child: Material(
+                        color: ac.gold,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () => showCreateContentSheet(context, widget.user),
+                          child: SizedBox(
+                            width: 46,
+                            height: 46,
+                            child: Icon(Icons.add_rounded, color: ac.navy, size: 22),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
           ),
+          const SizedBox(height: 4),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              children: [for (int i = 0; i < nav.length; i++) _desktopNavTile(ac, nav[i], i, safeTab)],
+              children: [for (int i = 0; i < nav.length; i++) _desktopNavTile(ac, nav[i], i, safeTab, exp)],
             ),
           ),
           Divider(height: 1, color: ac.bdr),
-          // Account row -> Profile tab.
+          // Account -> Profile tab (avatar always; name when expanded).
           if (profileIndex >= 0)
             InkWell(
               onTap: () => setState(() => _tab = profileIndex),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                padding: EdgeInsets.fromLTRB(exp ? 16 : 0, 12, exp ? 16 : 0, 14),
                 child: Row(
+                  mainAxisAlignment: exp ? MainAxisAlignment.start : MainAxisAlignment.center,
                   children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: ac.primary.withValues(alpha: 0.12),
-                      child: Text(
-                        widget.user.name.isNotEmpty ? widget.user.name[0].toUpperCase() : '?',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: ac.primary, fontSize: 13),
+                    Tooltip(
+                      message: widget.user.name.isEmpty ? 'My account' : widget.user.name,
+                      child: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: ac.primary.withValues(alpha: 0.12),
+                        child: Text(
+                          widget.user.name.isNotEmpty ? widget.user.name[0].toUpperCase() : '?',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: ac.primary, fontSize: 13),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.user.name.isEmpty ? 'My account' : widget.user.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: ac.txt),
+                    if (exp) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          widget.user.name.isEmpty ? 'My account' : widget.user.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: ac.txt),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -549,26 +586,20 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  // Active tile gets 4 distinct changes (filled icon + brand colour +
-  // bold label + tinted pill + left indicator bar) — the design notes ask
-  // for at least two.
-  Widget _desktopNavTile(AppColors ac, _NavDef def, int index, int safeTab) {
+  // Collapsed: centred icon + tooltip. Expanded: icon + label + left bar.
+  // Active state keeps 2+ distinct changes either way (tinted pill + brand
+  // colour + filled icon [+ bold label / left bar when expanded]).
+  Widget _desktopNavTile(AppColors ac, _NavDef def, int index, int safeTab, bool expanded) {
     final selected = index == safeTab;
     final color = selected ? ac.primary : ac.txt2;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => setState(() => _tab = index),
-          child: Container(
-            height: 46,
-            decoration: BoxDecoration(
-              color: selected ? ac.primary.withValues(alpha: 0.10) : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
+    final tile = Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: selected ? ac.primary.withValues(alpha: 0.10) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: expanded
+          ? Row(
               children: [
                 Container(
                   width: 3,
@@ -581,14 +612,25 @@ class _HomeShellState extends State<HomeShell> {
                 const SizedBox(width: 11),
                 Icon(selected ? def.filledIcon : def.outlinedIcon, color: color, size: 22),
                 const SizedBox(width: 14),
-                Text(def.label,
-                    style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                        color: color)),
+                Expanded(
+                  child: Text(def.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                          fontSize: 14, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: color)),
+                ),
               ],
-            ),
-          ),
+            )
+          : Center(child: Icon(selected ? def.filledIcon : def.outlinedIcon, color: color, size: 24)),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => setState(() => _tab = index),
+          child: expanded ? tile : Tooltip(message: def.label, child: tile),
         ),
       ),
     );
