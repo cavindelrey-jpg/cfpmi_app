@@ -17,6 +17,7 @@ import '../../services/classroom_upload_service.dart';
 import '../../theme/app_colors.dart';
 import 'classroom_display_page.dart';
 import 'classroom_slide.dart';
+import '../academic_content/content_viewer_page.dart';
 
 class ClassroomTeacherPage extends StatefulWidget {
   final AppUser user;
@@ -255,6 +256,24 @@ class ClassroomControlPage extends StatelessWidget {
                     ? () => repo.setCurrentSlide(sessionId, s.currentSlide + 1)
                     : null),
               ]),
+              // View the attached PowerPoint/PDF (renders in the viewer).
+              if ((s.originalFile ?? '').isNotEmpty) ...[
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: ac.primary, minimumSize: const Size.fromHeight(44)),
+                  onPressed: () {
+                    final url = s.originalFile!;
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ContentViewerPage(
+                        fileUrl: url,
+                        title: 'Presentation',
+                        kind: viewableKindFor(url) ?? ViewableFileKind.pptx,
+                      )));
+                  },
+                  icon: const Icon(Icons.slideshow_rounded, size: 18),
+                  label: const Text('View presentation'),
+                ),
+              ],
               const SizedBox(height: 10),
               Row(children: [
                 Expanded(
