@@ -230,14 +230,25 @@ class AuthService {
     UserRole role = UserRole.student,
   }) async {
     final res = await _supabase.auth.signUp(email: email, password: password);
-    final uid = res.user!.id;
+    final authUser = res.user;
+    if (authUser == null) {
+      throw Exception('We could not create your account. This email may already '
+          'be registered — try signing in, or use a different email.');
+    }
+    final uid = authUser.id;
     final user = AppUser(
       id: uid, name: name, email: email,
       role: role, accountType: AccountType.independent, status: AccountStatus.active,
     );
     // handle_new_user (Postgres trigger) already inserted a bare row on
     // signUp — update it with the real profile fields rather than insert.
-    await _supabase.from('users').update(user.toSupabase()).eq('id', uid);
+    // Wrapped: if email confirmation is required there is no active session
+    // yet, so this update can be blocked by RLS — the account is still
+    // created and the profile fills in on first sign-in, so a failed update
+    // here must NOT fail the whole registration.
+    try {
+      await _supabase.from('users').update(user.toSupabase()).eq('id', uid);
+    } catch (_) {}
     return user;
   }
 

@@ -175,6 +175,29 @@ class _MarksPageState extends State<MarksPage> {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator(strokeWidth: 2));
               }
+              if (snap.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.cloud_off_rounded, size: 44, color: ac.muted),
+                      const SizedBox(height: 12),
+                      Text('Could not load your marks',
+                          style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w700, color: ac.txt)),
+                      const SizedBox(height: 6),
+                      Text(snap.error.toString().replaceFirst('Exception: ', ''),
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(fontSize: 11.5, color: ac.txt2)),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: _refresh,
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('Try again'),
+                      ),
+                    ]),
+                  ),
+                );
+              }
               final (current, previous) = snap.data ?? (const <SchoolMark>[], const <SchoolMark>[]);
               if (current.isEmpty) return _emptyState(ac);
               return ListView(

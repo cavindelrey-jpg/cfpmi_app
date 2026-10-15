@@ -195,124 +195,92 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+    final canPop = Navigator.of(context).canPop();
+    // Clean, professional sign-in: a light page with a single centered card,
+    // not a full-bleed form. One navigation element (a Back link), no menus.
     return Scaffold(
-      body: Container(
-        // Fill the screen: the gradient used to stop under the form,
-        // leaving the lower half flat grey.
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: [ac.navy, ac.navy2, Color.lerp(ac.navy2, ac.primary, 0.5)!],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnim,
-            child: SlideTransition(
-              position: _slideAnim,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-                child: Form(
-                  key: _formKey,
-                  // Groups the email/password fields so the platform
-                  // password manager (Android/iOS/Chrome autofill) can
-                  // both offer saved credentials on focus AND prompt to
-                  // save new ones after a successful sign-in -- without
-                  // this, autofillHints alone on the individual fields
-                  // isn't reliably picked up.
-                  child: AutofillGroup(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    // Opened from the voucher screen: give a way back to it.
-                    if (Navigator.of(context).canPop())
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        alignment: Alignment.centerLeft,
-                        tooltip: 'Back',
-                        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      )
-                    else
-                      const SizedBox(height: 48),
-
-                    // Brand name + subline -- no logo mark on this screen
-                    // by design (correction pass: sign-in should present
-                    // Green Hills identity via clean text, not an image
-                    // mark), reads from Branding so it's never hardcoded
-                    // to a specific product name.
-                    Text(Branding.current.appName,
-                        style: AppText.display.copyWith(fontSize: 26, color: Colors.white)),
-                    const SizedBox(height: 6),
-                    Text('Sign in to your account',
-                        style: AppText.bodySm.copyWith(
-                            color: Colors.white.withValues(alpha: .55))),
-                    const SizedBox(height: 48),
-
-                    // Section label
-                    Text('SIGN IN', style: AppText.label.copyWith(
-                        fontSize: 10.5, letterSpacing: 1.5, color: ac.gold)),
-                    const SizedBox(height: 16),
-
-                    // Error banner
-                    if (_error != null) ...[
-                      _ErrorBanner(message: _error!),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // Email
-                    _GlassField(
-                      controller: _emailCtrl,
-                      hint: 'Email address',
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.username, AutofillHints.email],
-                      validator: (v) => v == null || !v.contains('@')
-                          ? 'Enter a valid email' : null,
+      backgroundColor: ac.bg,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(28, 30, 28, 26),
+                    decoration: BoxDecoration(
+                      color: ac.surf,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: ac.bdr),
+                      boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 30, offset: Offset(0, 12))],
                     ),
-                    const SizedBox(height: 12),
-
-                    // Password
-                    _GlassField(
-                      controller: _passwordCtrl,
-                      hint: 'Password',
-                      icon: Icons.lock_outline_rounded,
-                      obscureText: _obscure,
-                      autofillHints: const [AutofillHints.password],
-                      onSubmitted: (_) => _login(),
-                      validator: (v) => v == null || v.length < 6
-                          ? 'Enter your password' : null,
-                      suffix: IconButton(
-                        icon: Icon(
-                          _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                          color: Colors.white38, size: 18),
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                    child: Form(
+                      key: _formKey,
+                      child: AutofillGroup(
+                        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          Text(Branding.current.appName, textAlign: TextAlign.center,
+                              style: AppText.display.copyWith(fontSize: 26, color: ac.navy)),
+                          const SizedBox(height: 6),
+                          Text('Sign in to your account', textAlign: TextAlign.center,
+                              style: AppText.bodySm.copyWith(color: ac.txt2)),
+                          const SizedBox(height: 26),
+                          if (_error != null) ...[
+                            _ErrorBanner(message: _error!),
+                            const SizedBox(height: 16),
+                          ],
+                          _GlassField(
+                            controller: _emailCtrl,
+                            hint: 'Email address',
+                            icon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.username, AutofillHints.email],
+                            validator: (v) => v == null || !v.contains('@') ? 'Enter a valid email' : null,
+                          ),
+                          const SizedBox(height: 12),
+                          _GlassField(
+                            controller: _passwordCtrl,
+                            hint: 'Password',
+                            icon: Icons.lock_outline_rounded,
+                            obscureText: _obscure,
+                            autofillHints: const [AutofillHints.password],
+                            onSubmitted: (_) => _login(),
+                            validator: (v) => v == null || v.length < 6 ? 'Enter your password' : null,
+                            suffix: IconButton(
+                              icon: Icon(_obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                  color: ac.muted, size: 18),
+                              onPressed: () => setState(() => _obscure = !_obscure),
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _loading ? null : () => _showForgotPasswordSheet(context),
+                              style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 4)),
+                              child: Text('Forgot password?',
+                                  style: AppText.subtitle.copyWith(fontSize: 12.5, color: ac.primary)),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _loading
+                              ? Center(child: Padding(padding: const EdgeInsets.all(8), child: CircularProgressIndicator(color: ac.primary)))
+                              : _SignInButton(onTap: _login),
+                          if (canPop) ...[
+                            const SizedBox(height: 14),
+                            Center(
+                              child: TextButton(
+                                onPressed: () => Navigator.of(context).maybePop(),
+                                child: Text('← Back',
+                                    style: AppText.subtitle.copyWith(fontSize: 13, color: ac.txt2)),
+                              ),
+                            ),
+                          ],
+                        ]),
                       ),
                     ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _loading ? null : () => _showForgotPasswordSheet(context),
-                        style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 4)),
-                        child: Text('Forgot password?',
-                            style: AppText.subtitle.copyWith(fontSize: 12.5, color: ac.gold)),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Sign in button
-                    _loading
-                        ? Center(child: CircularProgressIndicator(color: ac.gold))
-                        : _SignInButton(onTap: _login),
-
-                    const SizedBox(height: 40),
-
-                    // Footer
-                    Center(child: Text(Branding.current.tagline,
-                        style: AppText.caption.copyWith(
-                            color: Colors.white.withValues(alpha: .3)))),
-                    ]),
                   ),
                 ),
               ),
@@ -350,20 +318,20 @@ class _GlassField extends StatelessWidget {
       autofillHints: autofillHints,
       onFieldSubmitted: onSubmitted,
       validator: validator,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
+      style: TextStyle(color: ac.txt, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white38),
-        prefixIcon: Icon(icon, color: Colors.white38, size: 20),
+        hintStyle: TextStyle(color: ac.muted),
+        prefixIcon: Icon(icon, color: ac.muted, size: 20),
         suffixIcon: suffix,
         filled: true,
-        fillColor: Colors.white.withValues(alpha: .08),
+        fillColor: ac.surf2,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: ac.gold.withValues(alpha: .2))),
+            borderSide: BorderSide(color: ac.bdr)),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: .12))),
+            borderSide: BorderSide(color: ac.bdr)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: ac.gold, width: 1.5)),
+            borderSide: BorderSide(color: ac.primary, width: 1.5)),
         errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(color: ac.red, width: 1.5)),
         focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
