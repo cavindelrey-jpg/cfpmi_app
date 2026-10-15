@@ -258,61 +258,83 @@ class _MarksPageState extends State<MarksPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(Rad.lg), border: Border.all(color: ac.bdr)),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 48, height: 48,
-          decoration: BoxDecoration(color: ac.purBg, borderRadius: BorderRadius.circular(12)),
-          child: Icon(Icons.show_chart_rounded, color: ac.pur, size: 24),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [ac.navy, const Color(0xFF066352)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
         ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Overall Performance', style: GoogleFonts.sora(fontSize: 12.5, fontWeight: FontWeight.w800, color: ac.pur)),
-            const SizedBox(height: 10),
-            Wrap(spacing: 18, runSpacing: 8, children: [
-              _analysisStat(ac, avgOnScale.toStringAsFixed(1), _showOn100 ? '/100' : '/20', 'Average Mark'),
-              _analysisStat(ac, avgPct.toStringAsFixed(0), '%', 'Overall Percentage'),
-              _analysisStat(ac, grade, '', 'Overall Grade'),
-            ]),
-            if (compare != null) ...[
-              const SizedBox(height: 8),
-              FutureBuilder<List<SchoolMark>>(
-                future: SchoolMarksRepository.instance.getForSequenceOnce(widget.user.id, compare),
-                builder: (context, snap) {
-                  final compareMarks = snap.data ?? const <SchoolMark>[];
-                  if (compareMarks.isEmpty) {
-                    return Text('Starting point: ${_selected.label} — no earlier sequence to compare against yet.',
-                        style: GoogleFonts.inter(fontSize: 10.5, color: ac.muted));
-                  }
-                  final delta = avgPct - averagePercentage(compareMarks);
-                  final up = delta >= 0;
-                  return Row(children: [
-                    Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 13, color: up ? ac.grn : ac.red),
-                    Text('${delta.abs().toStringAsFixed(1)}% from ${compare.label}',
-                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: up ? ac.grn : ac.red)),
-                  ]);
-                },
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 6))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.insights_rounded, size: 16, color: ac.gold),
+          const SizedBox(width: 6),
+          Text('OVERALL PERFORMANCE',
+              style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w800, color: ac.gold, letterSpacing: 0.8)),
+          const Spacer(),
+          Text(_selected.label,
+              style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+        ]),
+        const SizedBox(height: 16),
+        IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Expanded(child: _whiteStat(avgOnScale.toStringAsFixed(1), _showOn100 ? '/100' : '/20', 'Average')),
+            _wSep(),
+            Expanded(child: _whiteStat(avgPct.toStringAsFixed(0), '%', 'Percentage')),
+            _wSep(),
+            Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(color: ac.gold, borderRadius: BorderRadius.circular(12)),
+                child: Text(grade, style: GoogleFonts.sora(fontSize: 20, fontWeight: FontWeight.w800, color: ac.navy)),
               ),
-            ],
+              const SizedBox(height: 5),
+              Text('Grade', style: GoogleFonts.inter(fontSize: 10.5, color: Colors.white.withValues(alpha: 0.8))),
+            ])),
           ]),
         ),
+        if (compare != null) ...[
+          const SizedBox(height: 14),
+          FutureBuilder<List<SchoolMark>>(
+            future: SchoolMarksRepository.instance.getForSequenceOnce(widget.user.id, compare),
+            builder: (context, snap) {
+              final compareMarks = snap.data ?? const <SchoolMark>[];
+              if (compareMarks.isEmpty) {
+                return Text('Starting point: ${_selected.label} — no earlier sequence to compare against yet.',
+                    style: GoogleFonts.inter(fontSize: 10.5, color: Colors.white.withValues(alpha: 0.7)));
+              }
+              final delta = avgPct - averagePercentage(compareMarks);
+              final up = delta >= 0;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(up ? Icons.trending_up_rounded : Icons.trending_down_rounded, size: 15, color: up ? ac.gold : Colors.white),
+                  const SizedBox(width: 6),
+                  Text('${up ? '+' : '-'}${delta.abs().toStringAsFixed(1)}% from ${compare.label}',
+                      style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white)),
+                ]),
+              );
+            },
+          ),
+        ],
       ]),
     );
   }
 
-  Widget _analysisStat(AppColors ac, String value, String suffix, String label) {
-    return SizedBox(
-      width: 96,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text.rich(TextSpan(children: [
-          TextSpan(text: value, style: GoogleFonts.sora(fontSize: 19, fontWeight: FontWeight.w800, color: ac.txt)),
-          TextSpan(text: suffix, style: GoogleFonts.inter(fontSize: 12, color: ac.txt2)),
-        ])),
-        Text(label, style: GoogleFonts.inter(fontSize: 10, color: ac.muted)),
-      ]),
-    );
+  Widget _wSep() => Container(width: 1, height: 38, color: Colors.white.withValues(alpha: 0.16));
+
+  Widget _whiteStat(String value, String suffix, String label) {
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Text.rich(TextSpan(children: [
+        TextSpan(text: value, style: GoogleFonts.sora(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+        TextSpan(text: suffix, style: GoogleFonts.inter(fontSize: 12, color: Colors.white.withValues(alpha: 0.75))),
+      ])),
+      const SizedBox(height: 3),
+      Text(label, style: GoogleFonts.inter(fontSize: 10.5, color: Colors.white.withValues(alpha: 0.8))),
+    ]);
   }
 
   Widget _subjectTable(AppColors ac, List<SchoolMark> current, List<SchoolMark> previous) {

@@ -14,6 +14,7 @@ import '../../models/app_user.dart';
 import '../../models/classroom.dart';
 import '../../repositories/classroom_repository.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/web_embed/web_embed.dart';
 import 'classroom_slide.dart';
 
 class StudentClassroomPage extends StatelessWidget {
@@ -65,107 +66,159 @@ class _LiveClass extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        children: [
-          // Polished live header card — status pill, topic, teacher/subject.
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(16, 14, 16, 2),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [ac.navy, ac.navy2],
-                begin: Alignment.topLeft, end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(color: ac.red, borderRadius: BorderRadius.circular(20)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Container(width: 7, height: 7, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
-                    const SizedBox(width: 6),
-                    Text('LIVE', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.6)),
-                  ]),
-                ),
-                const Spacer(),
-                Flexible(child: Text(session.subject,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.85)))),
-              ]),
-              if (session.topic.isNotEmpty) ...[
+    return LayoutBuilder(builder: (context, cons) {
+      final wide = cons.maxWidth >= 900;
+      if (wide) {
+        // Desktop: the presentation fills the main area; a side panel holds
+        // Resources + personal Notes. Not one flat full-page screen.
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(
+              flex: 7,
+              child: Column(children: [
+                _headerCard(ac),
                 const SizedBox(height: 12),
-                Text(session.topic,
-                    style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
-              ],
-              const SizedBox(height: 8),
-              Row(children: [
-                Icon(Icons.person_rounded, size: 14, color: ac.gold),
-                const SizedBox(width: 6),
-                Text(session.teacherName.isEmpty ? 'Teacher' : session.teacherName,
-                    style: GoogleFonts.inter(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.85))),
+                Expanded(child: _presentationArea(ac)),
               ]),
-            ]),
-          ),
+            ),
+            const SizedBox(width: 16),
+            SizedBox(width: 360, child: _sidePanel(ac)),
+          ]),
+        );
+      }
+      return DefaultTabController(
+        length: 3,
+        child: Column(children: [
+          Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 2), child: _headerCard(ac)),
           TabBar(
-            labelColor: ac.primary,
-            unselectedLabelColor: ac.txt2,
-            indicatorColor: ac.primary,
+            labelColor: ac.primary, unselectedLabelColor: ac.txt2, indicatorColor: ac.primary,
             labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
-            tabs: const [
-              Tab(text: 'Presentation'),
-              Tab(text: 'My Notes'),
-              Tab(text: 'Resources'),
-            ],
+            tabs: const [Tab(text: 'Presentation'), Tab(text: 'My Notes'), Tab(text: 'Resources')],
           ),
-          Expanded(
-            child: TabBarView(children: [
-              _presentation(ac),
-              _MyNotes(sessionId: session.id, userId: user.id),
-              _Resources(sessionId: session.id, sessionEnded: session.status == ClassroomStatus.ended),
+          Expanded(child: TabBarView(children: [
+            _presentationArea(ac),
+            _MyNotes(sessionId: session.id, userId: user.id),
+            _Resources(sessionId: session.id, sessionEnded: session.status == ClassroomStatus.ended),
+          ])),
+        ]),
+      );
+    });
+  }
+
+  Widget _headerCard(AppColors ac) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [ac.navy, ac.navy2], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(color: ac.red, borderRadius: BorderRadius.circular(20)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 7, height: 7, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+              const SizedBox(width: 6),
+              Text('LIVE', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.6)),
             ]),
           ),
+          const Spacer(),
+          Flexible(child: Text(session.subject, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.85)))),
+        ]),
+        if (session.topic.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(session.topic, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
         ],
-      ),
+        const SizedBox(height: 8),
+        Row(children: [
+          Icon(Icons.person_rounded, size: 14, color: ac.gold),
+          const SizedBox(width: 6),
+          Text(session.teacherName.isEmpty ? 'Teacher' : session.teacherName,
+              style: GoogleFonts.inter(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.85))),
+        ]),
+      ]),
     );
   }
 
-  Widget _presentation(AppColors ac) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: ac.bdr),
-                boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 6))],
-              ),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: ClassroomSlide(
-                    url: session.currentSlideUrl, index: session.currentSlide, total: session.slideCount, topic: session.topic),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(20), border: Border.all(color: ac.bdr)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.slideshow_rounded, size: 15, color: ac.primary),
-                const SizedBox(width: 7),
-                Text(session.slideCount == 0 ? 'Waiting for the teacher…' : 'Slide ${session.currentSlide + 1} of ${session.slideCount}',
-                    style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: ac.txt2)),
-              ]),
-            ),
-          ],
-        ),
+  // Main presentation area. If the teacher attached a PowerPoint/PDF it renders
+  // inline (embedded viewer on web); otherwise it shows the synced slide image.
+  Widget _presentationArea(AppColors ac) {
+    final orig = session.originalFile ?? '';
+    final ext = orig.contains('.') ? orig.split('.').last.toLowerCase().split('?').first : '';
+    final isDoc = orig.isNotEmpty && (ext == 'pptx' || ext == 'ppt' || ext == 'pdf');
+    if (isWebPlatform && isDoc) {
+      final embedUrl = ext == 'pdf' ? orig : officeViewerUrl(orig);
+      return Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(14), border: Border.all(color: ac.bdr)),
+        child: Column(children: [
+          Container(
+            color: ac.surf2,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(children: [
+              Icon(Icons.slideshow_rounded, size: 16, color: ac.primary),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Presentation', style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700, color: ac.txt2))),
+            ]),
+          ),
+          Divider(height: 1, color: ac.bdr),
+          Expanded(child: WebDocEmbed(url: embedUrl)),
+        ]),
       );
+    }
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(children: [
+        Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Colors.black, borderRadius: BorderRadius.circular(14), border: Border.all(color: ac.bdr),
+            boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 6))],
+          ),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: ClassroomSlide(url: session.currentSlideUrl, index: session.currentSlide, total: session.slideCount, topic: session.topic),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(20), border: Border.all(color: ac.bdr)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.slideshow_rounded, size: 15, color: ac.primary),
+            const SizedBox(width: 7),
+            Text(session.slideCount == 0 ? 'Waiting for the teacher…' : 'Slide ${session.currentSlide + 1} of ${session.slideCount}',
+                style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: ac.txt2)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _sidePanel(AppColors ac) {
+    return Container(
+      decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(14), border: Border.all(color: ac.bdr)),
+      clipBehavior: Clip.antiAlias,
+      child: DefaultTabController(
+        length: 2,
+        child: Column(children: [
+          TabBar(
+            labelColor: ac.primary, unselectedLabelColor: ac.txt2, indicatorColor: ac.primary,
+            labelStyle: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700),
+            tabs: const [Tab(text: 'Resources'), Tab(text: 'My Notes')],
+          ),
+          Expanded(child: TabBarView(children: [
+            _Resources(sessionId: session.id, sessionEnded: session.status == ClassroomStatus.ended),
+            _MyNotes(sessionId: session.id, userId: user.id),
+          ])),
+        ]),
+      ),
+    );
+  }
 }
 
 class _MyNotes extends StatefulWidget {
