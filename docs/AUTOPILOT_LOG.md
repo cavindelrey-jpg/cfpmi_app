@@ -5624,3 +5624,31 @@ refresh work with no change. Built successfully with
   - Migration written: `supabase/migrations/20261014140000_academia_classroom.sql`.
 - **Live Preview**: Built with `flutter build web --dart-define=BRAND_ID=cfpmi --release`, running locally on port 8080 via SPA server.
 
+
+## 2026-10-15 — Desktop-first web redesign (branch feat/desktop-web-shell)
+
+Directive: stop patching mobile UI; make Academia a professional desktop-first
+web app (shell + per-task workspaces), keep mobile functional. Approved scope
+this round: application shell + 3 flagship pages (Courses, Library, Lesson
+Reader), verify with Playwright screenshots, then pause for review.
+
+Defaults chosen (per autopilot rules; reversible via git):
+- Primary rail (desktop) expanded to full role-gated set: Home, Courses,
+  Library, Magazine, Groups, Tests, School, Profile. Mobile bottom bar keeps 5
+  core (Home, Courses, Library, Groups, Profile); the rest reachable via
+  top-bar/drawer. Desktop≠mobile nav is explicitly allowed by the directive.
+- Section identity switched from int `_tab` to a stable section label so the
+  desktop rail and the narrower mobile bar can share one canonical section set.
+- School becomes an in-shell SECTION (secondary rail persists on desktop)
+  instead of `_push`ing full-screen pages that dropped the primary rail.
+- New global top bar (`lib/widgets/app_top_bar.dart`): renders the real
+  `cfpmi_logo.png` (Branding.current.logoAssetPath), school-name context,
+  global search, notifications, profile menu — ONE bar, replacing per-page
+  duplicated search/notif headers in the shell.
+- Transitional width policy: redesigned sections (Home/Courses/Library/School)
+  are full-bleed and manage their own internal widths; not-yet-redesigned
+  sections (Magazine/Groups/Tests/Profile) keep a max-width so they don't
+  stretch grotesquely until their own redesign lands. Removes the single global
+  ConstrainedBox(1180) that forced one layout on every page.
+- Guest shell (_GuestShell) left on its existing nav this round; top bar to be
+  wired there during the long-tail phase.

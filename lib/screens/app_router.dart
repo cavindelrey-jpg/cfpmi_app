@@ -31,7 +31,9 @@ import '../features/dashboard/universal_home_page.dart';
 import '../features/school/parent_dashboard_page.dart';
 import '../features/magazine/magazine_feed_page.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/app_top_bar.dart';
 import '../widgets/create_content_sheet.dart';
+import '../features/testing/quiz_categories_page.dart';
 import '../features/clubs/clubs_page.dart';
 import '../features/school/school_connect_page.dart';
 import '../features/school/timetable_page.dart';
@@ -311,10 +313,34 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  int _tab = 0;
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Current primary section, by stable label (not an index), so the wide
+  // desktop rail and the narrower mobile bottom bar can select from the same
+  // canonical section set without index drift.
+  String _section = 'Home';
+
+  // Selected School sub-destination (desktop secondary rail).
+  int _schoolSub = 0;
+
   // Desktop primary rail: collapsed icon rail (tooltips) by default,
   // expandable to labels. Progressive disclosure, per the shell spec.
   bool _railExpanded = false;
+
+  // Lazy section loading: only a visited section's page is built, so an
+  // untouched section's own streams never start until it's first opened.
+  final Set<String> _visited = {'Home'};
+
+  // Desktop/web breakpoint. At/above this width the shell renders the
+  // persistent rail + workspace; below it, the mobile bottom-nav bar — two
+  // deliberately different navigation surfaces over the same sections.
+  static const double _wideBreakpoint = 900;
+
+  // Mobile bottom bar keeps a focused 5 (the rest reach via the top-bar menu
+  // / drawer); desktop surfaces the full set in the rail.
+  static const List<String> _mobileSections = [
+    'Home', 'Courses', 'Library', 'Groups', 'Profile',
+  ];
 
   @override
   void initState() {
@@ -327,87 +353,113 @@ class _HomeShellState extends State<HomeShell> {
     unawaited(MagazineRepository.instance.settlePendingXp(widget.user.id));
   }
 
-  // The bottom nav stays fixed — Home, Library, Magazine, Courses, Profile
-  // — the same shape for every account, guest or signed-in.
-  List<_NavDef> _buildNav() {
-    final u = widget.user;
-    final nav = <_NavDef>[
-      const _NavDef('Home', Icons.home_rounded, Icons.home_outlined, UserRole.guest),
-      const _NavDef('Groups', Icons.groups_rounded, Icons.groups_outlined, UserRole.guest),
-      const _NavDef('Library', Icons.menu_book_rounded, Icons.menu_book_outlined, UserRole.guest),
-      const _NavDef('Courses', Icons.school_rounded, Icons.school_outlined, UserRole.guest),
-      const _NavDef('Profile', Icons.person_rounded, Icons.person_outlined, UserRole.guest),
-    ];
-
-    // Filter by minimum role (privilege gate)
-    return nav.where((n) => u.hasMinRole(n.minRole)).toList();
+  void _select(String label) {
+    setState(() {
+      _section = label;
+      _visited.add(label);
+    });
   }
 
-  Widget _buildPage(AppColors ac, _NavDef def) {
+  // Canonical primary sections (desktop rail order), role-gated. `maxWidth`
+  // is the desktop workspace constraint: null = full-bleed (the page manages
+  // its own widths — used for already-redesigned/task-specific workspaces),
+  // a value = a transitional cap so a not-yet-redesigned page doesn't stretch.
+  List<_NavDef> _sections() {
     final u = widget.user;
-    // Guard check
-    if (!u.hasMinRole(def.minRole)) {
-      return Scaffold(body: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.lock_outline_rounded, size: 48, color: ac.muted),
-            const SizedBox(height: 12),
-            Text('Access Restricted',
-                style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700)),
-          ])));
-    }
+    final defs = <_NavDef>[
+      const _NavDef('Home', Icons.home_rounded, Icons.home_outlined, UserRole.guest),
+      const _NavDef('Courses', Icons.school_rounded, Icons.school_outlined, UserRole.guest),
+      const _NavDef('Library', Icons.menu_book_rounded, Icons.menu_book_outlined, UserRole.guest),
+      const _NavDef('Magazine', Icons.auto_stories_rounded, Icons.auto_stories_outlined, UserRole.guest, maxWidth: 1100),
+      const _NavDef('Groups', Icons.groups_rounded, Icons.groups_outlined, UserRole.guest, maxWidth: 1180),
+      const _NavDef('Tests', Icons.quiz_rounded, Icons.quiz_outlined, UserRole.guest, maxWidth: 1180),
+      if (u.isSchoolMember)
+        const _NavDef('School', Icons.apartment_rounded, Icons.apartment_outlined, UserRole.guest),
+      const _NavDef('Profile', Icons.person_rounded, Icons.person_outlined, UserRole.guest, maxWidth: 1000),
+    ];
+    return defs.where((n) => u.hasMinRole(n.minRole)).toList();
+  }
+
+  // The raw feature page for a section (each keeps its own Scaffold/streams).
+  Widget _rawPage(AppColors ac, _NavDef def, bool isWide) {
+    final u = widget.user;
     switch (def.label) {
-      // Item 5: a parent's Home tab shows their linked student's
-      // information (timetable/marks/homework), never their own —
-      // there is no "own" student data for a parent account to show.
+      // A parent's Home shows their linked student's info, never their own.
       case 'Home':     return u.isParent ? ParentDashboardPage(user: u) : UniversalHomePage(user: u);
-      case 'Groups':   return ClubsPage(user: u);
+      case 'Courses':  return CoursesHomePage(user: u);
       case 'Library':  return LibraryHomePage(user: u);
       case 'Magazine': return MagazineFeedPage(user: u);
-      case 'Courses':  return CoursesHomePage(user: u);
+      case 'Groups':   return ClubsPage(user: u);
+      case 'Tests':    return QuizCategoriesPage(user: u);
+      case 'School':   return isWide ? _schoolWorkspaceDesktop(ac) : _schoolWorkspaceMobile(ac);
       case 'Profile':  return ProfilePage(user: u);
       default:         return const SizedBox.shrink();
     }
   }
 
-  // Lazy tab loading: IndexedStack previously built every single nav
-  // page eagerly on shell mount (nav.map(_buildPage).toList()) — only
-  // building it lazily (on first visit) keeps an untouched tab's own
-  // Firestore streams from starting until it's actually opened.
-  final Set<int> _visitedTabs = {0};
+  // Applies the desktop workspace width policy; mobile is always full width.
+  Widget _sectionBody(AppColors ac, _NavDef def, bool isWide) {
+    final page = _rawPage(ac, def, isWide);
+    if (!isWide || def.maxWidth == null) return page;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: def.maxWidth!),
+        child: page,
+      ),
+    );
+  }
 
-  // Desktop/web breakpoint. "To each lock its own key": at/above this
-  // width the shell renders a persistent left sidebar (YouTube-style),
-  // below it the mobile bottom-nav bar — same pages, tab state and role
-  // gating, two deliberately different navigation surfaces.
-  static const double _wideBreakpoint = 900;
+  Widget _workspace(AppColors ac, List<_NavDef> sections, int currentIdx, bool isWide) {
+    return IndexedStack(
+      index: currentIdx,
+      children: List.generate(sections.length, (i) {
+        final def = sections[i];
+        if (!_visited.contains(def.label)) return const SizedBox.shrink();
+        return _sectionBody(ac, def, isWide);
+      }),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final nav = _buildNav();
-    final safeTab = _tab.clamp(0, nav.length - 1);
-    _visitedTabs.add(safeTab);
-
-    final content = IndexedStack(
-      index: safeTab,
-      children: List.generate(nav.length,
-          (i) => _visitedTabs.contains(i) ? _buildPage(ac, nav[i]) : const SizedBox.shrink()),
-    );
+    final sections = _sections();
+    var currentIdx = sections.indexWhere((n) => n.label == _section);
+    if (currentIdx < 0) currentIdx = 0;
+    _visited.add(sections[currentIdx].label);
 
     final isWide = MediaQuery.of(context).size.width >= _wideBreakpoint;
     return isWide
-        ? _desktopScaffold(ac, nav, safeTab, content)
-        : _mobileScaffold(ac, nav, safeTab, content);
+        ? _desktopScaffold(ac, sections, currentIdx)
+        : _mobileScaffold(ac, sections, currentIdx);
   }
 
-  // ── Mobile: bottom-nav shell (phones) ──────────────────────────────
-  Widget _mobileScaffold(AppColors ac, List<_NavDef> nav, int safeTab, Widget content) {
+  // ── Mobile: global top bar + bottom-nav shell (phones) ─────────────
+  Widget _mobileScaffold(AppColors ac, List<_NavDef> sections, int currentIdx) {
+    final mobileDefs = [
+      for (final label in _mobileSections)
+        sections.firstWhere((n) => n.label == label,
+            orElse: () => const _NavDef('', Icons.circle, Icons.circle, UserRole.guest)),
+    ].where((n) => n.label.isNotEmpty).toList();
+    final selected = mobileDefs.indexWhere((n) => n.label == _section);
+
     return Scaffold(
-      drawer: AppDrawer(user: widget.user, onHomeTap: () => setState(() => _tab = 0)),
+      key: _scaffoldKey,
+      // One shared top bar (logo + global search/notifications/account),
+      // instead of each page drawing its own header.
+      appBar: AppTopBar(
+        user: widget.user,
+        compact: true,
+        onMenu: () => _scaffoldKey.currentState?.openDrawer(),
+        onProfile: () => _select('Profile'),
+      ),
+      drawer: AppDrawer(user: widget.user, onHomeTap: () => _select('Home')),
       body: SafeArea(
+        top: false,
         child: Column(children: [
           const _OfflineBanner(),
-          Expanded(child: content),
+          Expanded(child: _workspace(ac, sections, currentIdx, false)),
         ]),
       ),
       // Architecture brief item 14: content creation lives behind this
@@ -426,14 +478,13 @@ class _HomeShellState extends State<HomeShell> {
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(Rad.lg)),
           child: NavigationBar(
-            selectedIndex: safeTab,
-            onDestinationSelected: (i) => setState(() => _tab = i),
+            selectedIndex: selected < 0 ? 0 : selected,
+            onDestinationSelected: (i) => _select(mobileDefs[i].label),
             // Labels under every icon (not just the selected one): the
             // design notes recommend this for a mixed/less tech-savvy
-            // audience (parents, teachers, students). Labels are short,
-            // single-line, so all 5 fit cleanly.
+            // audience (parents, teachers, students).
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: nav.map((n) => NavigationDestination(
+            destinations: mobileDefs.map((n) => NavigationDestination(
               icon: Icon(n.outlinedIcon), selectedIcon: Icon(n.filledIcon), label: n.label,
             )).toList(),
           ),
@@ -442,120 +493,30 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  // ── Desktop/web: persistent icon rail + (optional) contextual nav ──
-  Widget _desktopScaffold(AppColors ac, List<_NavDef> nav, int safeTab, Widget content) {
-    final homeIndex = nav.indexWhere((n) => n.label == 'Home');
+  // ── Desktop/web: global top bar + persistent rail + workspace ──────
+  Widget _desktopScaffold(AppColors ac, List<_NavDef> sections, int currentIdx) {
     return Scaffold(
-      // The drawer still holds every link; the rail's menu button opens it.
-      drawer: AppDrawer(user: widget.user, onHomeTap: () => setState(() => _tab = 0)),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (ctx, c) {
-            // Contextual secondary nav (the "School" rail) appears only for
-            // school members, on the Home section, and only when there's
-            // room — so it never crushes the workspace (spec: optional panel).
-            final showSecondary =
-                widget.user.isSchoolMember && safeTab == homeIndex && c.maxWidth >= 1100;
-            return Row(
+      key: _scaffoldKey,
+      drawer: AppDrawer(user: widget.user, onHomeTap: () => _select('Home')),
+      body: Column(
+        children: [
+          // One global bar across the whole app width, sitting above the rail.
+          AppTopBar(
+            user: widget.user,
+            onMenu: () => setState(() => _railExpanded = !_railExpanded),
+            onProfile: () => _select('Profile'),
+          ),
+          const _OfflineBanner(),
+          Expanded(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _desktopSidebar(ac, nav, safeTab),
-                if (showSecondary) _contextualSchoolNav(ac),
-                Expanded(
-                  child: Column(
-                    children: [
-                      const _OfflineBanner(),
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1180),
-                            child: content,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  void _push(Widget page) =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
-
-  // Contextual secondary navigation for the School context — role-aware,
-  // every item a real wired destination (surfaces tools otherwise buried in
-  // the drawer into a persistent panel on desktop).
-  Widget _contextualSchoolNav(AppColors ac) {
-    final u = widget.user;
-    final staff = u.canRecordAnyMarks || (u.isSchoolMember && !u.isStudent && !u.isParent);
-    final items = <(IconData, String, VoidCallback)>[
-      (Icons.forum_outlined, 'School Connect', () => _push(SchoolConnectPage(user: u))),
-      (Icons.event_note_outlined, 'Timetable', () => _push(TimetablePage(user: u))),
-      (Icons.campaign_outlined, 'Daily Notices', () => _push(DailyNoticesPage(user: u))),
-      (Icons.calendar_month_outlined, 'Calendar', () => _push(SchoolCalendarPage(user: u))),
-      if (staff) ...[
-        (Icons.fact_check_outlined, 'Attendance', () => _push(AttendancePage(user: u))),
-        (Icons.query_stats_rounded, 'Attendance Summary', () => _push(AttendanceSummaryPage(user: u))),
-        (Icons.account_balance_wallet_outlined, 'Fees', () => _push(FeesPage(user: u))),
-        (Icons.assessment_outlined, 'Marks', () => _push(MarksPage(user: u))),
-        (Icons.cast_for_education_rounded, 'Classroom', () => _push(ClassroomTeacherPage(user: u))),
-      ] else ...[
-        (Icons.badge_outlined, 'My Records', () => _push(StudentRecordsPage(user: u))),
-        (Icons.assessment_outlined, 'My Marks', () => _push(MarksPage(user: u))),
-        (Icons.sensors_rounded, 'Live Class', () => _push(StudentClassroomPage(user: u))),
-      ],
-    ];
-    return Container(
-      width: 232,
-      decoration: BoxDecoration(
-        color: ac.surf,
-        border: Border(right: BorderSide(color: ac.bdr)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
-            child: Text('School',
-                style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt)),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              children: [
-                for (final (icon, label, onTap) in items)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 1),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: onTap,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-                          child: Row(
-                            children: [
-                              Icon(icon, size: 19, color: ac.txt2),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(label,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(
-                                        fontSize: 13.5, fontWeight: FontWeight.w500, color: ac.txt)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                _desktopSidebar(ac, sections, currentIdx),
+                // The workspace fills the rest; each section decides its own
+                // width (full-bleed or capped) via _sectionBody — no single
+                // global container forcing one layout on every page. The
+                // School section renders its own persistent secondary rail.
+                Expanded(child: _workspace(ac, sections, currentIdx, true)),
               ],
             ),
           ),
@@ -564,13 +525,151 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  Widget _desktopSidebar(AppColors ac, List<_NavDef> nav, int safeTab) {
-    final profileIndex = nav.indexWhere((n) => n.label == 'Profile');
+  void _push(Widget page) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+
+  // School sub-destinations — role-aware, each a real wired page. Builders
+  // (not pre-pushed routes) so the one list drives both the desktop in-shell
+  // secondary rail and the mobile menu.
+  List<(IconData, String, Widget Function())> _schoolDests() {
+    final u = widget.user;
+    final staff = u.canRecordAnyMarks || (u.isSchoolMember && !u.isStudent && !u.isParent);
+    return [
+      (Icons.forum_outlined, 'School Connect', () => SchoolConnectPage(user: u)),
+      (Icons.event_note_outlined, 'Timetable', () => TimetablePage(user: u)),
+      (Icons.campaign_outlined, 'Daily Notices', () => DailyNoticesPage(user: u)),
+      (Icons.calendar_month_outlined, 'Calendar', () => SchoolCalendarPage(user: u)),
+      if (staff) ...[
+        (Icons.fact_check_outlined, 'Attendance', () => AttendancePage(user: u)),
+        (Icons.query_stats_rounded, 'Attendance Summary', () => AttendanceSummaryPage(user: u)),
+        (Icons.account_balance_wallet_outlined, 'Fees', () => FeesPage(user: u)),
+        (Icons.assessment_outlined, 'Marks', () => MarksPage(user: u)),
+        (Icons.cast_for_education_rounded, 'Classroom', () => ClassroomTeacherPage(user: u)),
+      ] else ...[
+        (Icons.badge_outlined, 'My Records', () => StudentRecordsPage(user: u)),
+        (Icons.assessment_outlined, 'My Marks', () => MarksPage(user: u)),
+        (Icons.sensors_rounded, 'Live Class', () => StudentClassroomPage(user: u)),
+      ],
+    ];
+  }
+
+  // Desktop School workspace: a persistent secondary rail (stays put as the
+  // user moves between School tools) + the selected tool in the workspace —
+  // so the primary rail never disappears the way the old _push flow did.
+  Widget _schoolWorkspaceDesktop(AppColors ac) {
+    final dests = _schoolDests();
+    final sub = _schoolSub.clamp(0, dests.length - 1);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          width: 236,
+          decoration: BoxDecoration(
+            color: ac.surf,
+            border: Border(right: BorderSide(color: ac.bdr)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+                child: Text('School',
+                    style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt)),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  children: [
+                    for (int i = 0; i < dests.length; i++)
+                      _schoolRailTile(ac, dests[i].$1, dests[i].$2, i == sub,
+                          () => setState(() => _schoolSub = i)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: dests[sub].$3()),
+      ],
+    );
+  }
+
+  Widget _schoolRailTile(AppColors ac, IconData icon, String label, bool selected, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Material(
+        color: selected ? ac.primary.withValues(alpha: 0.10) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+            child: Row(children: [
+              Icon(icon, size: 19, color: selected ? ac.primary : ac.txt2),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                        fontSize: 13.5,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? ac.txt : ac.txt2)),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Mobile School: no room for a side rail — the tools are a list; each opens
+  // full-screen while the bottom nav remains the shell.
+  Widget _schoolWorkspaceMobile(AppColors ac) {
+    final dests = _schoolDests();
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(6, 2, 6, 10),
+          child: Text('School',
+              style: GoogleFonts.sora(fontSize: 20, fontWeight: FontWeight.w800, color: ac.txt)),
+        ),
+        for (final (icon, label, builder) in dests)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Material(
+              color: ac.surf,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _push(builder()),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+                  child: Row(children: [
+                    Icon(icon, size: 22, color: ac.primary),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(label,
+                          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: ac.txt)),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: ac.muted),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _desktopSidebar(AppColors ac, List<_NavDef> sections, int currentIdx) {
     final exp = _railExpanded;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
-      width: exp ? 240 : 76,
+      width: exp ? 232 : 76,
       decoration: BoxDecoration(
         color: ac.surf,
         border: Border(right: BorderSide(color: ac.bdr)),
@@ -578,27 +677,16 @@ class _HomeShellState extends State<HomeShell> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Collapse/expand toggle (progressive disclosure) + brand when wide.
+          // Collapse/expand toggle (the brand/logo lives in the global top bar).
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 16, 10, 10),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(exp ? Icons.menu_open_rounded : Icons.menu_rounded, color: ac.txt2),
-                  tooltip: exp ? 'Collapse menu' : 'Expand menu',
-                  onPressed: () => setState(() => _railExpanded = !_railExpanded),
-                ),
-                if (exp) ...[
-                  const SizedBox(width: 2),
-                  Flexible(
-                    child: Text('CFPMI',
-                        maxLines: 1,
-                        overflow: TextOverflow.clip,
-                        style: GoogleFonts.inter(
-                            fontSize: 19, fontWeight: FontWeight.w800, color: ac.primary, letterSpacing: -0.5)),
-                  ),
-                ],
-              ],
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
+            child: Align(
+              alignment: exp ? Alignment.centerLeft : Alignment.center,
+              child: IconButton(
+                icon: Icon(exp ? Icons.menu_open_rounded : Icons.menu_rounded, color: ac.txt2),
+                tooltip: exp ? 'Collapse menu' : 'Expand menu',
+                onPressed: () => setState(() => _railExpanded = !_railExpanded),
+              ),
             ),
           ),
           // One CTA colour, reachable (the gold "+"): a pill when expanded,
@@ -640,45 +728,12 @@ class _HomeShellState extends State<HomeShell> {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              children: [for (int i = 0; i < nav.length; i++) _desktopNavTile(ac, nav[i], i, safeTab, exp)],
+              children: [
+                for (int i = 0; i < sections.length; i++)
+                  _desktopNavTile(ac, sections[i], i == currentIdx, exp),
+              ],
             ),
           ),
-          Divider(height: 1, color: ac.bdr),
-          // Account -> Profile tab (avatar always; name when expanded).
-          if (profileIndex >= 0)
-            InkWell(
-              onTap: () => setState(() => _tab = profileIndex),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(exp ? 16 : 0, 12, exp ? 16 : 0, 14),
-                child: Row(
-                  mainAxisAlignment: exp ? MainAxisAlignment.start : MainAxisAlignment.center,
-                  children: [
-                    Tooltip(
-                      message: widget.user.name.isEmpty ? 'My account' : widget.user.name,
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: ac.primary.withValues(alpha: 0.12),
-                        child: Text(
-                          widget.user.name.isNotEmpty ? widget.user.name[0].toUpperCase() : '?',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: ac.primary, fontSize: 13),
-                        ),
-                      ),
-                    ),
-                    if (exp) ...[
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          widget.user.name.isEmpty ? 'My account' : widget.user.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: ac.txt),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -687,8 +742,7 @@ class _HomeShellState extends State<HomeShell> {
   // Collapsed: centred icon + tooltip. Expanded: icon + label + left bar.
   // Active state keeps 2+ distinct changes either way (tinted pill + brand
   // colour + filled icon [+ bold label / left bar when expanded]).
-  Widget _desktopNavTile(AppColors ac, _NavDef def, int index, int safeTab, bool expanded) {
-    final selected = index == safeTab;
+  Widget _desktopNavTile(AppColors ac, _NavDef def, bool selected, bool expanded) {
     final color = selected ? ac.primary : ac.txt2;
     final tile = Container(
       height: 46,
@@ -727,7 +781,7 @@ class _HomeShellState extends State<HomeShell> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () => setState(() => _tab = index),
+          onTap: () => _select(def.label),
           child: expanded ? tile : Tooltip(message: def.label, child: tile),
         ),
       ),
@@ -739,7 +793,11 @@ class _NavDef {
   final String label;
   final IconData filledIcon, outlinedIcon;
   final UserRole minRole;
-  const _NavDef(this.label, this.filledIcon, this.outlinedIcon, this.minRole);
+
+  /// Desktop workspace width cap for this section. null = full-bleed (the
+  /// page manages its own widths — used for task-specific workspaces).
+  final double? maxWidth;
+  const _NavDef(this.label, this.filledIcon, this.outlinedIcon, this.minRole, {this.maxWidth});
 }
 
 
