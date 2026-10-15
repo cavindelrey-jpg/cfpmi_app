@@ -380,9 +380,22 @@ class _LessonTile extends StatelessWidget {
             ),
             if (isCompleted) ...[
               const Icon(Icons.check_circle_rounded, size: 18, color: Colors.green),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
             ],
-            Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
+            // Clear "open lesson" button so the way in is obvious.
+            Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(color: ac.primary, borderRadius: BorderRadius.circular(18)),
+              alignment: Alignment.center,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon((lesson.videoUrl ?? '').isNotEmpty ? Icons.play_arrow_rounded : Icons.menu_book_rounded,
+                    size: 16, color: Colors.white),
+                const SizedBox(width: 5),
+                Text(isCompleted ? 'Review' : 'Open',
+                    style: AppText.button.copyWith(fontSize: 12.5, color: Colors.white)),
+              ]),
+            ),
           ]),
         ),
       ),
