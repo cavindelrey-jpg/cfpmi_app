@@ -213,9 +213,9 @@ class _HomeShellState extends State<HomeShell> {
   // Selected School sub-destination (desktop secondary rail).
   int _schoolSub = 0;
 
-  // Desktop primary rail: collapsed icon rail (tooltips) by default,
-  // expandable to labels. Progressive disclosure, per the shell spec.
-  bool _railExpanded = false;
+  // Desktop primary rail: expanded with labels by default (matches the
+  // design reference), collapsible to an icon-only rail via the top-bar menu.
+  bool _railExpanded = true;
 
   // Lazy section loading: only a visited section's page is built, so an
   // untouched section's own streams never start until it's first opened.

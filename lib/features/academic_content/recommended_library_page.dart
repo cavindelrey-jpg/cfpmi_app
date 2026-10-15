@@ -34,8 +34,8 @@ class RecommendedLibraryPage extends StatelessWidget {
           if (snap.connectionState == ConnectionState.waiting) {
             return GridView.builder(
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.72),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 300, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.72),
               itemCount: 6,
               itemBuilder: (_, __) => const ShimmerBlock(),
             );
@@ -50,8 +50,8 @@ class RecommendedLibraryPage extends StatelessWidget {
           }
           return GridView.builder(
             padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.72),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 300, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.72),
             itemCount: items.length,
             itemBuilder: (context, i) => _Card(
               item: items[i],

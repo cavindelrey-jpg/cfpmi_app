@@ -109,8 +109,8 @@ class _TestsTopicPickerPageState extends State<TestsTopicPickerPage> {
                   child: GridView.builder(
                     padding: const EdgeInsets.all(20),
                     itemCount: _counts.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.92,
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 240, crossAxisSpacing: 12, mainAxisSpacing: 12, mainAxisExtent: 188,
                     ),
                     itemBuilder: (context, i) {
                       final topic = (_counts.keys.toList()..sort())[i];
