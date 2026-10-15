@@ -72,7 +72,9 @@ jobs:
       # Signed with the committed upload key (android/key.properties +
       # android/app/upload-keystore.jks); applicationId com.cfpmi.app.
       - name: Build Android App Bundle (AAB, CFPMI)
-        run: flutter build appbundle --release --flavor cfpmi --dart-define=BRAND_ID=cfpmi
+        # arm64 only — keeps the .aab well under 100 MB (drops the
+        # armeabi-v7a + x86_64 engine libs). Covers modern Android devices.
+        run: flutter build appbundle --release --flavor cfpmi --dart-define=BRAND_ID=cfpmi --target-platform android-arm64
 
       - name: Upload AAB (artifact)
         uses: actions/upload-artifact@v4
