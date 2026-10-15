@@ -114,7 +114,7 @@ class SettingsPage extends StatelessWidget {
     if (confirm != true) return;
     final uri = Uri(
       scheme: 'mailto',
-      path: 'privacy@cfpmi.cm',
+      path: 'agencydylansdigital@gmail.com',
       query: 'subject=CFPMI account deletion request'
           '&body=Please delete my CFPMI account and associated data.%0A%0A'
           'Name: ${Uri.encodeComponent(user.name)}%0ASchool: ${Uri.encodeComponent(user.schoolName)}',
@@ -122,7 +122,7 @@ class SettingsPage extends StatelessWidget {
     final ok = await launchUrl(uri);
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Could not open email. Please email privacy@cfpmi.cm to request deletion.'),
+        content: Text('Could not open email. Please email agencydylansdigital@gmail.com to request deletion.'),
       ));
     }
   }
