@@ -576,6 +576,8 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                     _studentProgressCard(context),
                     const SizedBox(height: 20),
                     _scheduleAnnouncementsSection(context),
+                    const SizedBox(height: 20),
+                    _recommendedReadsSection(context),
                   ],
                 ),
               ),
@@ -583,6 +585,79 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
           ),
         ),
       ],
+    );
+  }
+
+  // Right-rail "Recommended for You" — real Library content (balances the
+  // dashboard's right column; hidden entirely when there's nothing to show).
+  Widget _recommendedReadsSection(BuildContext context) {
+    return FutureBuilder<List<Object>>(
+      future: _recommendedFuture,
+      builder: (context, snap) {
+        final items =
+            (snap.data ?? const <Object>[]).whereType<AcademicContent>().take(4).toList();
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _cCard,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _cBorder),
+              boxShadow: _glow,
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.auto_awesome_rounded, size: 16, color: _cGreen),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('Recommended for You',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                          fontSize: 13, fontWeight: FontWeight.w800, color: _cNavy)),
+                ),
+              ]),
+              const SizedBox(height: 4),
+              for (final it in items)
+                InkWell(
+                  onTap: () => _open(
+                      context, ContentDetailsPage(contentId: it.id, user: _userOrGuest)),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    child: Row(children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                            color: _cPaleGreen, borderRadius: BorderRadius.circular(9)),
+                        child: const Icon(Icons.description_rounded, size: 17, color: _cGreen),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(it.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                  fontSize: 12.5, fontWeight: FontWeight.w700, color: _cText)),
+                          if (it.subject.isNotEmpty)
+                            Text(it.subject,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(fontSize: 11, color: _cText2)),
+                        ]),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, size: 16, color: _cText2),
+                    ]),
+                  ),
+                ),
+            ]),
+          ),
+        );
+      },
     );
   }
 
