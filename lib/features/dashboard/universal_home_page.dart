@@ -126,7 +126,12 @@ List<String> rankHomeSubjectsByUsage(
 
 class UniversalHomePage extends StatefulWidget {
   final AppUser? user;
-  const UniversalHomePage({super.key, this.user});
+
+  /// When true, the page omits its own top bar (hamburger/search/notifications/
+  /// avatar) because the application shell already provides a global one. The
+  /// guest shell renders this page without that shell, so it defaults to false.
+  final bool embedded;
+  const UniversalHomePage({super.key, this.user, this.embedded = false});
 
   @override
   State<UniversalHomePage> createState() => _UniversalHomePageState();
@@ -485,8 +490,10 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 36),
       children: [
-        _topBar(context),
-        const SizedBox(height: 4),
+        if (!widget.embedded) ...[
+          _topBar(context),
+          const SizedBox(height: 4),
+        ],
         _homeHeading(context),
         const SizedBox(height: 16),
         _featuredBanner(context),
@@ -521,8 +528,10 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 40),
       children: [
-        _topBar(context),
-        const SizedBox(height: 4),
+        if (!widget.embedded) ...[
+          _topBar(context),
+          const SizedBox(height: 4),
+        ],
         _homeHeading(context),
         const SizedBox(height: 18),
         Padding(

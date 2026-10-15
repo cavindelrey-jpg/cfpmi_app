@@ -385,7 +385,7 @@ class _HomeShellState extends State<HomeShell> {
     final u = widget.user;
     switch (def.label) {
       // A parent's Home shows their linked student's info, never their own.
-      case 'Home':     return u.isParent ? ParentDashboardPage(user: u) : UniversalHomePage(user: u);
+      case 'Home':     return u.isParent ? ParentDashboardPage(user: u) : UniversalHomePage(user: u, embedded: true);
       case 'Courses':  return CoursesHomePage(user: u);
       case 'Library':  return LibraryHomePage(user: u);
       case 'Magazine': return MagazineFeedPage(user: u);
