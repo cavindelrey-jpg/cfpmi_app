@@ -393,7 +393,10 @@ class _HomeShellState extends State<HomeShell> {
           // One global bar across the whole app width, sitting above the rail.
           AppTopBar(
             user: widget.user,
-            onMenu: () => setState(() => _railExpanded = !_railExpanded),
+            // The top menu button opens the COMPLETE application menu (the
+            // drawer, which lists every section incl. Classroom/Live Class),
+            // not just a rail toggle — so everything is reachable from here.
+            onMenu: () => _scaffoldKey.currentState?.openDrawer(),
             onProfile: () => _select('Profile'),
           ),
           const _OfflineBanner(),
