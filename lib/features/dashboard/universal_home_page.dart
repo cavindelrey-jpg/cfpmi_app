@@ -55,6 +55,11 @@ import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/widgets.dart';
+import '../../widgets/hero_banner_carousel.dart';
+import '../../models/hero_slide.dart';
+import '../../models/public_course.dart';
+import '../../repositories/public_course_repository.dart';
+import '../courses_marketplace/course_lessons_page.dart';
 import '../academic_content/content_details_page.dart';
 import '../academic_content/content_viewer_page.dart';
 import '../academic_content/library_folder_page.dart';
@@ -767,123 +772,14 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
 
   // ── Featured promotional banner ─────────────────────────────────────
   Widget _featuredBanner(BuildContext context) {
+    // Admin-editable, swipeable banner carousel: real content, auto-rotating,
+    // with arrows + swipe + pagination indicators. Replaces the single static
+    // banner. Changing/updating slides rebuilds only this widget, not the page.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GestureDetector(
-        onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest)),
-        child: Container(
-          height: 160,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: _glow,
-          ),
-          child: Stack(
-            children: [
-              Row(
-                children: [
-                  // Left: navy → forest-green panel with text
-                  Expanded(
-                    flex: 63,
-                    child: Container(
-                      height: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(16, 15, 10, 14),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_cNavy, _cDarkGreen],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('FEATURED',
-                              style: GoogleFonts.inter(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: _cGold,
-                                  letterSpacing: 1.4)),
-                          const SizedBox(height: 7),
-                          Text('Excellence Through\nKnowledge',
-                              style: GoogleFonts.inter(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  height: 1.15)),
-                          const SizedBox(height: 5),
-                          Text('Explore courses and learning resources.',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                  fontSize: 11, color: Colors.white.withValues(alpha: 0.85))),
-                          const SizedBox(height: 11),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: _cGold,
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('Continue Learning',
-                                    style: GoogleFonts.inter(
-                                        fontSize: 12, fontWeight: FontWeight.w700, color: _cNavy)),
-                                const SizedBox(width: 5),
-                                const Icon(Icons.arrow_forward_rounded, size: 14, color: _cNavy),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Right: campus placeholder panel (no logo/crest)
-                  Expanded(
-                    flex: 37,
-                    child: Container(
-                      height: double.infinity,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_cGreen, _cDarkGreen],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(Icons.account_balance_rounded,
-                            size: 58, color: Colors.white.withValues(alpha: 0.22)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              // Carousel indicators
-              Positioned(
-                bottom: 10,
-                left: 0,
-                right: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(4, (i) {
-                    final active = i == 0;
-                    return Container(
-                      width: active ? 18 : 6,
-                      height: 6,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: BoxDecoration(
-                        color: active ? _cGold : Colors.white.withValues(alpha: 0.45),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: HeroBannerCarousel(
+        placement: HeroPlacement.home,
+        user: _u,
       ),
     );
   }
@@ -950,10 +846,6 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
             icon: Icons.quiz_rounded, iconColor: _cGreen, iconBg: _cPaleGreen,
             title: 'Quizzes', subtitle: 'Test yourself',
             onTap: () => _open(context, QuizCategoriesPage(user: _userOrGuest))),
-        _featureCard(
-            icon: Icons.style_rounded, iconColor: _cInfo, iconBg: _cPaleBlue,
-            title: 'Flashcards', subtitle: 'Revise faster',
-            onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
         _featureCard(
             icon: Icons.psychology_rounded, iconColor: const Color(0xFFB7791F), iconBg: _cPaleYellow,
             title: 'Study Plan', subtitle: 'Stay on track',
@@ -1165,52 +1057,54 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
   }
 
   // ── Featured courses (horizontal carousel) ──────────────────────────
+  Future<List<PublicCourse>>? _featuredCoursesFuture;
+  Future<List<PublicCourse>> get _featuredCourses =>
+      _featuredCoursesFuture ??= PublicCourseRepository.instance.watchFeaturedOnce(count: 8);
+
   Widget _featuredCoursesSection(BuildContext context) {
     return SizedBox(
       height: 222,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _courseCard(context,
-              title: 'Advanced Mathematics',
-              subject: 'Mathematics',
-              lessons: 12,
-              topColor: const Color(0xFF1F2937),
-              icon: Icons.functions_rounded,
-              pillColor: _cInfo),
-          const SizedBox(width: 13),
-          _courseCard(context,
-              title: 'Physics 2016 Paper 2',
-              subject: 'Physics',
-              lessons: 8,
-              topColor: const Color(0xFF0F3D3E),
-              icon: Icons.science_rounded,
-              pillColor: _cGreen),
-          const SizedBox(width: 13),
-          _courseCard(context,
-              title: 'Literature & Composition',
-              subject: 'English',
-              lessons: 10,
-              topColor: const Color(0xFF5B3A1E),
-              icon: Icons.auto_stories_rounded,
-              pillColor: const Color(0xFFB7791F)),
-        ],
+      child: FutureBuilder<List<PublicCourse>>(
+        future: _featuredCourses,
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: SizedBox(
+                width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4)));
+          }
+          final courses = snap.data ?? const <PublicCourse>[];
+          if (courses.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+              child: Text('No featured courses yet.',
+                  style: GoogleFonts.inter(fontSize: 12.5, color: _cText2)),
+            );
+          }
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: courses.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 13),
+            itemBuilder: (context, i) => _courseCard(context, courses[i]),
+          );
+        },
       ),
     );
   }
 
-  Widget _courseCard(
-    BuildContext context, {
-    required String title,
-    required String subject,
-    required int lessons,
-    required Color topColor,
-    required IconData icon,
-    required Color pillColor,
-  }) {
+  static const List<Color> _courseCovers = [
+    Color(0xFF1F2937), Color(0xFF0F3D3E), Color(0xFF5B3A1E), Color(0xFF263B6B),
+  ];
+
+  // A real featured course card: admin thumbnail (coverImageUrl) when present,
+  // tapping opens THAT course (CourseLessonsPage), not a generic list.
+  Widget _courseCard(BuildContext context, PublicCourse course) {
+    final subject = course.subject.isNotEmpty
+        ? course.subject
+        : (course.category.isNotEmpty ? course.category : 'Course');
+    final cover = course.coverImageUrl;
+    final fallbackColor = _courseCovers[course.id.hashCode.abs() % _courseCovers.length];
     return GestureDetector(
-      onTap: () => _open(context, CoursesHomePage(user: _u)),
+      onTap: () => _open(context, CourseLessonsPage(course: course, currentUser: _u)),
       child: Container(
         width: 196,
         clipBehavior: Clip.antiAlias,
@@ -1223,70 +1117,48 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                Container(
-                  height: 104,
-                  width: double.infinity,
-                  color: topColor,
-                  child: Center(
-                    child: Icon(icon, size: 40, color: Colors.white.withValues(alpha: 0.85)),
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(subject,
-                        style: GoogleFonts.inter(
-                            fontSize: 10.5, fontWeight: FontWeight.w700, color: pillColor)),
-                  ),
-                ),
-              ],
-            ),
+            Stack(children: [
+              SizedBox(
+                height: 104,
+                width: double.infinity,
+                child: (cover != null && cover.isNotEmpty)
+                    ? Image.network(cover, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: fallbackColor,
+                          child: const Center(child: Icon(Icons.auto_stories_rounded,
+                              size: 38, color: Colors.white70)),
+                        ))
+                    : Container(
+                        color: fallbackColor,
+                        child: const Center(child: Icon(Icons.auto_stories_rounded,
+                            size: 38, color: Colors.white70)),
+                      ),
+              ),
+              Positioned(top: 8, left: 8, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                child: Text(subject, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w700, color: _cGreen)),
+              )),
+            ]),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: 42,
-                    child: Text(title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w700,
-                            color: _cText,
-                            height: 1.15)),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.menu_book_rounded, size: 14, color: _cText2),
-                          const SizedBox(width: 5),
-                          Text('$lessons lessons',
-                              style: GoogleFonts.inter(fontSize: 12, color: _cText2)),
-                        ],
-                      ),
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: const BoxDecoration(color: _cPaleYellow, shape: BoxShape.circle),
-                        child: const Icon(Icons.arrow_forward_rounded, size: 16, color: _cNavy),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                SizedBox(height: 42, child: Text(course.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(fontSize: 14.5, fontWeight: FontWeight.w700, color: _cText, height: 1.15))),
+                const SizedBox(height: 8),
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Row(children: [
+                    Icon(Icons.people_alt_rounded, size: 14, color: _cText2),
+                    const SizedBox(width: 5),
+                    Text('${course.enrolledCount} learners',
+                        style: GoogleFonts.inter(fontSize: 12, color: _cText2)),
+                  ]),
+                  Container(width: 30, height: 30,
+                    decoration: const BoxDecoration(color: _cPaleYellow, shape: BoxShape.circle),
+                    child: const Icon(Icons.arrow_forward_rounded, size: 16, color: _cNavy)),
+                ]),
+              ]),
             ),
           ],
         ),
@@ -1331,55 +1203,42 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.calendar_today_rounded, size: 15, color: _cDarkGreen),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text("Today's Schedule",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                          fontSize: 13, fontWeight: FontWeight.w800, color: _cDarkGreen)),
-                ),
-              ],
-            ),
+            Row(children: [
+              const Icon(Icons.calendar_today_rounded, size: 15, color: _cDarkGreen),
+              const SizedBox(width: 6),
+              Expanded(child: Text("Today's Schedule", maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: _cDarkGreen))),
+            ]),
             const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('08:00',
-                        style: GoogleFonts.inter(
-                            fontSize: 15, fontWeight: FontWeight.w800, color: _cText)),
+            StreamBuilder<List<SchoolTimetableSlot>>(
+              stream: _timetableStream ?? const Stream.empty(),
+              builder: (context, snap) {
+                final slots = [...(snap.data ?? const <SchoolTimetableSlot>[])]
+                  ..sort((a, b) => a.startTime.compareTo(b.startTime));
+                if (slots.isEmpty) {
+                  return Text('No classes scheduled today.',
+                      style: GoogleFonts.inter(fontSize: 12, color: _cText2));
+                }
+                final sl = slots.first;
+                final where = (sl.room ?? '').isNotEmpty ? sl.room! : sl.teacherName;
+                return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(sl.startTime, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: _cText)),
                     const SizedBox(height: 4),
-                    Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(color: _cGreen, shape: BoxShape.circle)),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Mathematics Class',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                              fontSize: 13, fontWeight: FontWeight.w700, color: _cText)),
+                    Container(width: 8, height: 8, decoration: const BoxDecoration(color: _cGreen, shape: BoxShape.circle)),
+                  ]),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(sl.subject.isEmpty ? 'Class' : sl.subject, maxLines: 2, overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: _cText)),
+                    if (where.isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text('Classroom A1',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      Text(where, maxLines: 1, overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(fontSize: 11.5, color: _cText2)),
                     ],
-                  ),
-                ),
-              ],
+                  ])),
+                ]);
+              },
             ),
           ],
         ),
@@ -1400,48 +1259,38 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.campaign_rounded, size: 16, color: Color(0xFFB7791F)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text('Announcements',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                          fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF8A6D1B))),
-                ),
-              ],
-            ),
+            Row(children: [
+              const Icon(Icons.campaign_rounded, size: 16, color: Color(0xFFB7791F)),
+              const SizedBox(width: 6),
+              Expanded(child: Text('Announcements', maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF8A6D1B)))),
+            ]),
             const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                    margin: const EdgeInsets.only(top: 5),
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(color: _cGreen, shape: BoxShape.circle)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('New Past Papers Available',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                              fontSize: 13, fontWeight: FontWeight.w700, color: _cText)),
+            StreamBuilder<List<Announcement>>(
+              stream: _announcementsStream ?? const Stream.empty(),
+              builder: (context, snap) {
+                final items = snap.data ?? const <Announcement>[];
+                if (items.isEmpty) {
+                  return Text('No announcements yet.',
+                      style: GoogleFonts.inter(fontSize: 12, color: _cText2));
+                }
+                final a = items.first;
+                return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Container(margin: const EdgeInsets.only(top: 5), width: 8, height: 8,
+                      decoration: const BoxDecoration(color: _cGreen, shape: BoxShape.circle)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(a.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: _cText)),
+                    if (a.body.isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text('GCE & A-level (2019–2023)',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                      Text(a.body, maxLines: 2, overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(fontSize: 11.5, color: _cText2)),
                     ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, size: 18, color: _cText2),
-              ],
+                  ])),
+                  const Icon(Icons.chevron_right_rounded, size: 18, color: _cText2),
+                ]);
+              },
             ),
           ],
         ),

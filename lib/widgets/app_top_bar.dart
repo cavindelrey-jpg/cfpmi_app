@@ -51,15 +51,16 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
         color: ac.surf,
         border: Border(bottom: BorderSide(color: ac.bdr)),
       ),
-      padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 16),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 12),
       child: Row(
         children: [
-          if (compact)
-            IconButton(
-              icon: Icon(Icons.menu_rounded, color: ac.txt),
-              tooltip: 'Menu',
-              onPressed: onMenu,
-            ),
+          // Menu button on every width (mobile opens the drawer, desktop
+          // toggles the nav rail) — sits beside the logo per the brief.
+          IconButton(
+            icon: Icon(Icons.menu_rounded, color: ac.txt),
+            tooltip: 'Menu',
+            onPressed: onMenu,
+          ),
           _logo(ac),
           if (!compact && user.isSchoolMember && user.schoolName.isNotEmpty) ...[
             const SizedBox(width: 14),
@@ -98,20 +99,27 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Widget _logo(AppColors ac) {
-    return Image.asset(
-      Branding.current.logoAssetPath,
-      height: 34,
-      filterQuality: FilterQuality.medium,
-      // A broken/missing asset must never blank the whole shell bar — fall
-      // back to the brand wordmark instead.
-      errorBuilder: (_, __, ___) => Text(
-        Branding.current.appName,
-        style: GoogleFonts.inter(
-            fontSize: 19,
-            fontWeight: FontWeight.w800,
-            color: ac.primary,
-            letterSpacing: -0.5),
-      ),
+    // Crest + "CFPMI" wordmark, side by side. The wordmark always shows, so
+    // the brand name is present even if the crest asset fails to load.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset(
+          Branding.current.logoAssetPath,
+          height: 32,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        ),
+        const SizedBox(width: 9),
+        Text(
+          Branding.current.appName,
+          style: GoogleFonts.sora(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: ac.primary,
+              letterSpacing: -0.3),
+        ),
+      ],
     );
   }
 

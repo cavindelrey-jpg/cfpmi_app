@@ -113,9 +113,10 @@ class AppTheme {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: C.primary,
+        // Brand-aware (navy for CFPMI), not the fixed Academia-blue C.primary.
+        backgroundColor: Branding.current.primaryColor,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: C.primary.withValues(alpha: .4),
+        disabledBackgroundColor: Branding.current.primaryColor.withValues(alpha: .4),
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         minimumSize: const Size(double.infinity, 52),
@@ -126,17 +127,17 @@ class AppTheme {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: C.primary,
-        side: const BorderSide(color: C.primary, width: 1.5),
+        foregroundColor: Branding.current.primaryColor,
+        side: BorderSide(color: Branding.current.primaryColor, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        overlayColor: C.primary.withValues(alpha: .06),
+        overlayColor: Branding.current.primaryColor.withValues(alpha: .06),
         animationDuration: Dur.fast,
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: C.primary,
-        overlayColor: C.primary.withValues(alpha: .06),
+        foregroundColor: Branding.current.primaryColor,
+        overlayColor: Branding.current.primaryColor.withValues(alpha: .06),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Rad.xs)),
       ),
     ),
@@ -151,7 +152,7 @@ class AppTheme {
           borderSide: const BorderSide(color: C.bdr)),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: C.primary, width: 1.5)),
+          borderSide: BorderSide(color: Branding.current.primaryColor, width: 1.5)),
       errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: C.red)),
@@ -165,7 +166,7 @@ class AppTheme {
           const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const IconThemeData(color: C.primary, size: 22);
+          return IconThemeData(color: Branding.current.primaryColor, size: 22);
         }
         return const IconThemeData(color: C.muted, size: 22);
       }),
