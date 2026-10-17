@@ -2,7 +2,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:academia_app/models/public_course.dart';
-import 'package:academia_app/models/course_lesson.dart';
 import 'package:academia_app/services/course_offline_service.dart';
 
 void main() {

@@ -356,9 +356,7 @@ class SchoolDocumentExportService {
     final encoded = ZipEncoder().encode(archive);
     final tempDir = await _getTempDir();
     final file = File('${tempDir.path}/timetable_${_clean(classLevel)}.docx');
-    if (encoded != null) {
-      await file.writeAsBytes(encoded, flush: true);
-    }
+    await file.writeAsBytes(encoded, flush: true);
     return file;
   }
 
@@ -545,9 +543,7 @@ class SchoolDocumentExportService {
     final encoded = ZipEncoder().encode(archive);
     final tempDir = await _getTempDir();
     final file = File('${tempDir.path}/program_of_activities.docx');
-    if (encoded != null) {
-      await file.writeAsBytes(encoded, flush: true);
-    }
+    await file.writeAsBytes(encoded, flush: true);
     return file;
   }
 
@@ -718,9 +714,7 @@ class SchoolDocumentExportService {
     final encoded = ZipEncoder().encode(archive);
     final tempDir = await _getTempDir();
     final file = File('${tempDir.path}/roster_${_clean(classLevel)}.docx');
-    if (encoded != null) {
-      await file.writeAsBytes(encoded, flush: true);
-    }
+    await file.writeAsBytes(encoded, flush: true);
     return file;
   }
 
@@ -896,9 +890,7 @@ class SchoolDocumentExportService {
     final encoded = ZipEncoder().encode(archive);
     final tempDir = await _getTempDir();
     final file = File('${tempDir.path}/staff_directory.docx');
-    if (encoded != null) {
-      await file.writeAsBytes(encoded, flush: true);
-    }
+    await file.writeAsBytes(encoded, flush: true);
     return file;
   }
 
@@ -1078,9 +1070,7 @@ class SchoolDocumentExportService {
     final encoded = ZipEncoder().encode(archive);
     final tempDir = await _getTempDir();
     final file = File('${tempDir.path}/marks_${_clean(classLevel)}_${_clean(subject)}.docx');
-    if (encoded != null) {
-      await file.writeAsBytes(encoded, flush: true);
-    }
+    await file.writeAsBytes(encoded, flush: true);
     return file;
   }
 

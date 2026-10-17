@@ -22,7 +22,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../config/branding.dart';
 import '../../models/academic_content.dart';
 import '../../models/announcement.dart';
 import '../../models/app_user.dart';
@@ -30,27 +29,17 @@ import '../../models/club.dart';
 import '../../models/daily_learning.dart';
 import '../../models/daily_learning_streak.dart';
 import '../../models/homework.dart';
-import '../../models/messaging.dart';
-import '../../models/personal_study_slot.dart';
 import '../../models/school_mark.dart';
 import '../../models/school_timetable_slot.dart';
-import '../../pages/notifications_page.dart';
-import '../../pages/profile_page.dart';
-import '../../pages/search_page.dart';
 import '../../repositories/academic_content_repository.dart';
 import '../../repositories/announcement_repository.dart';
 import '../../repositories/club_repository.dart';
 import '../../repositories/daily_learning_repository.dart';
 import '../../repositories/homework_repository.dart';
-import '../../repositories/library_folder_repository.dart';
-import '../../repositories/messaging_repository.dart';
-import '../../repositories/personal_study_repository.dart';
 import '../../repositories/school_marks_repository.dart';
 import '../../repositories/school_timetable_repository.dart';
 import '../../repositories/test_repository.dart';
 import '../../repositories/xp_repository.dart';
-import '../../screens/command_center_screen.dart';
-import '../../screens/dictionary_screen.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
@@ -62,27 +51,20 @@ import '../../repositories/public_course_repository.dart';
 import '../courses_marketplace/course_lessons_page.dart';
 import '../academic_content/content_details_page.dart';
 import '../academic_content/content_viewer_page.dart';
-import '../academic_content/library_folder_page.dart';
 import '../academic_content/library_home_page.dart';
-import '../announcements/announcements_page.dart';
 import '../clubs/clubs_page.dart';
 import '../courses_marketplace/courses_home_page.dart';
 import '../daily_learning/daily_learning_hub_page.dart';
 import '../daily_learning/daily_learning_lesson_page.dart';
-import '../magazine/magazine_feed_page.dart';
-import '../messages/messages_home_page.dart';
 import '../school/daily_notices/daily_notices_page.dart';
-import '../school/exam_composer/exam_list_page.dart';
 import '../school/homework_page.dart';
 import '../school/marks_page.dart';
 import '../school/school_calendar_page.dart';
-import '../school/school_connect_page.dart';
 import '../school/student_records_page.dart';
 import '../classroom/student_classroom_page.dart';
 import '../school/timetable_page.dart';
 import '../testing/quiz_categories_page.dart';
 import '../testing/xp_dashboard_page.dart';
-import '../timetable/personal_study_page.dart';
 
 /// Card shadow used throughout this page — soft, physical elevation.
 const List<BoxShadow> _glow = [
@@ -161,14 +143,12 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
 
 
   // ── Cached Streams & Futures (Prevent infinite rebuild loops) ───────
-  Stream<List<Conversation>>? _conversationsStream;
   Stream<DailyLearningStreak?>? _streakStream;
   Stream<(int, int)>? _xpStream;
   Future<Map<String, int>>? _completionCountsFuture;
   Future<({DailyLearningCourse course, DailyLearningLesson lesson, int completedCount, int totalCount})?>? _pendingDailyLessonFuture;
   Future<({double average, List<SchoolMark> subjects})?>? _latestMarksFuture;
   Stream<List<SchoolTimetableSlot>>? _timetableStream;
-  Stream<List<PersonalStudySlot>>? _personalStudyStream;
   Stream<List<Homework>>? _homeworkStream;
   Stream<List<Announcement>>? _announcementsStream;
   Future<List<({String clubName, ClubEvent event})>>? _upcomingClubEventsFuture;
@@ -179,21 +159,18 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     final classLevel = _u?.classLevel ?? '';
 
     if (_isGuest || uid.isEmpty) {
-      _conversationsStream = const Stream.empty();
       _streakStream = const Stream.empty();
       _xpStream = const Stream.empty();
       _completionCountsFuture = Future.value(const {});
       _pendingDailyLessonFuture = Future.value(null);
       _latestMarksFuture = Future.value(null);
       _timetableStream = const Stream.empty();
-      _personalStudyStream = const Stream.empty();
       _homeworkStream = const Stream.empty();
       _announcementsStream = const Stream.empty();
       _upcomingClubEventsFuture = Future.value(const []);
       return;
     }
 
-    _conversationsStream = MessagingRepository.instance.watchConversations(uid);
     _streakStream = DailyLearningRepository.instance.watchStreak(uid);
     _xpStream = XpRepository.instance.watchBalance(uid);
     _completionCountsFuture = TestRepository.instance.subjectCompletionCountsOnce(uid);
@@ -213,7 +190,6 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
       _homeworkStream = const Stream.empty();
     }
 
-    _personalStudyStream = PersonalStudyRepository.instance.watchToday(uid);
     _announcementsStream = AnnouncementRepository.instance.watchAnnouncements(schoolId: schoolId);
     _upcomingClubEventsFuture = _upcomingClubEvents();
   }
@@ -256,31 +232,8 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     }
   }
 
-  String get _timeGreeting {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
-
-  String get _academicSession {
-    final now = DateTime.now();
-    final startYear = now.month >= 9 ? now.year : now.year - 1;
-    return '$startYear/${startYear + 1}';
-  }
-
   void _open(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
-  }
-
-  Future<void> _openLibraryFolderByName(BuildContext context, AppUser user, String name) async {
-    final folder = await LibraryFolderRepository.instance.rootFolderByName(name);
-    if (!context.mounted) return;
-    if (folder == null) {
-      _open(context, LibraryHomePage(user: user));
-      return;
-    }
-    _open(context, LibraryFolderPage(folderId: folder.id, folderName: folder.name, user: user));
   }
 
   // ── Continue Reading Data ──────────────────────────────────────────
@@ -470,13 +423,6 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     return libraryItems;
   }
 
-  String _formatContentSize(int? bytes) {
-    if (bytes == null) return '';
-    if (bytes >= 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-    return '$bytes B';
-  }
-
   // ── Build Method ───────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -523,19 +469,12 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         _quickAccessSection(context),
         const SizedBox(height: 22),
         _studentProgressCard(context),
-        const SizedBox(height: 16),
-        _progressAndGoalsStrip(context),
         const SizedBox(height: 24),
         _sh('Featured Courses',
             action: 'Browse All',
             onTap: () => _navigateToSectionOrOpen(context, 'Courses', CoursesHomePage(user: _u))),
         const SizedBox(height: 12),
         _featuredCoursesSection(context),
-        const SizedBox(height: 24),
-        _sh('Study Tools',
-            onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
-        const SizedBox(height: 12),
-        _studyToolsSection(context),
         const SizedBox(height: 24),
         _scheduleAnnouncementsSection(context),
         const SizedBox(height: 16),
@@ -546,8 +485,8 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     );
   }
 
-  // Desktop/web: two-column dashboard beginning immediately below the top bar,
-  // with no repeated page heading or subtitle.
+  // Desktop/web: balanced two-column dashboard beginning immediately below the top bar,
+  // with rich content on the left and personal productivity on the right.
   Widget _desktopBody(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.only(top: 16, bottom: 40),
@@ -575,11 +514,8 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                         onTap: () => _navigateToSectionOrOpen(context, 'Courses', CoursesHomePage(user: _u))),
                     const SizedBox(height: 12),
                     _featuredCoursesSection(context),
-                    const SizedBox(height: 24),
-                    _sh('Study Tools',
-                        onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
-                    const SizedBox(height: 12),
-                    _studyToolsSection(context),
+                    const SizedBox(height: 20),
+                    _recommendedReadsSection(context),
                   ],
                 ),
               ),
@@ -589,14 +525,10 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                 child: Column(
                   children: [
                     _studentProgressCard(context),
-                    const SizedBox(height: 16),
-                    _progressAndGoalsStrip(context),
                     const SizedBox(height: 18),
                     _scheduleAnnouncementsSection(context),
                     const SizedBox(height: 18),
                     _tasksAndCalendarSection(context),
-                    const SizedBox(height: 18),
-                    _recommendedReadsSection(context),
                   ],
                 ),
               ),
@@ -838,22 +770,6 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
             onTap: () => _open(context, StudentClassroomPage(user: _userOrGuest))),
       ]);
 
-  // ── Study Tools ─────────────────────────────────────────────────────
-  Widget _studyToolsSection(BuildContext context) => _cardRow([
-        _featureCard(
-            icon: Icons.quiz_rounded, iconColor: _cGreen, iconBg: _cPaleGreen,
-            title: 'Quizzes', subtitle: 'Test yourself',
-            onTap: () => _open(context, QuizCategoriesPage(user: _userOrGuest))),
-        _featureCard(
-            icon: Icons.psychology_rounded, iconColor: const Color(0xFFB7791F), iconBg: _cPaleYellow,
-            title: 'Study Plan', subtitle: 'Stay on track',
-            onTap: () => _open(context, PersonalStudyPage(user: _userOrGuest))),
-        _featureCard(
-            icon: Icons.cloud_download_rounded, iconColor: _cPurple, iconBg: _cPalePurple,
-            title: 'Offline Mode', subtitle: 'Download now',
-            onTap: () => _open(context, LibraryHomePage(user: _userOrGuest))),
-      ]);
-
   Widget _featureCard({
     required IconData icon,
     required Color iconColor,
@@ -971,22 +887,109 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Expanded(child: _progressRing(pct)),
+                                Expanded(
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: () => _open(context, XpDashboardPage(user: _userOrGuest)),
+                                    child: _progressRing(pct),
+                                  ),
+                                ),
                                 _progressSep(),
                                 Expanded(
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: () => _open(context, XpDashboardPage(user: _userOrGuest)),
                                     child: _progressStat(
-                                        Icons.star_rounded, _cGold, '$xp', 'XP Points')),
+                                        Icons.star_rounded, _cGold, '$xp', 'XP Points'),
+                                  ),
+                                ),
                                 _progressSep(),
                                 Expanded(
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest)),
                                     child: _progressStat(Icons.local_fire_department_rounded,
-                                        _cOrange, '$streakCount', 'Day Streak')),
+                                        _cOrange, '$streakCount', 'Day Streak'),
+                                  ),
+                                ),
                                 _progressSep(),
                                 Expanded(
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: () => _open(context, QuizCategoriesPage(user: _userOrGuest)),
                                     child: _progressStat(Icons.emoji_events_rounded, _cGold,
-                                        '$quizzes', 'Quizzes Done')),
+                                        '$quizzes', 'Quizzes Done'),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
+                          if (!_isGuest && _u!.isSchoolMember) ...[
+                            const SizedBox(height: 14),
+                            Divider(height: 1, color: Colors.white.withValues(alpha: 0.16)),
+                            const SizedBox(height: 10),
+                            FutureBuilder<({double average, List<SchoolMark> subjects})?>(
+                              future: _latestMarksFuture,
+                              builder: (context, marksSnap) {
+                                final marksData = marksSnap.data;
+                                if (marksData == null || marksData.subjects.isEmpty) {
+                                  return InkWell(
+                                    onTap: () => _open(context, MarksPage(user: _userOrGuest)),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.assessment_outlined, color: Colors.white.withValues(alpha: 0.8), size: 16),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'View official school marks & grade reports',
+                                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withValues(alpha: 0.85)),
+                                          ),
+                                        ),
+                                        Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                return InkWell(
+                                  onTap: () => _open(context, MarksPage(user: _userOrGuest)),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 28,
+                                        height: 28,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.18),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '${marksData.average.round()}%',
+                                            style: GoogleFonts.sora(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: _cGold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Term Average: ${marksData.average.toStringAsFixed(1)}% · ${marksData.subjects.length} subject${marksData.subjects.length == 1 ? '' : 's'} recorded',
+                                          style: GoogleFonts.sora(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -1029,7 +1032,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
           ),
         ),
         const SizedBox(height: 8),
-        Text('Course Progress',
+        Text('Weekly Goal',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
                 fontSize: 10.5, color: Colors.white.withValues(alpha: 0.85))),
@@ -1188,13 +1191,15 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
           if (c.maxWidth < 340) {
             return Column(children: [schedule, const SizedBox(height: 12), announce]);
           }
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: schedule),
-              const SizedBox(width: 12),
-              Expanded(child: announce),
-            ],
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: schedule),
+                const SizedBox(width: 12),
+                Expanded(child: announce),
+              ],
+            ),
           );
         },
       ),
@@ -1403,7 +1408,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
 
                   // 3. Priority: Daily Challenge completed today
                   if (streakDoneToday) {
-                    final streakCount = streak?.currentStreak ?? 1;
+                    final streakCount = streak.currentStreak;
                     return _heroCardLayout(
                       context,
                       eyebrow: 'DAILY GOAL ACHIEVED',
@@ -1670,718 +1675,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     );
   }
 
-  // ── Goal-Gradient Momentum Strip ───────────────────────────────────
-  Widget _progressAndGoalsStrip(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ac.surf,
-          borderRadius: BorderRadius.circular(Rad.md),
-          border: Border.all(color: ac.bdr.withValues(alpha: 0.5)),
-          boxShadow: _glow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.trending_up_rounded, color: ac.primary, size: 18),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Academic Momentum',
-                      style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w800, color: ac.txt),
-                    ),
-                  ],
-                ),
-                Text(
-                  'Goal Gradient Tracker',
-                  style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w500, color: ac.txt2),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            StreamBuilder<DailyLearningStreak?>(
-              stream: _streakStream ?? const Stream.empty(),
-              builder: (context, streakSnap) {
-                final streak = streakSnap.data;
-                final streakCount = streak?.currentStreak ?? 0;
-                final now = DateTime.now();
-                final streakDone = streak?.lastCompletedDate != null &&
-                    streak!.lastCompletedDate!.year == now.year &&
-                    streak.lastCompletedDate!.month == now.month &&
-                    streak.lastCompletedDate!.day == now.day;
 
-                return StreamBuilder<(int, int)>(
-                  stream: _xpStream ?? const Stream.empty(),
-                  builder: (context, xpSnap) {
-                    final lifetimeXp = _isGuest ? 0 : (xpSnap.data?.$2 ?? 0);
-
-                    return FutureBuilder<Map<String, int>>(
-                      future: _completionCountsFuture ?? Future.value(const {}),
-                      builder: (context, badgeSnap) {
-                        final quizzesPassed =
-                            (badgeSnap.data ?? const {}).values.fold<int>(0, (s, v) => s + v);
-                        final activeDays = _weekActivityCount();
-
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: _metricTile(
-                                icon: Icons.local_fire_department_rounded,
-                                iconColor: ac.org,
-                                iconBg: ac.orgBg,
-                                value: '$streakCount d',
-                                label: streakDone ? 'Streak Active' : 'Streak Pending',
-                                onTap: () => _open(context, DailyLearningHubPage(user: _userOrGuest)),
-                              ),
-                            ),
-                            Container(width: 1, height: 38, color: ac.bdr.withValues(alpha: 0.6)),
-                            Expanded(
-                              child: _metricTile(
-                                icon: Icons.calendar_today_rounded,
-                                iconColor: ac.primary,
-                                iconBg: ac.primaryBg,
-                                value: '$activeDays/7',
-                                label: 'Days Active',
-                                onTap: () => _open(context, ProfilePage(user: _userOrGuest)),
-                              ),
-                            ),
-                            Container(width: 1, height: 38, color: ac.bdr.withValues(alpha: 0.6)),
-                            Expanded(
-                              child: _metricTile(
-                                icon: Icons.stars_rounded,
-                                iconColor: ac.gold,
-                                iconBg: ac.goldBg,
-                                value: '$lifetimeXp',
-                                label: 'XP Points',
-                                onTap: () => _open(context, XpDashboardPage(user: _userOrGuest)),
-                              ),
-                            ),
-                            Container(width: 1, height: 38, color: ac.bdr.withValues(alpha: 0.6)),
-                            Expanded(
-                              child: _metricTile(
-                                icon: Icons.military_tech_rounded,
-                                iconColor: ac.pur,
-                                iconBg: ac.purBg,
-                                value: '$quizzesPassed',
-                                label: 'Quizzes Done',
-                                onTap: () => _open(context, QuizCategoriesPage(user: _userOrGuest)),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
-            // School GPA summary row if enrolled in school and marks exist
-            if (!_isGuest && _u!.isSchoolMember) ...[
-              const SizedBox(height: 12),
-              Divider(height: 1, color: ac.bdr.withValues(alpha: 0.6)),
-              const SizedBox(height: 12),
-              FutureBuilder<({double average, List<SchoolMark> subjects})?>(
-                future: _latestMarksFuture,
-                builder: (context, marksSnap) {
-                  final marksData = marksSnap.data;
-                  if (marksData == null || marksData.subjects.isEmpty) {
-                    return InkWell(
-                      onTap: () => _open(context, MarksPage(user: _userOrGuest)),
-                      child: Row(
-                        children: [
-                          Icon(Icons.assessment_outlined, color: ac.txt2, size: 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'View your official school marks & grade reports',
-                              style: GoogleFonts.inter(fontSize: 11, color: ac.txt2),
-                            ),
-                          ),
-                          Icon(Icons.chevron_right_rounded, color: ac.muted, size: 18),
-                        ],
-                      ),
-                    );
-                  }
-                  return InkWell(
-                    onTap: () => _open(context, MarksPage(user: _userOrGuest)),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: ac.primaryBg,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${marksData.average.round()}%',
-                              style: GoogleFonts.sora(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: ac.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Term Average · ${marksData.subjects.length} recorded subject${marksData.subjects.length == 1 ? '' : 's'}',
-                                style: GoogleFonts.sora(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: ac.txt,
-                                ),
-                              ),
-                              Text(
-                                marksData.subjects.take(3).map((s) => s.subject).join(', '),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(fontSize: 10, color: ac.txt2),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.chevron_right_rounded, color: ac.muted, size: 18),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _metricTile({
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBg,
-    required String value,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      borderRadius: BorderRadius.circular(Rad.xs),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-              child: Icon(icon, color: iconColor, size: 15),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w800, color: ac.txt),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w500, color: ac.txt2),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Structured Academic Hubs (2x2 Grid) ────────────────────────────
-  Widget _academicHubsGrid(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _academicHubCard(
-                  context,
-                  title: 'Academia Library',
-                  subtitle: 'Textbooks, revision & notes',
-                  icon: Icons.local_library_rounded,
-                  iconColor: ac.primary,
-                  iconBg: ac.primaryBg,
-                  onTap: () => _open(context, LibraryHomePage(user: _userOrGuest)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _academicHubCard(
-                  context,
-                  title: 'Past Questions',
-                  subtitle: 'GCE & national exam papers',
-                  icon: Icons.assignment_rounded,
-                  iconColor: ac.grn,
-                  iconBg: ac.grnBg,
-                  onTap: () => _openLibraryFolderByName(context, _userOrGuest, 'Past Papers'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _academicHubCard(
-                  context,
-                  title: 'Academia Quizzes',
-                  subtitle: 'Timed MCQ drills & instant XP',
-                  icon: Icons.quiz_rounded,
-                  iconColor: ac.gold,
-                  iconBg: ac.goldBg,
-                  onTap: () => _open(context, QuizCategoriesPage(user: _userOrGuest)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _academicHubCard(
-                  context,
-                  title: 'Academia Courses',
-                  subtitle: 'Curated skill masterclasses',
-                  icon: Icons.school_rounded,
-                  iconColor: ac.pur,
-                  iconBg: ac.purBg,
-                  onTap: () => _open(context, CoursesHomePage(user: _u)),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _academicHubCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBg,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: ac.surf,
-      borderRadius: BorderRadius.circular(Rad.md),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Rad.md),
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr.withValues(alpha: 0.7)),
-            boxShadow: _glow,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: iconBg,
-                      borderRadius: BorderRadius.circular(Rad.xs),
-                    ),
-                    child: Icon(icon, color: iconColor, size: 20),
-                  ),
-                  Icon(Icons.arrow_outward_rounded, size: 16, color: ac.muted),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w700, color: ac.txt),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(fontSize: 10, color: ac.txt2),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Secondary Tools Scannable Row ──────────────────────────────────
-  Widget _secondaryToolsRow(BuildContext context) {
-    final isSchoolMember = !_isGuest && _u!.isSchoolMember;
-
-    final tools = <(String, IconData, Color, VoidCallback)>[
-      ('Marks', Icons.assessment_outlined, ac.primary,
-          () => _open(context, MarksPage(user: _userOrGuest))),
-      ('Homework', Icons.menu_book_outlined, ac.org,
-          () => _open(context, HomeworkPage(user: _userOrGuest))),
-      ('Timetable', Icons.calendar_month_outlined, ac.grn,
-          () => _open(context, TimetablePage(user: _userOrGuest))),
-      ('School Connect', Icons.forum_outlined, ac.pur,
-          () => _open(context, SchoolConnectPage(user: _userOrGuest))),
-      ('Daily Notices', Icons.campaign_outlined, ac.org,
-          () => _open(context, DailyNoticesPage(user: _userOrGuest))),
-      if (!_isGuest && (_u!.isAdmin || _u!.isTeacher || _u!.isSchoolClassMaster || _u!.canManageSchool))
-        ('Exam Composer', Icons.assignment_outlined, ac.primary,
-            () => _open(context, ExamListPage(user: _u!))),
-      ('Dictionary', Icons.spellcheck_rounded, ac.primary,
-          () => _open(context, const DictionaryScreen())),
-      ('Study Groups', Icons.groups_outlined, ac.grn,
-          () => _open(context, ClubsPage(user: _userOrGuest))),
-      ('Daily Challenges', Icons.local_fire_department_outlined, ac.org,
-          () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
-      ('Magazine', Icons.auto_stories_outlined, ac.gold,
-          () => _open(context, MagazineFeedPage(user: _userOrGuest))),
-      if (_u?.isSuperAdmin == true)
-        ('Command Center', Icons.admin_panel_settings_outlined, ac.red,
-            () => _open(context, const CommandCenterScreen())),
-    ];
-
-    return SizedBox(
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: tools.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final (label, icon, color, onTap) = tools[i];
-          return ActionChip(
-            avatar: Icon(icon, size: 16, color: color),
-            label: Text(
-              label,
-              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: ac.txt),
-            ),
-            backgroundColor: ac.surf,
-            side: BorderSide(color: ac.bdr.withValues(alpha: 0.6)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Rad.lg)),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              onTap();
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  // ── Schedule & Tasks Row ───────────────────────────────────────────
-  Widget _scheduleAndTasksRow(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: _panelCard(
-                title: "Today's Schedule",
-                actionLabel: 'View timetable',
-                onAction: () {
-                  if (!_isGuest && _u!.isSchoolMember) {
-                    _open(context, TimetablePage(user: _u!));
-                  } else {
-                    _open(context, PersonalStudyPage(user: _userOrGuest));
-                  }
-                },
-                child: _scheduleCardContent(context),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _panelCard(
-                title: 'My Tasks & Homework',
-                actionLabel: 'View all',
-                onAction: () {
-                  if (!_isGuest && _u!.isSchoolMember) {
-                    _open(context, HomeworkPage(user: _u!));
-                  } else {
-                    _open(context, LibraryHomePage(user: _userOrGuest));
-                  }
-                },
-                child: _tasksCardContent(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _scheduleCardContent(BuildContext context) {
-    if (_isGuest) {
-      return InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          _open(context, PersonalStudyPage(user: _userOrGuest));
-        },
-        borderRadius: BorderRadius.circular(Rad.sm),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: ac.primaryBg,
-            borderRadius: BorderRadius.circular(Rad.sm),
-            border: Border.all(color: ac.primary.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.calendar_today_rounded, color: ac.primary, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Study Timetable',
-                      style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.primary),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Set up your revision blocks',
-                      style: GoogleFonts.inter(fontSize: 9.5, color: ac.txt2),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: ac.primary, size: 16),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // If school member, check official school timetable first
-    final schoolId = _u!.schoolId;
-    if (_u!.isSchoolMember && schoolId != null && schoolId.isNotEmpty && _u!.classLevel.isNotEmpty) {
-      return StreamBuilder<List<SchoolTimetableSlot>>(
-        stream: _timetableStream ?? const Stream.empty(),
-        builder: (context, snap) {
-          final slots = snap.data ?? const <SchoolTimetableSlot>[];
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
-          }
-          if (slots.isNotEmpty) {
-            final shown = slots.take(2).toList();
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final s in shown) ...[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 3,
-                        height: 30,
-                        decoration: BoxDecoration(color: ac.primary, borderRadius: BorderRadius.circular(2)),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${s.startTime} - ${s.endTime}',
-                              style: GoogleFonts.inter(fontSize: 10, color: ac.txt2),
-                            ),
-                            Text(
-                              s.subject,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.sora(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.txt),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                if (slots.length > 2)
-                  Text(
-                    '+${slots.length - 2} more period${slots.length - 2 == 1 ? '' : 's'} today',
-                    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: ac.primary),
-                  ),
-              ],
-            );
-          }
-
-          // Fallback to personal study slots if school timetable is empty
-          return _personalStudySlotsFallback();
-        },
-      );
-    }
-
-    return _personalStudySlotsFallback();
-  }
-
-  Widget _personalStudySlotsFallback() {
-    final uid = _u?.id ?? '';
-    if (uid.isEmpty) {
-      return InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          _open(context, PersonalStudyPage(user: _userOrGuest));
-        },
-        borderRadius: BorderRadius.circular(Rad.sm),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: ac.primaryBg,
-            borderRadius: BorderRadius.circular(Rad.sm),
-            border: Border.all(color: ac.primary.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.add_circle_outline_rounded, color: ac.primary, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Plan Study Routine',
-                      style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.primary),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Add revision blocks for today',
-                      style: GoogleFonts.inter(fontSize: 9.5, color: ac.txt2),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: ac.primary, size: 16),
-            ],
-          ),
-        ),
-      );
-    }
-    return StreamBuilder<List<PersonalStudySlot>>(
-      stream: _personalStudyStream ?? const Stream.empty(),
-      builder: (context, snap) {
-        final slots = snap.data ?? const <PersonalStudySlot>[];
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
-        }
-        if (slots.isEmpty) {
-          return InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              _open(context, PersonalStudyPage(user: _userOrGuest));
-            },
-            borderRadius: BorderRadius.circular(Rad.sm),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: ac.primaryBg,
-                borderRadius: BorderRadius.circular(Rad.sm),
-                border: Border.all(color: ac.primary.withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.add_circle_outline_rounded, color: ac.primary, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Plan Study Routine',
-                          style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.primary),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Add study slots for today',
-                          style: GoogleFonts.inter(fontSize: 9.5, color: ac.txt2),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: ac.primary, size: 16),
-                ],
-              ),
-            ),
-          );
-        }
-        final shown = slots.take(2).toList();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final s in shown) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 3,
-                    height: 30,
-                    decoration: BoxDecoration(color: ac.grn, borderRadius: BorderRadius.circular(2)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${s.startTime} - ${s.endTime}',
-                          style: GoogleFonts.inter(fontSize: 10, color: ac.txt2),
-                        ),
-                        Text(
-                          s.activity,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.sora(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.txt),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-            if (slots.length > 2)
-              Text(
-                '+${slots.length - 2} more revision slot${slots.length - 2 == 1 ? '' : 's'}',
-                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: ac.grn),
-              ),
-          ],
-        );
-      },
-    );
-  }
 
   Widget _tasksCardContent(BuildContext context) {
     if (_isGuest) {
@@ -2593,22 +1887,6 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     return '${due.day}/${due.month}';
   }
 
-  Widget _emptyCardState({required IconData icon, required String message}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: ac.muted, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            message,
-            style: GoogleFonts.inter(fontSize: 10.5, color: ac.muted, height: 1.3),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _panelCard({
     required String title,
     required String actionLabel,
@@ -2653,138 +1931,6 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
           child,
         ],
       ),
-    );
-  }
-
-  // ── Campus & Community Pulse ───────────────────────────────────────
-  Widget _campusAndCommunityRow(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: _panelCard(
-                title: 'Announcements',
-                actionLabel: 'View all',
-                onAction: () => _open(
-                  context,
-                  AnnouncementsPage(
-                    user: _userOrGuest,
-                    canPost: !_isGuest && _u!.canPostAnnouncement,
-                  ),
-                ),
-                child: _announcementsContent(context),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _panelCard(
-                title: 'My Study Groups',
-                actionLabel: 'Explore',
-                onAction: () => _open(context, ClubsPage(user: _userOrGuest)),
-                child: _myClubContent(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _announcementsContent(BuildContext context) {
-    return StreamBuilder<List<Announcement>>(
-      stream: _announcementsStream ?? const Stream.empty(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 50, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
-        }
-        final items = snap.data ?? const <Announcement>[];
-        if (items.isEmpty) {
-          return InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              _open(
-                context,
-                AnnouncementsPage(user: _userOrGuest, canPost: !_isGuest && _u!.canPostAnnouncement),
-              );
-            },
-            borderRadius: BorderRadius.circular(Rad.sm),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: ac.purBg,
-                borderRadius: BorderRadius.circular(Rad.sm),
-                border: Border.all(color: ac.pur.withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.campaign_outlined, color: ac.pur, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'School Bulletin',
-                          style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.pur),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'View noticeboard & updates',
-                          style: GoogleFonts.inter(fontSize: 9.5, color: ac.txt2),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: ac.pur, size: 16),
-                ],
-              ),
-            ),
-          );
-        }
-        final top = items.first;
-        return InkWell(
-          onTap: () => _open(
-            context,
-            AnnouncementsPage(user: _userOrGuest, canPost: !_isGuest && _u!.canPostAnnouncement),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: ac.purBg, borderRadius: BorderRadius.circular(4)),
-                    child: Text(
-                      'LATEST',
-                      style: GoogleFonts.inter(fontSize: 8.5, fontWeight: FontWeight.w800, color: ac.pur),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      top.authorName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(fontSize: 9.5, color: ac.txt2),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                top.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.txt, height: 1.3),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -2897,261 +2043,4 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     );
   }
 
-  // ── Section Header ─────────────────────────────────────────────────
-  Widget _sectionHeader(String title, {VoidCallback? onViewAll, String viewAllLabel = 'View all'}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt),
-          ),
-          if (onViewAll != null)
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(Rad.xs),
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  onViewAll();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                  child: Text(
-                    viewAllLabel,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: ac.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ── Recommended For You ────────────────────────────────────────────
-  Widget _recommendedRow(BuildContext context) {
-    return FutureBuilder<List<Object>>(
-      future: _recommendedFuture,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const SizedBox(
-            height: 168,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          );
-        }
-        if (snap.hasError) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              "Couldn't load recommendations",
-              style: GoogleFonts.inter(fontSize: 12, color: ac.red),
-            ),
-          );
-        }
-        final items = snap.data ?? const [];
-        if (items.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'No items to recommend yet. Explore the Library to discover materials.',
-              style: GoogleFonts.inter(fontSize: 12, color: ac.muted),
-            ),
-          );
-        }
-        return SizedBox(
-          height: 172,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (_, i) {
-              final it = items[i];
-              if (it is AcademicContent) return _recommendedCard(context, it);
-              return const SizedBox.shrink();
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _recommendedCard(BuildContext context, AcademicContent item) {
-    return Material(
-      color: ac.surf,
-      borderRadius: BorderRadius.circular(Rad.md),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Rad.md),
-        onTap: () {
-          HapticFeedback.selectionClick();
-          _open(context, ContentDetailsPage(contentId: item.id, user: _userOrGuest));
-        },
-        child: Container(
-          width: 156,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr.withValues(alpha: 0.6)),
-            boxShadow: _glow,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Thumbnail
-              SizedBox(
-                height: 68,
-                width: double.infinity,
-                child: (item.thumbnailUrl ?? '').isNotEmpty
-                    ? Image.network(
-                        item.thumbnailUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _thumbnailFallback(item),
-                      )
-                    : _thumbnailFallback(item),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.description_rounded, size: 12, color: ac.primary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            item.contentType.label,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              color: ac.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.sora(fontSize: 11.5, fontWeight: FontWeight.w700, height: 1.25),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _formatContentSize(item.fileSizeBytes),
-                          style: GoogleFonts.inter(fontSize: 9.5, color: ac.txt2),
-                        ),
-                        Icon(Icons.bookmark_outline_rounded, size: 15, color: ac.muted),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _thumbnailFallback(AcademicContent item) {
-    return Container(
-      color: ac.primaryBg,
-      child: Center(
-        child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 22)),
-      ),
-    );
-  }
-
-  // ── Academic Profile Summary Card (Endowment Footer) ───────────────
-  Widget _academicProfileSummaryCard(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ac.surf,
-          borderRadius: BorderRadius.circular(Rad.md),
-          border: Border.all(color: ac.bdr.withValues(alpha: 0.6)),
-          boxShadow: _glow,
-        ),
-        child: Row(
-          children: [
-            UserAvatar(
-              initials: _isGuest || _userOrGuest.name.isEmpty ? '?' : _userOrGuest.name[0].toUpperCase(),
-              radius: 20,
-              photoUrl: _u?.photoUrl,
-              onTap: () => _open(context, ProfilePage(user: _userOrGuest)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _isGuest ? 'Guest Learner' : _userOrGuest.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w800, color: ac.txt),
-                  ),
-                  Text(
-                    _isGuest
-                        ? 'Sign in to sync your learning across devices'
-                        : (_u!.isSchoolMember
-                            ? '${_u!.schoolName} · ${_u!.classLevel}'
-                            : 'Personal Academic Workspace'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(fontSize: 10.5, color: ac.txt2),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Material(
-              color: ac.primaryBg,
-              borderRadius: BorderRadius.circular(Rad.xs),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(Rad.xs),
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  _open(context, ProfilePage(user: _userOrGuest));
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Profile',
-                        style: GoogleFonts.sora(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: ac.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_rounded, size: 12, color: ac.primary),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

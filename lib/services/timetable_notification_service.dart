@@ -36,7 +36,7 @@ class TimetableNotificationService {
   /// tomorrow's programme for the signed-in user if not already generated today.
   Future<void> checkNow(AppUser user) async {
     final schoolId = user.schoolId;
-    final classLevel = user.classLevel ?? '';
+    final classLevel = user.classLevel;
     if (schoolId == null || schoolId.isEmpty || classLevel.isEmpty) return;
 
     // School timezone: UTC+1 (Cameroon)
