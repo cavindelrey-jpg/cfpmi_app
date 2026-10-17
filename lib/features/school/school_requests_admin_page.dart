@@ -30,7 +30,7 @@ class _SchoolRequestsAdminPageState extends State<SchoolRequestsAdminPage> {
     final ac = AppColors.of(context);
     final staff = widget.staff;
 
-    if (!staff.canUploadContent && !staff.canManageSchool) {
+    if (!staff.hasMinRole(UserRole.lecturer) && !staff.canManageSchool) {
       return Scaffold(
         backgroundColor: ac.bg,
         appBar: AppBar(backgroundColor: ac.bg, elevation: 0),

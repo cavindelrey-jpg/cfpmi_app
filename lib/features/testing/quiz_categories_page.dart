@@ -226,22 +226,21 @@ class _QuizCategoriesPageState extends State<QuizCategoriesPage> {
   /// application shell (which already owns the global top bar). A pushed
   /// route keeps its own AppBar and this is a pass-through.
   Widget _embedWrap(bool isGuest, Widget content) {
-    if (!widget.embedded) return content;
+    if (!widget.embedded || isGuest) return content;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 2),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Expanded(child: Text('Academia Quizzes & Tests', style: AppText.h2)),
-              if (!isGuest)
-                IconButton(
-                  icon: Icon(Icons.bolt_rounded, color: ac.gold),
-                  tooltip: 'XP Dashboard',
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => XpDashboardPage(user: widget.user))),
-                ),
+              IconButton(
+                icon: Icon(Icons.bolt_rounded, color: ac.gold),
+                tooltip: 'XP Dashboard',
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => XpDashboardPage(user: widget.user))),
+              ),
             ],
           ),
         ),

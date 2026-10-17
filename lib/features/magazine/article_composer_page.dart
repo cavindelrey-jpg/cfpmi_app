@@ -10,14 +10,17 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
 import '../../models/app_user.dart';
 import '../../models/magazine_article.dart';
 import '../../repositories/magazine_repository.dart';
+import '../../core/docx_parser.dart';
 import '../../core/result.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
@@ -109,6 +112,78 @@ class _ArticleComposerPageState extends State<ArticleComposerPage> {
         articleId: '${articleId}_inline_${DateTime.now().millisecondsSinceEpoch}', imageFile: file);
     if (result is Success<String>) return result.value;
     return null;
+  }
+
+  Future<void> _importFile() async {
+    HapticFeedback.mediumImpact();
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['docx', 'txt', 'md'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final picked = result.files.single;
+    Uint8List? bytes = picked.bytes;
+    if (bytes == null && picked.path != null && picked.path!.isNotEmpty) {
+      try {
+        bytes = await File(picked.path!).readAsBytes();
+      } catch (_) {}
+    }
+    if (bytes == null) {
+      if (mounted) showToast(context, 'Could not read that file.', isError: true);
+      return;
+    }
+    try {
+      final ext = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : '';
+      if (_titleCtrl.text.trim().isEmpty) {
+        _titleCtrl.text = picked.name.replaceAll(RegExp(r'\.[^.]+$'), '').replaceAll('_', ' ');
+      }
+      if (ext == 'txt' || ext == 'md') {
+        final text = utf8.decode(bytes, allowMalformed: true);
+        final doc = quill.Document()..insert(0, text);
+        setState(() => _quillCtrl.document = doc);
+      } else {
+        final parsed = await compute(DocxParser.parse, bytes);
+        final delta = quill.Document.fromJson(jsonDecode(parsed.deltaJson));
+        setState(() => _quillCtrl.document = delta);
+      }
+      if (mounted) showToast(context, 'Document imported — review before publishing.');
+    } catch (e) {
+      if (mounted) showToast(context, 'Could not import file: $e', isError: true);
+    }
+  }
+
+  Future<void> _pasteFromClipboard() async {
+    HapticFeedback.selectionClick();
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text == null || text.isEmpty) {
+      if (mounted) showToast(context, 'Clipboard is empty.');
+      return;
+    }
+    final selection = _quillCtrl.selection;
+    final docLen = _quillCtrl.document.length;
+    final offset = (selection.baseOffset >= 0 && selection.baseOffset < docLen)
+        ? selection.baseOffset
+        : (docLen > 0 ? docLen - 1 : 0);
+    _quillCtrl.document.insert(offset, text);
+    _quillCtrl.updateSelection(
+      TextSelection.collapsed(offset: offset + text.length),
+      quill.ChangeSource.local,
+    );
+    setState(() {});
+    if (mounted) showToast(context, 'Pasted from clipboard.');
+  }
+
+  Future<void> _copyAllText() async {
+    HapticFeedback.selectionClick();
+    final text = _quillCtrl.document.toPlainText().trim();
+    if (text.isEmpty) {
+      if (mounted) showToast(context, 'Nothing to copy yet.');
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) showToast(context, 'Article text copied to clipboard.');
   }
 
   Future<void> _save({required bool publish}) async {
@@ -327,7 +402,48 @@ class _ArticleComposerPageState extends State<ArticleComposerPage> {
                 ),
               ),
               Divider(color: ac.bdr2),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Article body',
+                        style: AppText.caption.copyWith(fontWeight: FontWeight.w700, color: ac.txt2)),
+                  ),
+                  TextButton.icon(
+                    onPressed: _pasteFromClipboard,
+                    icon: Icon(Icons.content_paste_rounded, size: 15, color: ac.primary),
+                    label: Text('Paste', style: AppText.caption.copyWith(fontWeight: FontWeight.w700, color: ac.primary)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    onPressed: _copyAllText,
+                    icon: Icon(Icons.copy_rounded, size: 15, color: ac.txt2),
+                    label: Text('Copy', style: AppText.caption.copyWith(fontWeight: FontWeight.w600, color: ac.txt2)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    onPressed: _importFile,
+                    icon: Icon(Icons.upload_file_rounded, size: 15, color: ac.primary),
+                    label: Text('Import File', style: AppText.caption.copyWith(fontWeight: FontWeight.w700, color: ac.primary)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               Container(
                 constraints: const BoxConstraints(minHeight: 280),
                 decoration: BoxDecoration(
@@ -339,6 +455,7 @@ class _ArticleComposerPageState extends State<ArticleComposerPage> {
                   scrollController: _editorScrollCtrl,
                   config: quill.QuillEditorConfig(
                     placeholder: 'Tell your story…',
+                    enableInteractiveSelection: true,
                     embedBuilders: FlutterQuillEmbeds.editorBuilders(),
                   ),
                 ),

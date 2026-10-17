@@ -14,7 +14,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
 import '../../core/feature_access.dart';
@@ -33,6 +35,7 @@ import '../../widgets/formula_embed_builder.dart';
 import '../../widgets/media_players.dart';
 import '../../widgets/premium_unlock_sheet.dart';
 import 'course_creator_profile_page.dart';
+import 'lesson_composer_page.dart';
 
 class LessonReaderPage extends StatefulWidget {
   final PublicCourse course;
@@ -108,6 +111,9 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
     final lesson = widget.lesson;
     final hasVideo = (lesson.videoUrl ?? '').isNotEmpty;
     final userId = widget.currentUser?.id ?? 'guest';
+    final canEdit = widget.currentUser != null &&
+        !widget.currentUser!.isGuest &&
+        (widget.currentUser!.id == widget.course.creatorId || widget.currentUser!.isSuperAdmin);
     return Scaffold(
       backgroundColor: ac.bg,
       appBar: AppBar(
@@ -118,6 +124,35 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
         title: Text(widget.course.title,
             style: AppText.subtitle.copyWith(fontSize: 14, color: ac.txt2),
             maxLines: 1, overflow: TextOverflow.ellipsis),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.copy_rounded, size: 20, color: ac.txt2),
+            tooltip: 'Copy lesson text',
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              final text = _extractPlainText(lesson);
+              Clipboard.setData(ClipboardData(text: '${lesson.title}\n\n$text'));
+              showToast(context, 'Lesson text copied to clipboard.');
+            },
+          ),
+          if (canEdit)
+            IconButton(
+              icon: Icon(Icons.edit_outlined, size: 20, color: ac.txt2),
+              tooltip: 'Edit lesson',
+              onPressed: () async {
+                final allLessons = await CourseLessonRepository.instance.lessonsOnce(widget.course.id);
+                if (!context.mounted) return;
+                await Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => LessonComposerPage(
+                    user: widget.currentUser!,
+                    courseId: widget.course.id,
+                    existing: lesson,
+                    existingSequence: allLessons,
+                  ),
+                ));
+              },
+            ),
+        ],
       ),
       // Sticky bottom action area (Improvement 2 / Mistake 15) — stays visible
       // while the learner scrolls so they can mark complete or continue anytime.
@@ -273,8 +308,8 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
         child: TabBarView(controller: _tabCtrl, children: [
           _OverviewTab(course: widget.course, lesson: lesson, hasVideo: hasVideo, currentUser: widget.currentUser,
               onContinue: () => _continue(context)),
-          const _EmptyTab(message: 'No resources have been added to this lesson yet.'),
-          const _EmptyTab(message: 'Your personal notes for this lesson will appear here.'),
+          _ResourcesTab(course: widget.course, lesson: lesson),
+          _NotesTab(lesson: lesson, userId: widget.currentUser?.id ?? 'guest'),
           _CommentsTab(
             course: widget.course, currentUser: widget.currentUser,
             commentCtrl: _commentCtrl, posting: _postingComment, onPost: _postComment,
@@ -393,6 +428,18 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
   }
 }
 
+String _extractPlainText(CourseLesson lesson) {
+  final deltaJson = lesson.bodyDelta;
+  if (deltaJson != null && deltaJson.isNotEmpty) {
+    try {
+      final doc = quill.Document.fromJson(jsonDecode(deltaJson));
+      final plain = doc.toPlainText().trim();
+      if (plain.isNotEmpty) return plain;
+    } catch (_) {}
+  }
+  return lesson.body.trim();
+}
+
 /// Video lessons stay gated Premium Gold-only for readers — Silver and
 /// Free/Guest both see the same locked card; only the CTA copy differs
 /// (upgrade vs. sign in first). Ported from course_reader_page.dart's
@@ -456,18 +503,309 @@ class _LockedVideoCard extends StatelessWidget {
   }
 }
 
-class _EmptyTab extends StatelessWidget {
-  final String message;
-  const _EmptyTab({required this.message});
+class _ResourcesTab extends StatelessWidget {
+  final PublicCourse course;
+  final CourseLesson lesson;
+  const _ResourcesTab({required this.course, required this.lesson});
+
+  List<String> _extractUrls(String text) {
+    final regex = RegExp(r'https?://[^\s<>"]+', caseSensitive: false);
+    return regex.allMatches(text).map((m) => m.group(0)!).toSet().toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Text(message, textAlign: TextAlign.center, style: AppText.bodySm.copyWith(color: ac.txt2)),
-      ),
+    final plainText = _extractPlainText(lesson);
+    final urls = <String>{
+      if ((lesson.videoUrl ?? '').isNotEmpty) lesson.videoUrl!,
+      ..._extractUrls(plainText),
+      ..._extractUrls(course.description),
+    }.toList();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: ac.surf,
+            borderRadius: BorderRadius.circular(Rad.md),
+            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.content_copy_rounded, size: 18, color: ac.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Lesson Text & Transcript',
+                        style: AppText.title.copyWith(fontSize: 14, color: ac.txt)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                plainText.isNotEmpty
+                    ? '${plainText.split(RegExp(r'\s+')).length} words · Copy full lesson text to clipboard or paste into your Notes.'
+                    : 'Copy lesson title and summary to clipboard.',
+                style: AppText.caption.copyWith(fontSize: 12, color: ac.txt2),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final copyStr = plainText.isNotEmpty
+                          ? '${lesson.title}\n\n$plainText'
+                          : '${lesson.title}\n\n${course.description}';
+                      Clipboard.setData(ClipboardData(text: copyStr));
+                      showToast(context, 'Lesson text copied to clipboard.');
+                    },
+                    icon: const Icon(Icons.copy_rounded, size: 16, color: Colors.white),
+                    label: Text('Copy Lesson Text',
+                        style: AppText.button.copyWith(fontSize: 12.5, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ac.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      final copyStr = plainText.isNotEmpty
+                          ? '${lesson.title}\n\n$plainText'
+                          : lesson.title;
+                      Share.share(copyStr);
+                    },
+                    icon: Icon(Icons.share_outlined, size: 16, color: ac.txt),
+                    label: Text('Share', style: AppText.subtitle.copyWith(fontSize: 12.5, color: ac.txt)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      side: BorderSide(color: ac.bdr),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text('Links & References', style: AppText.h2.copyWith(fontSize: 15, color: ac.txt)),
+        const SizedBox(height: 8),
+        if (urls.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: ac.surf2,
+              borderRadius: BorderRadius.circular(Rad.md),
+              border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+            ),
+            child: Text(
+              'No external web links attached to this lesson.',
+              style: AppText.bodySm.copyWith(color: ac.txt2),
+            ),
+          )
+        else
+          ...urls.map((u) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: ac.surf,
+                  borderRadius: BorderRadius.circular(Rad.sm),
+                  border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+                ),
+                child: ListTile(
+                  leading: Icon(Icons.link_rounded, color: ac.primary),
+                  title: Text(u,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.bodySm.copyWith(color: ac.primary, fontWeight: FontWeight.w600)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.copy_rounded, size: 18, color: ac.txt2),
+                        tooltip: 'Copy link',
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: u));
+                          showToast(context, 'Link copied to clipboard.');
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.open_in_new_rounded, size: 18, color: ac.primary),
+                        tooltip: 'Open link',
+                        onPressed: () async {
+                          final uri = Uri.tryParse(u);
+                          if (uri != null) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              )),
+      ],
+    );
+  }
+}
+
+class _NotesTab extends StatefulWidget {
+  final CourseLesson lesson;
+  final String userId;
+  const _NotesTab({required this.lesson, required this.userId});
+
+  @override
+  State<_NotesTab> createState() => _NotesTabState();
+}
+
+class _NotesTabState extends State<_NotesTab> {
+  final _notesCtrl = TextEditingController();
+  bool _loaded = false;
+
+  String get _prefsKey => 'lesson_notes_${widget.userId}_${widget.lesson.id}';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotes();
+  }
+
+  @override
+  void dispose() {
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_prefsKey) ?? '';
+    if (!mounted) return;
+    setState(() {
+      _notesCtrl.text = saved;
+      _loaded = true;
+    });
+  }
+
+  Future<void> _saveNotes(String val) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefsKey, val);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    if (!_loaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('Personal Study Notes',
+                  style: AppText.h2.copyWith(fontSize: 15, color: ac.txt)),
+            ),
+            TextButton.icon(
+              onPressed: () async {
+                final data = await Clipboard.getData(Clipboard.kTextPlain);
+                final text = data?.text;
+                if (text == null || text.isEmpty) {
+                  if (context.mounted) showToast(context, 'Clipboard is empty.');
+                  return;
+                }
+                final next = _notesCtrl.text.isEmpty ? text : '${_notesCtrl.text}\n$text';
+                setState(() => _notesCtrl.text = next);
+                await _saveNotes(next);
+                if (context.mounted) showToast(context, 'Pasted into notes.');
+              },
+              icon: Icon(Icons.content_paste_rounded, size: 15, color: ac.primary),
+              label: Text('Paste', style: AppText.caption.copyWith(fontWeight: FontWeight.w700, color: ac.primary)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            const SizedBox(width: 6),
+            TextButton.icon(
+              onPressed: () {
+                if (_notesCtrl.text.trim().isEmpty) {
+                  showToast(context, 'No notes to copy yet.');
+                  return;
+                }
+                Clipboard.setData(ClipboardData(text: _notesCtrl.text));
+                showToast(context, 'Notes copied to clipboard.');
+              },
+              icon: Icon(Icons.copy_rounded, size: 15, color: ac.txt2),
+              label: Text('Copy', style: AppText.caption.copyWith(fontWeight: FontWeight.w600, color: ac.txt2)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            const SizedBox(width: 6),
+            TextButton.icon(
+              onPressed: () async {
+                final lessonText = _extractPlainText(widget.lesson);
+                if (lessonText.isEmpty) {
+                  showToast(context, 'No lesson text to quote.');
+                  return;
+                }
+                final next = _notesCtrl.text.isEmpty
+                    ? lessonText
+                    : '${_notesCtrl.text}\n\n$lessonText';
+                setState(() => _notesCtrl.text = next);
+                await _saveNotes(next);
+                if (context.mounted) showToast(context, 'Lesson text added to your notes.');
+              },
+              icon: Icon(Icons.note_add_outlined, size: 15, color: ac.primary),
+              label: Text('Insert Lesson Text',
+                  style: AppText.caption.copyWith(fontWeight: FontWeight.w700, color: ac.primary)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _notesCtrl,
+          maxLines: 12,
+          minLines: 8,
+          onChanged: _saveNotes,
+          style: AppText.body.copyWith(fontSize: 14.5, color: ac.txt, height: 1.6),
+          decoration: InputDecoration(
+            hintText: 'Type or paste your notes for "${widget.lesson.title}" here — saved automatically on your device…',
+            hintStyle: AppText.bodySm.copyWith(color: ac.muted),
+            filled: true,
+            fillColor: ac.surf,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(Rad.md),
+              borderSide: BorderSide(color: ac.bdr),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(Rad.md),
+              borderSide: BorderSide(color: ac.bdr),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(Rad.md),
+              borderSide: BorderSide(color: ac.primary, width: 1.5),
+            ),
+            contentPadding: const EdgeInsets.all(14),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -486,39 +824,63 @@ class _OverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      children: [
-        if (!hasVideo) ...[
-          _LessonBody(lesson: lesson),
+    final hasBodyText = lesson.body.trim().isNotEmpty || (lesson.bodyDelta ?? '').isNotEmpty;
+    return SelectionArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        children: [
+          if (!hasVideo || hasBodyText) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Lesson Content', style: AppText.caption.copyWith(color: ac.muted, fontWeight: FontWeight.w700)),
+                TextButton.icon(
+                  onPressed: () {
+                    final text = _extractPlainText(lesson);
+                    Clipboard.setData(ClipboardData(text: '${lesson.title}\n\n$text'));
+                    showToast(context, 'Lesson text copied to clipboard.');
+                  },
+                  icon: Icon(Icons.copy_rounded, size: 14, color: ac.primary),
+                  label: Text('Copy Text', style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.w700)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _LessonBody(lesson: lesson),
+            const SizedBox(height: 20),
+            Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
+            const SizedBox(height: 16),
+          ],
+          Text('About this lesson', style: AppText.h2.copyWith(fontSize: 15)),
+          const SizedBox(height: 6),
+          Text(course.description.isNotEmpty ? course.description : 'No description provided.',
+              style: AppText.bodySm.copyWith(fontSize: 13.5, height: 1.6, color: ac.txt2)),
+          const SizedBox(height: 14),
+          Wrap(spacing: 10, runSpacing: 10, children: [
+            if (lesson.durationSeconds != null && lesson.durationSeconds! > 0)
+              _MetaPill(icon: Icons.schedule_rounded, label: 'Duration', value: _durationLabel(lesson.durationSeconds!)),
+            if (course.level.isNotEmpty)
+              _MetaPill(icon: Icons.school_outlined, label: 'Level', value: course.level),
+            _MetaPill(icon: Icons.visibility_outlined, label: 'Viewers', value: '${lesson.viewCount}'),
+            _MetaPill(icon: Icons.update_rounded, label: 'Last updated', value: _dateLabel(lesson.updatedAt)),
+          ]),
           const SizedBox(height: 20),
           Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
           const SizedBox(height: 16),
+          _CourseInfoRow(course: course, currentUser: currentUser),
+          if (course.prerequisiteIds.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _PrerequisitesLinks(course: course, currentUser: currentUser),
+          ],
+          const SizedBox(height: 20),
+          _ActionRow(course: course, currentUser: currentUser),
         ],
-        Text('About this lesson', style: AppText.h2.copyWith(fontSize: 15)),
-        const SizedBox(height: 6),
-        Text(course.description.isNotEmpty ? course.description : 'No description provided.',
-            style: AppText.bodySm.copyWith(fontSize: 13.5, height: 1.6, color: ac.txt2)),
-        const SizedBox(height: 14),
-        Wrap(spacing: 10, runSpacing: 10, children: [
-          if (lesson.durationSeconds != null && lesson.durationSeconds! > 0)
-            _MetaPill(icon: Icons.schedule_rounded, label: 'Duration', value: _durationLabel(lesson.durationSeconds!)),
-          if (course.level.isNotEmpty)
-            _MetaPill(icon: Icons.school_outlined, label: 'Level', value: course.level),
-          _MetaPill(icon: Icons.visibility_outlined, label: 'Viewers', value: '${lesson.viewCount}'),
-          _MetaPill(icon: Icons.update_rounded, label: 'Last updated', value: _dateLabel(lesson.updatedAt)),
-        ]),
-        const SizedBox(height: 20),
-        Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
-        const SizedBox(height: 16),
-        _CourseInfoRow(course: course, currentUser: currentUser),
-        if (course.prerequisiteIds.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _PrerequisitesLinks(course: course, currentUser: currentUser),
-        ],
-        const SizedBox(height: 20),
-        _ActionRow(course: course, currentUser: currentUser),
-      ],
+      ),
     );
   }
 
@@ -542,7 +904,7 @@ class _LessonBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final deltaJson = lesson.bodyDelta;
     if (deltaJson == null || deltaJson.isEmpty) {
-      return Text(lesson.body, style: AppText.body);
+      return SelectableText(lesson.body, style: AppText.body);
     }
     quill.QuillController controller;
     try {
@@ -551,12 +913,13 @@ class _LessonBody extends StatelessWidget {
         document: doc, selection: const TextSelection.collapsed(offset: 0), readOnly: true,
       );
     } catch (_) {
-      return Text(lesson.body, style: AppText.body);
+      return SelectableText(lesson.body, style: AppText.body);
     }
     return quill.QuillEditor.basic(
       controller: controller,
       config: quill.QuillEditorConfig(
         showCursor: false, autoFocus: false, placeholder: 'Lesson content…',
+        enableInteractiveSelection: true,
         embedBuilders: [...FlutterQuillEmbeds.editorBuilders(), const FormulaEmbedBuilder()],
       ),
     );

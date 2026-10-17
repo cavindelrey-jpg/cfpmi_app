@@ -368,7 +368,7 @@ class AppUser {
   bool hasMinRole(UserRole min) => privilegeLevel >= _level(min);
 
   // ── Permission gates ───────────────────────────────────────────────────────
-  bool get canUploadContent    => hasMinRole(UserRole.lecturer);
+  bool get canUploadContent    => !isGuest;
   bool get canPostAnnouncement => hasMinRole(UserRole.lecturer);
   bool get canManageUsers      => hasMinRole(UserRole.departmentAdmin);
   bool get canManageSchool     => hasMinRole(UserRole.schoolAdmin);

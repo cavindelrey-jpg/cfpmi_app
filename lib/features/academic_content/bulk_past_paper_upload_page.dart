@@ -30,7 +30,9 @@ import '../../widgets/widgets.dart' show showToast;
 enum _BatchItemStatus { ready, needsInfo, uploading, done, failed }
 
 class _BatchItem {
-  final File file;
+  final File? file;
+  final Uint8List? bytes;
+  final int? sizeBytes;
   final String originalName;
   String discipline;
   String examBoard;
@@ -41,7 +43,9 @@ class _BatchItem {
   String? error;
 
   _BatchItem({
-    required this.file,
+    this.file,
+    this.bytes,
+    this.sizeBytes,
     required this.originalName,
     required this.discipline,
     required this.examBoard,
@@ -51,7 +55,7 @@ class _BatchItem {
     this.status = _BatchItemStatus.ready,
   });
 
-  bool get isComplete => discipline.trim().isNotEmpty && year != null && paperNumber != null;
+  bool get isComplete => title.trim().isNotEmpty && discipline.trim().isNotEmpty;
 }
 
 class BulkPastPaperUploadPage extends StatefulWidget {
@@ -69,6 +73,7 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
   /// One shared thumbnail File/URL per discipline for this batch —
   /// keyed by discipline.toLowerCase() so "Physics"/"physics" share one.
   final Map<String, File> _pickedThumbnails = {};
+  final Map<String, Uint8List> _pickedThumbnailBytes = {};
   final Map<String, String> _resolvedThumbnailUrls = {};
   bool _resolvingThumbnails = false;
   bool _uploading = false;
@@ -79,29 +84,36 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
   Future<void> _pickFiles() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf'],
+      withData: true,
+      allowedExtensions: ['pdf', 'doc', 'docx', 'epub', 'txt'],
       allowMultiple: true,
     );
     if (result == null) return;
     final newItems = <_BatchItem>[];
     for (final f in result.files) {
-      if (f.path == null) continue;
+      if (f.path == null && f.bytes == null) continue;
       final parsed = parsePastPaperFilename(f.name);
-      final discipline = parsed?.discipline ?? '';
-      final year = parsed?.year;
-      final paperNumber = parsed?.paperNumber;
-      // A partial parse (e.g. year found but no paper number) still needs
-      // fixing -- checking isComplete's own condition here, not just
-      // whether parsing found *something*.
-      final isComplete = discipline.trim().isNotEmpty && year != null && paperNumber != null;
+      final cleanTitle = f.name.replaceAll(RegExp(r'\.[^.]+$'), '').replaceAll('_', ' ');
+      final fallbackDiscipline = cleanTitle.split(RegExp(r'\s+')).firstWhere(
+            (w) => w.isNotEmpty,
+            orElse: () => 'General',
+          );
+      final discipline = (parsed?.discipline ?? '').trim().isNotEmpty
+          ? parsed!.discipline
+          : fallbackDiscipline;
+      final year = parsed?.year ?? DateTime.now().year;
+      final paperNumber = parsed?.paperNumber ?? 1;
+      final isComplete = discipline.trim().isNotEmpty;
       newItems.add(_BatchItem(
-        file: File(f.path!),
+        file: f.path != null ? File(f.path!) : null,
+        bytes: f.bytes,
+        sizeBytes: f.size,
         originalName: f.name,
         discipline: discipline,
         examBoard: parsed?.examBoard ?? 'N/A',
         year: year,
         paperNumber: paperNumber,
-        title: parsed?.title ?? f.name.replaceAll(RegExp(r'\.[^.]+$'), ''),
+        title: parsed?.title ?? cleanTitle,
         status: isComplete ? _BatchItemStatus.ready : _BatchItemStatus.needsInfo,
       ));
     }
@@ -121,7 +133,11 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
         .toSet();
     for (final d in disciplines) {
       final key = d.toLowerCase();
-      if (_resolvedThumbnailUrls.containsKey(key) || _pickedThumbnails.containsKey(key)) continue;
+      if (_resolvedThumbnailUrls.containsKey(key) ||
+          _pickedThumbnails.containsKey(key) ||
+          _pickedThumbnailBytes.containsKey(key)) {
+        continue;
+      }
       final existing = await AcademicContentRepository.instance
           .findThumbnailForTag(d, institutionId: _institutionId);
       if (existing != null && mounted) {
@@ -135,7 +151,14 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked != null) {
-      setState(() => _pickedThumbnails[discipline.toLowerCase()] = File(picked.path));
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        final key = discipline.toLowerCase();
+        _pickedThumbnailBytes[key] = bytes;
+        if (picked.path.isNotEmpty) {
+          _pickedThumbnails[key] = File(picked.path);
+        }
+      });
     }
   }
 
@@ -145,13 +168,13 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
       .toSet()
       .where((d) =>
           !_resolvedThumbnailUrls.containsKey(d.toLowerCase()) &&
-          !_pickedThumbnails.containsKey(d.toLowerCase()))
+          !_pickedThumbnails.containsKey(d.toLowerCase()) &&
+          !_pickedThumbnailBytes.containsKey(d.toLowerCase()))
       .toList();
 
   bool get _canUpload =>
       _items.isNotEmpty &&
       _items.every((i) => i.isComplete) &&
-      _disciplinesNeedingThumbnail.isEmpty &&
       !_uploading;
 
   Future<void> _uploadAll() async {
@@ -160,13 +183,18 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
 
     // Upload each newly-picked thumbnail ONCE per discipline, reuse the
     // resulting URL for every paper in that discipline below.
-    for (final entry in _pickedThumbnails.entries) {
-      if (_resolvedThumbnailUrls.containsKey(entry.key)) continue;
+    final thumbKeys = {..._pickedThumbnails.keys, ..._pickedThumbnailBytes.keys};
+    for (final key in thumbKeys) {
+      if (_resolvedThumbnailUrls.containsKey(key)) continue;
       final result = await repo.uploadFile(
-        file: entry.value, folder: 'thumbnails', institutionId: _institutionId,
+        file: _pickedThumbnails[key],
+        bytes: _pickedThumbnailBytes[key],
+        fileName: '$key.jpg',
+        folder: 'thumbnails',
+        institutionId: _institutionId,
       );
       if (result is Success<String>) {
-        _resolvedThumbnailUrls[entry.key] = result.value;
+        _resolvedThumbnailUrls[key] = result.value;
       }
     }
 
@@ -175,7 +203,11 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
       setState(() => item.status = _BatchItemStatus.uploading);
 
       final fileResult = await repo.uploadFile(
-        file: item.file, folder: 'content_files', institutionId: _institutionId,
+        file: item.file,
+        bytes: item.bytes,
+        fileName: item.originalName,
+        folder: 'content_files',
+        institutionId: _institutionId,
       );
       if (fileResult is Failure) {
         setState(() {
@@ -186,6 +218,13 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
       }
       final fileUrl = (fileResult as Success<String>).value;
       final thumbnailUrl = _resolvedThumbnailUrls[item.discipline.trim().toLowerCase()];
+
+      int? fileSize = item.sizeBytes ?? item.bytes?.length;
+      if (fileSize == null && item.file != null) {
+        try {
+          fileSize = await item.file!.length();
+        } catch (_) {}
+      }
 
       final content = AcademicContent(
         id: '',
@@ -201,7 +240,7 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
         institutionId: _institutionId,
         uploadedBy: widget.user.id,
         uploaderName: widget.user.name,
-        fileSizeBytes: await item.file.length(),
+        fileSizeBytes: fileSize,
         uploadDate: DateTime.now(),
         tags: [item.discipline.trim(), if (item.paperNumber != null) 'Paper ${item.paperNumber}'],
         folderId: widget.folderId,

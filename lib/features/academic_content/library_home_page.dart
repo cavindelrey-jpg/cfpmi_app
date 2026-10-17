@@ -41,7 +41,8 @@ import 'content_viewer_page.dart';
 
 class LibraryHomePage extends StatelessWidget {
   final AppUser user;
-  const LibraryHomePage({super.key, required this.user});
+  final bool embedded;
+  const LibraryHomePage({super.key, required this.user, this.embedded = false});
 
   bool get _canUpload => user.canUploadContent;
 
@@ -58,28 +59,32 @@ class LibraryHomePage extends StatelessWidget {
               c.maxWidth >= 760 ? _desktopBody(context, ac) : _mobileBody(context, ac),
         ),
       )),
-      floatingActionButton: _canUpload
-          ? FloatingActionButton.extended(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                _showUploadChoices(context, ac);
-              },
-              backgroundColor: ac.primary,
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.upload_file_rounded),
-              label: Text('Upload', style: AppText.button.copyWith(fontSize: 15)),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          HapticFeedback.mediumImpact();
+          if (user.isGuest) {
+            showToast(context, 'Sign in to upload files to the Library.');
+            return;
+          }
+          _showUploadChoices(context, ac);
+        },
+        backgroundColor: ac.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.upload_file_rounded),
+        label: Text('Upload', style: AppText.button.copyWith(fontSize: 15)),
+      ),
     );
   }
 
   // ── Phone: vertical discovery list ────────────────────────────────
   Widget _mobileBody(BuildContext context, AppColors ac) {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: EdgeInsets.only(top: embedded ? 14 : 0, bottom: 24),
       children: [
-        _header(context, ac),
-        const SizedBox(height: 8),
+        if (!embedded) ...[
+          _header(context, ac),
+          const SizedBox(height: 8),
+        ],
         _sectionHeader('File Explorer', ac),
         const SizedBox(height: 12),
         _fileExplorer(context, ac),
@@ -116,10 +121,12 @@ class LibraryHomePage extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1280),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 26, 28, 24),
+          padding: EdgeInsets.fromLTRB(28, embedded ? 18 : 26, 28, 24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _desktopHeading(context, ac),
-            const SizedBox(height: 20),
+            if (!embedded) ...[
+              _desktopHeading(context, ac),
+              const SizedBox(height: 20),
+            ],
             Expanded(
               child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 _folderPanel(context, ac),
@@ -137,11 +144,31 @@ class LibraryHomePage extends StatelessWidget {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Academia Library', style: AppText.h1.copyWith(fontSize: 28, color: ac.txt)),
+          Text('Library', style: AppText.h1.copyWith(fontSize: 28, color: ac.txt)),
           const SizedBox(height: 6),
           Text('Browse folders, resume recent reads, and open what you saved for offline.',
               style: AppText.bodySm.copyWith(color: ac.txt2)),
         ]),
+      ),
+      const SizedBox(width: 12),
+      ElevatedButton.icon(
+        onPressed: () {
+          HapticFeedback.mediumImpact();
+          if (user.isGuest) {
+            showToast(context, 'Sign in to upload files to the Library.');
+            return;
+          }
+          _showUploadChoices(context, ac);
+        },
+        icon: const Icon(Icons.upload_file_rounded, size: 18, color: Colors.white),
+        label: Text('Upload', style: AppText.button.copyWith(fontSize: 13.5, color: Colors.white)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: ac.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Rad.sm)),
+        ),
       ),
     ]);
   }

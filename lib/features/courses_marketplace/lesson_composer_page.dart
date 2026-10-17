@@ -65,7 +65,7 @@ class _LessonComposerPageState extends State<LessonComposerPage> {
   String? _error;
 
   bool get _isNew => widget.existing == null;
-  bool get _canImportDocx => widget.user.isSuperAdmin;
+  bool get _canImportDocx => !widget.user.isGuest;
   bool get _hasVideo => _videoUrlCtrl.text.trim().isNotEmpty;
 
   quill.QuillController _initQuillController() {
@@ -111,23 +111,82 @@ class _LessonComposerPageState extends State<LessonComposerPage> {
 
   Future<void> _importDocx() async {
     HapticFeedback.mediumImpact();
-    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['docx'], withData: true);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['docx', 'txt', 'md'],
+      withData: true,
+    );
     if (result == null || result.files.isEmpty) return;
-    final bytes = result.files.single.bytes;
+    final picked = result.files.single;
+    Uint8List? bytes = picked.bytes;
+    if (bytes == null && picked.path != null && picked.path!.isNotEmpty) {
+      try {
+        bytes = await File(picked.path!).readAsBytes();
+      } catch (_) {}
+    }
     if (bytes == null) {
       if (mounted) showToast(context, 'Could not read that file.', isError: true);
       return;
     }
     setState(() => _importing = true);
     try {
-      final parsed = await compute(DocxParser.parse, bytes);
-      final delta = quill.Document.fromJson(jsonDecode(parsed.deltaJson));
-      setState(() { _quillCtrl.document = delta; _importing = false; });
+      final ext = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : '';
+      if (_titleCtrl.text.trim().isEmpty) {
+        _titleCtrl.text = picked.name.replaceAll(RegExp(r'\.[^.]+$'), '').replaceAll('_', ' ');
+      }
+      if (ext == 'txt' || ext == 'md') {
+        final text = utf8.decode(bytes, allowMalformed: true);
+        final doc = quill.Document()..insert(0, text);
+        setState(() {
+          _quillCtrl.document = doc;
+          _importing = false;
+        });
+      } else {
+        final parsed = await compute(DocxParser.parse, bytes);
+        final delta = quill.Document.fromJson(jsonDecode(parsed.deltaJson));
+        setState(() {
+          _quillCtrl.document = delta;
+          _importing = false;
+        });
+      }
       if (mounted) showToast(context, 'Document imported — review before saving.');
     } catch (e) {
       setState(() => _importing = false);
       if (mounted) showToast(context, 'Could not convert this file: $e', isError: true);
     }
+  }
+
+  Future<void> _pasteFromClipboard() async {
+    HapticFeedback.selectionClick();
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text == null || text.isEmpty) {
+      if (mounted) showToast(context, 'Clipboard is empty.');
+      return;
+    }
+    final selection = _quillCtrl.selection;
+    final docLen = _quillCtrl.document.length;
+    final offset = (selection.baseOffset >= 0 && selection.baseOffset < docLen)
+        ? selection.baseOffset
+        : (docLen > 0 ? docLen - 1 : 0);
+    _quillCtrl.document.insert(offset, text);
+    _quillCtrl.updateSelection(
+      TextSelection.collapsed(offset: offset + text.length),
+      quill.ChangeSource.local,
+    );
+    setState(() {});
+    if (mounted) showToast(context, 'Pasted from clipboard.');
+  }
+
+  Future<void> _copyAllText() async {
+    HapticFeedback.selectionClick();
+    final text = _quillCtrl.document.toPlainText().trim();
+    if (text.isEmpty) {
+      if (mounted) showToast(context, 'Nothing to copy yet.');
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) showToast(context, 'Lesson text copied to clipboard.');
   }
 
   double _computeOrder() {
@@ -159,8 +218,8 @@ class _LessonComposerPageState extends State<LessonComposerPage> {
       courseId: widget.courseId,
       title: title,
       videoUrl: videoUrl.isEmpty ? null : videoUrl,
-      body: videoUrl.isNotEmpty ? '' : plainText,
-      bodyDelta: videoUrl.isNotEmpty ? null : jsonEncode(_quillCtrl.document.toDelta().toJson()),
+      body: plainText,
+      bodyDelta: plainText.isEmpty ? null : jsonEncode(_quillCtrl.document.toDelta().toJson()),
       viewCount: widget.existing?.viewCount ?? 0,
       order: _computeOrder(),
       coverImageUrl: _existingCoverUrl,
@@ -231,7 +290,7 @@ class _LessonComposerPageState extends State<LessonComposerPage> {
               icon: _importing
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : Icon(Icons.upload_file_rounded, color: ac.txt),
-              tooltip: 'Import Word document (Super Admin)',
+              tooltip: 'Import Word (.docx) or Text (.txt) document',
               onPressed: _importing ? null : _importDocx,
             ),
           if (!_isNew)
@@ -283,32 +342,69 @@ class _LessonComposerPageState extends State<LessonComposerPage> {
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.sm), borderSide: BorderSide(color: ac.bdr)),
             ),
           ),
-          if (!_hasVideo) ...[
-            const SizedBox(height: 16),
-            Text('Lesson content', style: AppText.caption.copyWith(fontWeight: FontWeight.w700, color: ac.txt2)),
-            const SizedBox(height: 8),
-            Container(
-              constraints: const BoxConstraints(minHeight: 220),
-              decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(Rad.sm), border: Border.all(color: ac.bdr)),
-              padding: const EdgeInsets.all(8),
-              child: quill.QuillEditor.basic(
-                controller: _quillCtrl,
-                config: quill.QuillEditorConfig(
-                  placeholder: 'Lesson content…',
-                  embedBuilders: [...FlutterQuillEmbeds.editorBuilders(), const FormulaEmbedBuilder()],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _hasVideo ? 'Lesson notes / transcript (optional)' : 'Lesson content',
+                  style: AppText.caption.copyWith(fontWeight: FontWeight.w700, color: ac.txt2),
                 ),
               ),
+              TextButton.icon(
+                onPressed: _pasteFromClipboard,
+                icon: Icon(Icons.content_paste_rounded, size: 15, color: ac.primary),
+                label: Text('Paste', style: AppText.caption.copyWith(fontWeight: FontWeight.w700, color: ac.primary)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 4),
+              TextButton.icon(
+                onPressed: _copyAllText,
+                icon: Icon(Icons.copy_rounded, size: 15, color: ac.txt2),
+                label: Text('Copy', style: AppText.caption.copyWith(fontWeight: FontWeight.w600, color: ac.txt2)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              if (_canImportDocx) ...[
+                const SizedBox(width: 4),
+                TextButton.icon(
+                  onPressed: _importing ? null : _importDocx,
+                  icon: Icon(Icons.upload_file_rounded, size: 15, color: ac.primary),
+                  label: Text('Import File', style: AppText.caption.copyWith(fontWeight: FontWeight.w700, color: ac.primary)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            constraints: const BoxConstraints(minHeight: 220),
+            decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(Rad.sm), border: Border.all(color: ac.bdr)),
+            padding: const EdgeInsets.all(8),
+            child: quill.QuillEditor.basic(
+              controller: _quillCtrl,
+              config: quill.QuillEditorConfig(
+                placeholder: 'Write or paste lesson content here…',
+                enableInteractiveSelection: true,
+                embedBuilders: [...FlutterQuillEmbeds.editorBuilders(), const FormulaEmbedBuilder()],
+              ),
             ),
-            Container(
-              decoration: BoxDecoration(border: Border(top: BorderSide(color: ac.bdr))),
-              child: quill.QuillSimpleToolbar(controller: _quillCtrl, config: const quill.QuillSimpleToolbarConfig(multiRowsDisplay: false)),
-            ),
-          ] else
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text('This lesson has a video, so it has no separate text content — remove the URL to write one instead.',
-                  style: AppText.caption.copyWith(fontSize: 11, color: ac.txt2)),
-            ),
+          ),
+          Container(
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: ac.bdr))),
+            child: quill.QuillSimpleToolbar(controller: _quillCtrl, config: const quill.QuillSimpleToolbarConfig(multiRowsDisplay: false)),
+          ),
           if (_sequence.isNotEmpty) ...[
             const SizedBox(height: 16),
             _LessonPlacementPicker(

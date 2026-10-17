@@ -489,10 +489,22 @@ class _EntryTile extends StatelessWidget {
       builder: (sheetContext) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(
-            leading: Icon(Icons.folder_open_rounded, color: ac.primary),
-            title: const Text('Move to folder…'),
-            onTap: () { Navigator.pop(sheetContext); onMove(); },
+            leading: Icon(Icons.menu_book_rounded, color: ac.primary),
+            title: const Text('Open / Read'),
+            onTap: () { Navigator.pop(sheetContext); onOpen(); },
           ),
+          if (onLongPress != null)
+            ListTile(
+              leading: Icon(Icons.checklist_rounded, color: ac.primary),
+              title: const Text('Select multiple files'),
+              onTap: () { Navigator.pop(sheetContext); onLongPress!(); },
+            ),
+          if (canManage)
+            ListTile(
+              leading: Icon(Icons.folder_open_rounded, color: ac.primary),
+              title: const Text('Move to folder…'),
+              onTap: () { Navigator.pop(sheetContext); onMove(); },
+            ),
         ]),
       ),
     );
@@ -507,7 +519,7 @@ class _EntryTile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(Rad.md),
           onTap: onOpen,
-          onLongPress: onLongPress ?? (canManage ? () => _showFileMenu(context) : null),
+          onLongPress: () => _showFileMenu(context),
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -563,7 +575,7 @@ class _EntryTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(Rad.md),
         onTap: onOpen,
-        onLongPress: onLongPress ?? (canManage ? () => _showFileMenu(context) : null),
+        onLongPress: () => _showFileMenu(context),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
@@ -599,7 +611,11 @@ class _EntryTile extends StatelessWidget {
                 Text(item.contentType.label, style: AppText.caption.copyWith(fontSize: 11, color: ac.muted)),
               ]),
             ),
-            Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
+            IconButton(
+              icon: Icon(Icons.more_vert_rounded, size: 18, color: ac.muted),
+              tooltip: 'More options',
+              onPressed: () => _showFileMenu(context),
+            ),
           ]),
         ),
       ),

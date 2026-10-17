@@ -95,6 +95,22 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
             iconTheme: IconThemeData(color: ac.txt),
             title: Text(item.contentType.label, style: AppText.title),
             actions: [
+              IconButton(
+                icon: Icon(Icons.copy_rounded, color: ac.txt2, size: 20),
+                tooltip: 'Copy title & description',
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  final buf = StringBuffer(item.title);
+                  if (item.description.trim().isNotEmpty) {
+                    buf.write('\n\n${item.description.trim()}');
+                  }
+                  if ((item.fileUrl ?? '').isNotEmpty) {
+                    buf.write('\n\n${item.fileUrl}');
+                  }
+                  Clipboard.setData(ClipboardData(text: buf.toString()));
+                  showToast(context, 'Copied to clipboard.');
+                },
+              ),
               StreamBuilder<bool>(
                 stream: AcademicContentRepository.instance.watchIsSaved(item.id, widget.user.id),
                 builder: (context, savedSnap) {
@@ -132,6 +148,7 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
               if (canEdit) ...[
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Edit',
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -142,6 +159,7 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
                 ),
                 IconButton(
                   icon: Icon(Icons.delete_outline_rounded, color: ac.red),
+                  tooltip: 'Delete',
                   onPressed: () => showDialog(
                     context: context,
                     builder: (_) => ContentDeleteDialog(
@@ -155,7 +173,7 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
           ),
           // Improvement 2 (Sticky bottom action area): keep the primary action
           // visible at the bottom while the user scrolls through details.
-          bottomNavigationBar: item.fileUrl != null
+          bottomNavigationBar: (item.fileUrl ?? '').isNotEmpty
               ? Container(
                   decoration: BoxDecoration(
                     color: ac.surf,
@@ -171,139 +189,159 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
                   ),
                 )
               : null,
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Thumbnail with frosted type badge overlay (Mistake 1 & 2)
-                Stack(
-                  children: [
-                    if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(Rad.lg),
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: Image.network(
-                            item.thumbnailUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _PlaceholderThumbnail(type: item.contentType),
-                          ),
-                        ),
-                      )
-                    else
-                      _PlaceholderThumbnail(type: item.contentType),
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
-                        ),
-                        child: Text(
-                          item.contentType.label.toUpperCase(),
-                          style: AppText.label.copyWith(
-                            color: Colors.white,
-                            letterSpacing: 0.8,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Improvement 1 (Scrollable card container): soft rounded card
-                // with subtle shadow, consistent 20px internal alignment (Mistake 3).
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: ac.surf,
-                    borderRadius: BorderRadius.circular(Rad.lg),
-                    border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
-                    boxShadow: Shad.card,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          body: SelectionArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Thumbnail with frosted type badge overlay (Mistake 1 & 2)
+                  Stack(
                     children: [
-                      // Scannable classification badges (Mistake 6)
-                      Wrap(spacing: 8, runSpacing: 8, children: [
-                        _TypeBadge(type: item.contentType),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: ac.bluBg, borderRadius: BorderRadius.circular(8)),
-                          child: Text(item.subject,
-                              style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.blu)),
-                        ),
-                        if (item.level.isNotEmpty && item.level != 'All Levels')
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: ac.grnBg, borderRadius: BorderRadius.circular(8)),
-                            child: Text(item.level,
-                                style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.grn)),
+                      if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(Rad.lg),
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: Image.network(
+                              item.thumbnailUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _PlaceholderThumbnail(type: item.contentType),
+                            ),
                           ),
-                        if (item.examBoard.isNotEmpty && item.examBoard != 'N/A')
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: ac.goldBg, borderRadius: BorderRadius.circular(8)),
-                            child: Text(item.year != null ? '${item.examBoard} ${item.year}' : item.examBoard,
-                                style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.gold)),
+                        )
+                      else
+                        _PlaceholderThumbnail(type: item.contentType),
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                           ),
-                      ]),
-                      const SizedBox(height: 12),
-
-                      // Balanced title hierarchy (Mistake 7)
-                      Text(
-                        item.title,
-                        style: AppText.h1.copyWith(fontSize: 22, height: 1.25, color: ac.txt),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Trust signals right next to title (Mistake 9 & 10)
-                      Wrap(
-                        spacing: 16,
-                        runSpacing: 8,
-                        children: [
-                          _Stat(icon: Icons.visibility_outlined, value: '${item.views} views'),
-                          _Stat(icon: Icons.download_outlined, value: '${item.downloads} downloads'),
-                          _Stat(icon: Icons.calendar_today_outlined, value: _formatDate(item.uploadDate)),
-                        ],
-                      ),
-
-                      // Description with relaxed line-height & softer contrast (Mistake 8, 11, 12)
-                      if (item.description.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
-                        const SizedBox(height: 16),
-                        Text('Overview', style: AppText.title.copyWith(fontSize: 14)),
-                        const SizedBox(height: 6),
-                        Text(
-                          item.description,
-                          style: AppText.body.copyWith(fontSize: 14.5, height: 1.65, color: ac.txt2),
+                          child: Text(
+                            item.contentType.label.toUpperCase(),
+                            style: AppText.label.copyWith(
+                              color: Colors.white,
+                              letterSpacing: 0.8,
+                              fontSize: 10,
+                            ),
+                          ),
                         ),
-                      ],
-
-                      // Tags
-                      if (item.tags.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
-                        const SizedBox(height: 14),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: item.tags.map((t) => _Tag(label: t)).toList(),
-                        ),
-                      ],
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+
+                  // Improvement 1 (Scrollable card container): soft rounded card
+                  // with subtle shadow, consistent 20px internal alignment (Mistake 3).
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: ac.surf,
+                      borderRadius: BorderRadius.circular(Rad.lg),
+                      border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+                      boxShadow: Shad.card,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Scannable classification badges (Mistake 6)
+                        Wrap(spacing: 8, runSpacing: 8, children: [
+                          _TypeBadge(type: item.contentType),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: ac.bluBg, borderRadius: BorderRadius.circular(8)),
+                            child: Text(item.subject,
+                                style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.blu)),
+                          ),
+                          if (item.level.isNotEmpty && item.level != 'All Levels')
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(color: ac.grnBg, borderRadius: BorderRadius.circular(8)),
+                              child: Text(item.level,
+                                  style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.grn)),
+                            ),
+                          if (item.examBoard.isNotEmpty && item.examBoard != 'N/A')
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(color: ac.goldBg, borderRadius: BorderRadius.circular(8)),
+                              child: Text(item.year != null ? '${item.examBoard} ${item.year}' : item.examBoard,
+                                  style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.gold)),
+                            ),
+                        ]),
+                        const SizedBox(height: 12),
+
+                        // Balanced title hierarchy (Mistake 7)
+                        Text(
+                          item.title,
+                          style: AppText.h1.copyWith(fontSize: 22, height: 1.25, color: ac.txt),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Trust signals right next to title (Mistake 9 & 10)
+                        Wrap(
+                          spacing: 16,
+                          runSpacing: 8,
+                          children: [
+                            _Stat(icon: Icons.visibility_outlined, value: '${item.views} views'),
+                            _Stat(icon: Icons.download_outlined, value: '${item.downloads} downloads'),
+                            _Stat(icon: Icons.calendar_today_outlined, value: _formatDate(item.uploadDate)),
+                          ],
+                        ),
+
+                        // Description with relaxed line-height & softer contrast (Mistake 8, 11, 12)
+                        if (item.description.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Overview', style: AppText.title.copyWith(fontSize: 14)),
+                              TextButton.icon(
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: item.description));
+                                  showToast(context, 'Description copied to clipboard.');
+                                },
+                                icon: Icon(Icons.copy_rounded, size: 14, color: ac.primary),
+                                label: Text('Copy', style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.w700)),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            item.description,
+                            style: AppText.body.copyWith(fontSize: 14.5, height: 1.65, color: ac.txt2),
+                          ),
+                        ],
+
+                        // Tags
+                        if (item.tags.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: item.tags.map((t) => _Tag(label: t)).toList(),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -417,18 +455,28 @@ class _DownloadButton extends StatefulWidget {
 class _DownloadButtonState extends State<_DownloadButton> {
   bool _loading = false;
 
-  bool get _isPastPaper => widget.item.contentType == ContentType.pastPaper;
-  ViewableFileKind? get _viewableKind => viewableKindFor(widget.item.fileUrl!);
+  ViewableFileKind? get _viewableKind {
+    final byUrl = viewableKindFor(widget.item.fileUrl ?? '');
+    if (byUrl != null) return byUrl;
+    if (widget.item.contentType == ContentType.video) return ViewableFileKind.video;
+    if (widget.item.contentType == ContentType.pastPaper ||
+        widget.item.contentType == ContentType.book ||
+        widget.item.contentType == ContentType.note) {
+      return ViewableFileKind.pdf;
+    }
+    return null;
+  }
 
   Future<void> _openFile() async {
-    // Images, PDFs, video, and .docx render in-app instead of handing off
-    // to whatever external app the OS picks. Other office formats and
-    // archives have no practical in-app renderer, so those still open
-    // externally.
+    // Images, PDFs, video, .docx, .epub, and .txt render in-app instead of
+    // handing off to whatever external app the OS picks.
     final kind = _viewableKind;
     if (kind != null) {
       await AcademicContentRepository.instance.incrementDownloads(widget.item.id);
-      final localPath = await AcademicContentRepository.instance.offlineFilePath(widget.item.id);
+      String? localPath;
+      try {
+        localPath = await AcademicContentRepository.instance.offlineFilePath(widget.item.id);
+      } catch (_) {}
       if (!mounted) return;
       await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => ContentViewerPage(
@@ -457,8 +505,6 @@ class _DownloadButtonState extends State<_DownloadButton> {
     HapticFeedback.mediumImpact();
     setState(() => _loading = true);
 
-    // Past papers are freely accessible in Green Hills (no XP economy).
-
     try {
       await _openFile();
     } finally {
@@ -482,13 +528,11 @@ class _DownloadButtonState extends State<_DownloadButton> {
         icon: _loading
             ? const SizedBox(width: 18, height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-            : Icon(_isPastPaper
-                ? Icons.bolt_rounded
-                : (_viewableKind != null ? Icons.visibility_rounded : Icons.download_rounded)),
+            : Icon(_viewableKind != null ? Icons.menu_book_rounded : Icons.download_rounded),
         label: Text(
             _loading
                 ? 'Opening…'
-                : (_isPastPaper ? 'Unlock / Open' : (_viewableKind != null ? 'View' : 'Download')),
+                : (_viewableKind != null ? 'Read / Open File' : 'Download / Open'),
             style: AppText.button.copyWith(fontSize: 15)),
       ),
     );

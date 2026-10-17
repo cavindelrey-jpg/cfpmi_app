@@ -60,7 +60,7 @@ class SchoolConnectPage extends StatelessWidget {
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => NotificationsPage(user: user))),
           ),
-          if (user.canManageSchool || user.canUploadContent)
+          if (user.canManageSchool || user.hasMinRole(UserRole.lecturer))
             IconButton(
               icon: Icon(Icons.inbox_outlined, color: ac.txt2),
               tooltip: 'Requests inbox',

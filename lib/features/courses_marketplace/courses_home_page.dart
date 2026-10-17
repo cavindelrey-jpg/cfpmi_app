@@ -24,7 +24,8 @@ import 'curriculum_icon_editor.dart';
 
 class CoursesHomePage extends StatefulWidget {
   final AppUser? user;
-  const CoursesHomePage({super.key, this.user});
+  final bool embedded;
+  const CoursesHomePage({super.key, this.user, this.embedded = false});
 
   @override
   State<CoursesHomePage> createState() => _CoursesHomePageState();
@@ -86,9 +87,9 @@ class _CoursesHomePageState extends State<CoursesHomePage> {
   // ── Phone: stacked sections + horizontal rails ────────────────────
   Widget _mobileBody(BuildContext context, AppColors ac) {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: EdgeInsets.only(top: widget.embedded ? 14 : 0, bottom: 24),
       children: [
-        _header(context, ac),
+        if (!widget.embedded) _header(context, ac),
         _searchBar(context, ac),
         const SizedBox(height: 18),
         _levelRow(context, ac),
@@ -117,10 +118,12 @@ class _CoursesHomePageState extends State<CoursesHomePage> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1240),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(32, 28, 32, 48),
+          padding: EdgeInsets.fromLTRB(32, widget.embedded ? 20 : 28, 32, 48),
           children: [
-            _desktopHeading(ac),
-            const SizedBox(height: 20),
+            if (!widget.embedded) ...[
+              _desktopHeading(ac),
+              const SizedBox(height: 20),
+            ],
             _desktopSearchFilter(context, ac),
             const SizedBox(height: 30),
             _deskSection('Education levels', ac),
@@ -142,7 +145,7 @@ class _CoursesHomePageState extends State<CoursesHomePage> {
 
   Widget _desktopHeading(AppColors ac) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Academia Courses', style: AppText.h1.copyWith(fontSize: 28, color: ac.txt)),
+      Text('Courses', style: AppText.h1.copyWith(fontSize: 28, color: ac.txt)),
       const SizedBox(height: 6),
       Text('Browse by education level, pick up where you left off, and discover new courses.',
           style: AppText.bodySm.copyWith(color: ac.txt2)),

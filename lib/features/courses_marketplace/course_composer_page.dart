@@ -68,7 +68,7 @@ class _CourseComposerPageState extends State<CourseComposerPage> {
   bool _saving = false;
   String? _error;
 
-  bool get _isNew => widget.existing == null;
+  bool get _isNew => _workingCourse.id.isEmpty;
   bool get _hasPlacement => _level.isNotEmpty && _subject.isNotEmpty && _topic.trim().isNotEmpty;
 
   @override
@@ -165,15 +165,16 @@ class _CourseComposerPageState extends State<CourseComposerPage> {
       return;
     }
     HapticFeedback.mediumImpact();
+    final wasNew = _isNew;
     setState(() { _saving = true; _error = null; });
     final ok = await _persist(publish: publish);
     if (!mounted) return;
     setState(() => _saving = false);
     if (!ok) return;
-    if (_isNew) {
+    if (wasNew && _lessons.isEmpty) {
       // A brand-new course needs at least one lesson before it's really
       // usable — keep composing instead of popping straight back out.
-      showToast(context, 'Course created — now add its lessons.');
+      showToast(context, 'Course created — now add its lessons below.');
       await _loadLessons();
     } else {
       showToast(context, publish ? 'Course published.' : 'Draft saved.');
@@ -249,7 +250,7 @@ class _CourseComposerPageState extends State<CourseComposerPage> {
   }
 
   Future<void> _delete() async {
-    if (widget.existing == null) return;
+    if (_workingCourse.id.isEmpty) return;
     final ac = AppColors.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -265,12 +266,23 @@ class _CourseComposerPageState extends State<CourseComposerPage> {
     );
     if (confirmed == true) {
       HapticFeedback.heavyImpact();
-      await PublicCourseRepository.instance.delete(widget.existing!.id);
+      await PublicCourseRepository.instance.delete(_workingCourse.id);
       if (mounted) Navigator.of(context).pop();
     }
   }
 
   Future<void> _openLesson([CourseLesson? lesson]) async {
+    if (_workingCourse.id.isEmpty) {
+      if (_titleCtrl.text.trim().isEmpty) {
+        setState(() => _error = 'Enter a course title before adding lessons.');
+        return;
+      }
+      setState(() { _saving = true; _error = null; });
+      final ok = await _persist(publish: false);
+      if (!mounted) return;
+      setState(() => _saving = false);
+      if (!ok) return;
+    }
     await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => LessonComposerPage(
             user: widget.user, courseId: _workingCourse.id, existing: lesson, existingSequence: _lessons)));
@@ -446,14 +458,12 @@ class _CourseComposerPageState extends State<CourseComposerPage> {
               ),
             ],
           ],
-          if (!_isNew) ...[
-            const SizedBox(height: 24),
-            _LessonsSection(
-              lessons: _lessons, loading: _loadingLessons,
-              onAdd: () => _openLesson(),
-              onEdit: (l) => _openLesson(l),
-            ),
-          ],
+          const SizedBox(height: 24),
+          _LessonsSection(
+            lessons: _lessons, loading: _loadingLessons,
+            onAdd: () => _openLesson(),
+            onEdit: (l) => _openLesson(l),
+          ),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Container(

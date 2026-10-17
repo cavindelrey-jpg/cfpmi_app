@@ -303,6 +303,24 @@ class _MagazineFeedPageState extends State<MagazineFeedPage> {
   }
 
   Widget _header(BuildContext context) {
+    if (widget.embedded) {
+      if (!_canCompose) return const SizedBox(height: 6);
+      final ac = AppColors.of(context);
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            IconButton(
+              icon: Icon(Icons.leaderboard_outlined, color: ac.txt2),
+              tooltip: 'Top Writers',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const TopWritersPage())),
+            ),
+          ],
+        ),
+      );
+    }
     final canPop = Navigator.of(context).canPop();
     final ac = AppColors.of(context);
     return Padding(

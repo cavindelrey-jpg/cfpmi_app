@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -513,8 +514,13 @@ class AcademicContentRepository {
     final dir = await getApplicationDocumentsDirectory();
     final offlineDir = Directory('${dir.path}/offline_content');
     if (!await offlineDir.exists()) await offlineDir.create(recursive: true);
-    final ext = url.contains('.') ? url.split('.').last.split('?').first : 'bin';
-    final localPath = '${offlineDir.path}/$contentId.$ext';
+    final uriPath = Uri.tryParse(url)?.path ?? url.split('?').first;
+    final lastSegment = uriPath.split('/').last;
+    final rawExt = lastSegment.contains('.') ? lastSegment.split('.').last.toLowerCase() : 'bin';
+    final cleanExt = rawExt.replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final ext = (cleanExt.isEmpty || cleanExt.length > 8) ? 'bin' : cleanExt;
+    final safeId = contentId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    final localPath = '${offlineDir.path}/$safeId.$ext';
 
     final request = http.Request('GET', Uri.parse(url));
     final response = await request.send().timeout(const Duration(minutes: 5));
@@ -744,21 +750,39 @@ class AcademicContentRepository {
 
   // ─── Storage Upload ───────────────────────────────────────────────────────
 
-  /// Uploads a file to Supabase Storage. Returns the public URL. Times out
-  /// instead of hanging forever on a dead connection and retries once.
+  /// Uploads a file (or raw bytes) to Supabase Storage. Returns the public URL.
+  /// Times out instead of hanging forever on a dead connection and retries once.
   Future<Result<String>> uploadFile({
-    required File file,
+    File? file,
+    Uint8List? bytes,
+    String? fileName,
     required String folder, // e.g. 'content_files' or 'thumbnails'
     required String institutionId,
     void Function(double)? onProgress,
     int attempt = 1,
   }) async {
     try {
-      final ext = file.path.split('.').last;
-      final name = '${DateTime.now().millisecondsSinceEpoch}.$ext';
-      final path = '$folder/$institutionId/$name';
-      onProgress?.call(0);
-      await _db.storage.from(_bucket).upload(path, file).timeout(const Duration(minutes: 5));
+      final rawName = fileName ?? file?.path ?? 'file.bin';
+      final rawExt = rawName.contains('.') ? rawName.split('.').last.toLowerCase() : 'bin';
+      final ext = rawExt.replaceAll(RegExp(r'[^a-z0-9]'), '');
+      final safeExt = ext.isEmpty ? 'bin' : ext;
+      final safeInst = institutionId.trim().isEmpty ? 'independent' : institutionId.trim();
+      final name = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(10000)}.$safeExt';
+      final path = '$folder/$safeInst/$name';
+      onProgress?.call(0.1);
+      if (bytes != null) {
+        await _db.storage
+            .from(_bucket)
+            .uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true))
+            .timeout(const Duration(minutes: 5));
+      } else if (file != null) {
+        await _db.storage
+            .from(_bucket)
+            .upload(path, file, fileOptions: const FileOptions(upsert: true))
+            .timeout(const Duration(minutes: 5));
+      } else {
+        return const Failure('No file data selected to upload');
+      }
       onProgress?.call(1);
       final url = _db.storage.from(_bucket).getPublicUrl(path);
       return Success(url);
@@ -766,11 +790,16 @@ class AcademicContentRepository {
       if (attempt < 2) {
         onProgress?.call(0);
         return uploadFile(
-          file: file, folder: folder, institutionId: institutionId,
-          onProgress: onProgress, attempt: attempt + 1,
+          file: file,
+          bytes: bytes,
+          fileName: fileName,
+          folder: folder,
+          institutionId: institutionId,
+          onProgress: onProgress,
+          attempt: attempt + 1,
         );
       }
-      return Failure('Upload failed — check your connection and try again', e);
+      return Failure('Upload failed — $e', e);
     }
   }
 

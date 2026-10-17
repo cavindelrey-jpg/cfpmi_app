@@ -75,17 +75,12 @@ class ProfilePage extends StatelessWidget {
       body: AppBackground(child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(children: [
-          // When embedded, the global top bar replaces this page's own bar,
-          // so surface the page title + Settings/Sign Out here instead.
           if (embedded) ...[
-            Row(children: [
-              Text('Profile',
-                  style: GoogleFonts.sora(
-                      fontSize: 22, fontWeight: FontWeight.w800, color: ac.txt)),
-              const Spacer(),
-              ...actions,
-            ]),
-            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: actions,
+            ),
+            const SizedBox(height: 8),
           ],
           // Avatar
           user.photoUrl != null && user.photoUrl!.isNotEmpty

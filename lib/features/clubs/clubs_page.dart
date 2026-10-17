@@ -127,24 +127,28 @@ class _ClubsPageState extends State<ClubsPage> {
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return Scaffold(
             backgroundColor: ac.bg,
-            appBar: AppBar(
-              backgroundColor: ac.bg,
-              elevation: 0,
-              title: Text('Academic Groups', style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy)),
-              iconTheme: IconThemeData(color: ac.navy),
-            ),
+            appBar: widget.embedded
+                ? null
+                : AppBar(
+                    backgroundColor: ac.bg,
+                    elevation: 0,
+                    title: Text('Academic Groups', style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy)),
+                    iconTheme: IconThemeData(color: ac.navy),
+                  ),
             body: const _ClubsSkeleton(),
           );
         }
         if (snap.hasError && (!snap.hasData || snap.data!.isEmpty)) {
           return Scaffold(
             backgroundColor: ac.bg,
-            appBar: AppBar(
-              backgroundColor: ac.bg,
-              elevation: 0,
-              title: Text('Academic Groups', style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy)),
-              iconTheme: IconThemeData(color: ac.navy),
-            ),
+            appBar: widget.embedded
+                ? null
+                : AppBar(
+                    backgroundColor: ac.bg,
+                    elevation: 0,
+                    title: Text('Academic Groups', style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy)),
+                    iconTheme: IconThemeData(color: ac.navy),
+                  ),
             body: Center(child: ErrorView(message: snap.error.toString())),
           );
         }
@@ -183,10 +187,14 @@ class _ClubsPageState extends State<ClubsPage> {
                   appBar: AppBar(
                     backgroundColor: ac.bg,
                     elevation: 0,
-                    title: Text(
-                      'Academic Groups',
-                      style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy),
-                    ),
+                    toolbarHeight: widget.embedded ? 8 : kToolbarHeight,
+                    automaticallyImplyLeading: !widget.embedded,
+                    title: widget.embedded
+                        ? null
+                        : Text(
+                            'Academic Groups',
+                            style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy),
+                          ),
                     iconTheme: IconThemeData(color: ac.navy),
                     actions: widget.embedded
                         ? const []

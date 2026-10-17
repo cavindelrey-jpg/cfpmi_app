@@ -28,25 +28,28 @@ import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart' show showToast;
 import '../../widgets/web_embed/web_embed.dart';
 
-enum ViewableFileKind { image, pdf, video, docx, pptx, epub }
+enum ViewableFileKind { image, pdf, video, docx, pptx, epub, txt }
 
 /// Maps a file's extension to a kind this viewer can render, or null if
 /// it should fall back to opening externally.
 ViewableFileKind? viewableKindFor(String url) {
-  final path = Uri.tryParse(url)?.path ?? url;
-  final ext = path.contains('.') ? path.split('.').last.toLowerCase() : '';
-  const imageExts = {'png', 'jpg', 'jpeg', 'gif', 'webp'};
+  final path = Uri.tryParse(url)?.path ?? url.split('?').first;
+  final lastSegment = path.split('/').last;
+  final ext = lastSegment.contains('.') ? lastSegment.split('.').last.toLowerCase() : '';
+  const imageExts = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'};
   const pdfExts = {'pdf'};
-  const videoExts = {'mp4', 'mov', 'avi', 'm4v'};
+  const videoExts = {'mp4', 'mov', 'avi', 'm4v', 'webm', 'mkv'};
   const docxExts = {'docx'};
-  const pptxExts = {'pptx', 'ppt'};
+  const pptxExts = {'pptx', 'ppt', 'doc', 'xls', 'xlsx'};
   const epubExts = {'epub'};
+  const txtExts = {'txt', 'md', 'csv', 'json', 'log'};
   if (imageExts.contains(ext)) return ViewableFileKind.image;
   if (pdfExts.contains(ext)) return ViewableFileKind.pdf;
   if (videoExts.contains(ext)) return ViewableFileKind.video;
   if (docxExts.contains(ext)) return ViewableFileKind.docx;
   if (pptxExts.contains(ext)) return ViewableFileKind.pptx;
   if (epubExts.contains(ext)) return ViewableFileKind.epub;
+  if (txtExts.contains(ext)) return ViewableFileKind.txt;
   return null;
 }
 
@@ -91,20 +94,30 @@ class ContentViewerPage extends StatelessWidget {
           color: kind == ViewableFileKind.video ? Colors.white : ac.txt,
         ),
         actions: [
-          _ViewerSaveOfflineAction(
-            contentId: contentId,
-            fileUrl: fileUrl,
-            title: title,
-            localFilePath: localFilePath,
-          ),
+          if (fileUrl.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.open_in_new_rounded, size: 20),
+              tooltip: 'Open externally / in browser',
+              onPressed: () async {
+                final uri = Uri.tryParse(fileUrl);
+                if (uri != null) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          if (!kIsWeb)
+            _ViewerSaveOfflineAction(
+              contentId: contentId,
+              fileUrl: fileUrl,
+              title: title,
+              localFilePath: localFilePath,
+            ),
         ],
       ),
-      // On the WEB, the native pdfrx/local-file path can't work (no device
-      // filesystem), so documents are rendered in a browser <iframe> — PDFs
-      // inline, Office files (.pptx/.docx) via the Office Online viewer. This
-      // is what makes files openable on desktop and PowerPoints viewable.
+      // On the WEB, PDFs and Office slides/legacy docs render in an iframe
+      // while .docx, .epub, and .txt use our native Dart viewers with full
+      // text selection & copy support.
       body: (kIsWeb && (kind == ViewableFileKind.pdf ||
-                        kind == ViewableFileKind.docx ||
                         kind == ViewableFileKind.pptx))
           ? _WebDocBody(fileUrl: fileUrl, kind: kind)
           : SelectionArea(
@@ -124,6 +137,11 @@ class ContentViewerPage extends StatelessWidget {
                   ),
                 ViewableFileKind.pptx => _ExternalDocFallback(fileUrl: fileUrl),
                 ViewableFileKind.epub => _EpubViewer(
+                    url: fileUrl,
+                    localFilePath: localFilePath,
+                    contentId: contentId,
+                  ),
+                ViewableFileKind.txt => _TextViewer(
                     url: fileUrl,
                     localFilePath: localFilePath,
                     contentId: contentId,
@@ -367,27 +385,29 @@ class _PdfViewerState extends State<_PdfViewer> {
     final contentId = widget.contentId;
     final userId = widget.userId;
 
-    final initialPageFuture = (contentId != null && userId != null)
-        ? AcademicContentRepository.instance.savedReadPage(contentId: contentId, userId: userId)
-        : Future.value(1);
-
-    final Future<String?> pathFuture;
-    if (widget.localFilePath != null) {
-      pathFuture = Future.value(widget.localFilePath);
-    } else if (contentId != null) {
-      pathFuture = AcademicContentRepository.instance.ensureLocalCopy(
-        contentId: contentId,
-        fileUrl: widget.url,
-        onProgress: (p) {
-          if (mounted) setState(() => _downloadProgress = p);
-        },
-      );
-    } else {
-      pathFuture = Future.value(null);
+    int page = 1;
+    if (contentId != null && userId != null) {
+      try {
+        page = await AcademicContentRepository.instance
+            .savedReadPage(contentId: contentId, userId: userId);
+      } catch (_) {}
     }
 
-    final page = await initialPageFuture;
-    final path = await pathFuture;
+    String? path = widget.localFilePath;
+    if (path == null && contentId != null && !kIsWeb) {
+      try {
+        path = await AcademicContentRepository.instance.ensureLocalCopy(
+          contentId: contentId,
+          fileUrl: widget.url,
+          onProgress: (p) {
+            if (mounted) setState(() => _downloadProgress = p);
+          },
+        );
+      } catch (_) {
+        path = null;
+      }
+    }
+
     return (page, path);
   }
 
@@ -633,11 +653,15 @@ class _DocxViewerState extends State<_DocxViewer> {
     try {
       var path = widget.localFilePath;
       final contentId = widget.contentId;
-      if (path == null && contentId != null) {
-        path = await AcademicContentRepository.instance.ensureLocalCopy(
-          contentId: contentId,
-          fileUrl: widget.url,
-        );
+      if (path == null && contentId != null && !kIsWeb) {
+        try {
+          path = await AcademicContentRepository.instance.ensureLocalCopy(
+            contentId: contentId,
+            fileUrl: widget.url,
+          );
+        } catch (_) {
+          path = null;
+        }
       }
       Uint8List bytes;
       if (path != null) {
@@ -679,6 +703,39 @@ class _DocxViewerState extends State<_DocxViewer> {
     }
     final ac = AppColors.of(context);
     return Column(children: [
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: ac.surf2,
+          border: Border(bottom: BorderSide(color: ac.bdr)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.description_outlined, size: 16, color: ac.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Word Document · Select text or tap Copy',
+                style: AppText.caption.copyWith(color: ac.txt2, fontWeight: FontWeight.w600),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                final text = controller.document.toPlainText().trim();
+                Clipboard.setData(ClipboardData(text: text));
+                showToast(context, 'Document text copied to clipboard.');
+              },
+              icon: Icon(Icons.copy_rounded, size: 16, color: ac.primary),
+              label: Text('Copy All', style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.w700)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
+        ),
+      ),
       if (_warnings.isNotEmpty)
         Container(
           width: double.infinity,
@@ -732,11 +789,15 @@ class _EpubViewerState extends State<_EpubViewer> {
     try {
       var path = widget.localFilePath;
       final contentId = widget.contentId;
-      if (path == null && contentId != null) {
-        path = await AcademicContentRepository.instance.ensureLocalCopy(
-          contentId: contentId,
-          fileUrl: widget.url,
-        );
+      if (path == null && contentId != null && !kIsWeb) {
+        try {
+          path = await AcademicContentRepository.instance.ensureLocalCopy(
+            contentId: contentId,
+            fileUrl: widget.url,
+          );
+        } catch (_) {
+          path = null;
+        }
       }
       Uint8List bytes;
       if (path != null) {
@@ -947,6 +1008,137 @@ class _EpubViewerState extends State<_EpubViewer> {
   }
 }
 
+
+class _TextViewer extends StatefulWidget {
+  final String url;
+  final String? localFilePath;
+  final String? contentId;
+  const _TextViewer({required this.url, this.localFilePath, this.contentId});
+
+  @override
+  State<_TextViewer> createState() => _TextViewerState();
+}
+
+class _TextViewerState extends State<_TextViewer> {
+  String? _text;
+  String? _error;
+  double _fontSize = 15.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      var path = widget.localFilePath;
+      final contentId = widget.contentId;
+      if (path == null && contentId != null && !kIsWeb) {
+        try {
+          path = await AcademicContentRepository.instance.ensureLocalCopy(
+            contentId: contentId,
+            fileUrl: widget.url,
+          );
+        } catch (_) {
+          path = null;
+        }
+      }
+      Uint8List bytes;
+      if (path != null) {
+        bytes = await File(path).readAsBytes();
+      } else {
+        final resp = await http.get(Uri.parse(widget.url)).timeout(const Duration(seconds: 30));
+        if (resp.statusCode >= 400) throw Exception('Server returned ${resp.statusCode}');
+        bytes = resp.bodyBytes;
+      }
+      final decoded = utf8.decode(bytes, allowMalformed: true);
+      if (!mounted) return;
+      setState(() => _text = decoded);
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendlyLoadError(e, 'file'));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(_error!, textAlign: TextAlign.center),
+        ),
+      );
+    }
+    final text = _text;
+    if (text == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final ac = AppColors.of(context);
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: ac.surf2,
+            border: Border(bottom: BorderSide(color: ac.bdr)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.article_outlined, size: 16, color: ac.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Text Document · Select text or tap Copy All',
+                  style: AppText.caption.copyWith(color: ac.txt2, fontWeight: FontWeight.w600),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.text_decrease_rounded, size: 18),
+                tooltip: 'Decrease font size',
+                onPressed: _fontSize > 11 ? () => setState(() => _fontSize -= 1.5) : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.text_increase_rounded, size: 22),
+                tooltip: 'Increase font size',
+                onPressed: _fontSize < 26 ? () => setState(() => _fontSize += 1.5) : null,
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: text));
+                  showToast(context, 'Text copied to clipboard.');
+                },
+                icon: Icon(Icons.copy_rounded, size: 16, color: ac.primary),
+                label: Text('Copy All', style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.w700)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: SizedBox(
+              width: double.infinity,
+              child: SelectableText(
+                text,
+                style: AppText.body.copyWith(
+                  fontSize: _fontSize,
+                  height: 1.65,
+                  color: ac.txt,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 String _friendlyLoadError(Object e, String what) {
   final msg = e.toString();

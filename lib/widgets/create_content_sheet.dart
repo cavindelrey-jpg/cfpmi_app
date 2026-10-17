@@ -65,21 +65,21 @@ Future<void> showCreateContentSheet(BuildContext context, AppUser user) async {
       color: Colors.blue,
       pageBuilder: (_) => CourseComposerPage(user: user),
     ),
-    if (user.hasMinRole(UserRole.lecturer)) ...[
+    if (user.canUploadContent) ...[
       _CreateOption(
-        icon: Icons.quiz_rounded, label: 'Quiz', subtitle: 'MCQ, Structured, or Essay questions',
-        color: Colors.purple,
-        pageBuilder: (_) => TestComposerPage(author: user),
-      ),
-      _CreateOption(
-        icon: Icons.upload_file_rounded, label: 'Library Content', subtitle: 'PDF, image, past paper, book, or video',
-        color: Colors.green,
+        icon: Icons.upload_file_rounded, label: 'Library Content', subtitle: 'PDF, Word, EPUB, image, past paper, book, or video',
+        color: Colors.teal,
         pageBuilder: (_) => ContentUploadPage(user: user),
       ),
       _CreateOption(
         icon: Icons.drive_folder_upload_rounded, label: 'Mass Upload Past Papers', subtitle: 'Batch upload multiple PDFs with auto-parsed metadata',
         color: Colors.amber,
         pageBuilder: (_) => BulkPastPaperUploadPage(user: user),
+      ),
+      _CreateOption(
+        icon: Icons.quiz_rounded, label: 'Quiz', subtitle: 'MCQ, Structured, or Essay questions',
+        color: Colors.purple,
+        pageBuilder: (_) => TestComposerPage(author: user),
       ),
     ],
   ];
@@ -91,6 +91,9 @@ Future<void> showCreateContentSheet(BuildContext context, AppUser user) async {
     builder: (sheetContext) {
       final ac = AppColors.of(sheetContext);
       return Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(sheetContext).size.height * 0.85,
+        ),
         decoration: BoxDecoration(
           color: ac.surf,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(Rad.lg)),
@@ -107,23 +110,31 @@ Future<void> showCreateContentSheet(BuildContext context, AppUser user) async {
             ),
           ),
           const SizedBox(height: 16),
-          Text('Create', style: AppText.title.copyWith(fontSize: 16, color: ac.txt)),
+          Text('Create & Upload', style: AppText.title.copyWith(fontSize: 16, color: ac.txt)),
           const SizedBox(height: 12),
-          ...options.map((o) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  width: 42, height: 42,
-                  decoration: BoxDecoration(color: o.color.withValues(alpha: .12), borderRadius: BorderRadius.circular(Rad.sm)),
-                  child: Icon(o.icon, color: o.color, size: 22),
-                ),
-                title: Text(o.label, style: AppText.subtitle.copyWith(fontSize: 14, color: ac.txt)),
-                subtitle: Text(o.subtitle, style: AppText.caption.copyWith(fontSize: 11.5, color: ac.txt2)),
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  Navigator.of(sheetContext).pop();
-                  Navigator.of(context).push(MaterialPageRoute(builder: o.pageBuilder));
-                },
-              )),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: options.map((o) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        width: 42, height: 42,
+                        decoration: BoxDecoration(color: o.color.withValues(alpha: .12), borderRadius: BorderRadius.circular(Rad.sm)),
+                        child: Icon(o.icon, color: o.color, size: 22),
+                      ),
+                      title: Text(o.label, style: AppText.subtitle.copyWith(fontSize: 14, color: ac.txt)),
+                      subtitle: Text(o.subtitle, style: AppText.caption.copyWith(fontSize: 11.5, color: ac.txt2)),
+                      trailing: Icon(Icons.chevron_right_rounded, color: ac.muted, size: 20),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        Navigator.of(sheetContext).pop();
+                        Navigator.of(context).push(MaterialPageRoute(builder: o.pageBuilder));
+                      },
+                    )).toList(),
+              ),
+            ),
+          ),
         ]),
       );
     },

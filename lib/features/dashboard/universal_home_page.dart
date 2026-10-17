@@ -75,6 +75,7 @@ import '../school/daily_notices/daily_notices_page.dart';
 import '../school/exam_composer/exam_list_page.dart';
 import '../school/homework_page.dart';
 import '../school/marks_page.dart';
+import '../school/school_calendar_page.dart';
 import '../school/school_connect_page.dart';
 import '../school/student_records_page.dart';
 import '../classroom/student_classroom_page.dart';
@@ -88,7 +89,7 @@ const List<BoxShadow> _glow = [
   BoxShadow(color: Color(0x0C000000), blurRadius: 16, offset: Offset(0, 4)),
 ];
 
-// ── CFPMI dashboard spec palette (exact hexes from the design brief) ─────
+// ── Dashboard spec palette (navy-blue, gold, emerald) ───────────────────
 const Color _cNavy = Color(0xFF0B1F3A); // deep academic navy
 const Color _cDarkGreen = Color(0xFF004D40); // deep forest green
 const Color _cGreen = Color(0xFF087F5B); // emerald green
@@ -132,11 +133,19 @@ List<String> rankHomeSubjectsByUsage(
 class UniversalHomePage extends StatefulWidget {
   final AppUser? user;
 
-  /// When true, the page omits its own top bar (hamburger/search/notifications/
-  /// avatar) because the application shell already provides a global one. The
-  /// guest shell renders this page without that shell, so it defaults to false.
+  /// When true, the page omits its own top bar because the application shell
+  /// already provides a single unified top bar.
   final bool embedded;
-  const UniversalHomePage({super.key, this.user, this.embedded = false});
+
+  /// Optional callback to switch the active destination in HomeShell.
+  final ValueChanged<String>? onSelectSection;
+
+  const UniversalHomePage({
+    super.key,
+    this.user,
+    this.embedded = false,
+    this.onSelectSection,
+  });
 
   @override
   State<UniversalHomePage> createState() => _UniversalHomePageState();
@@ -490,28 +499,36 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     );
   }
 
-  // Mobile: single vertical column (unchanged).
+  void _navigateToSectionOrOpen(BuildContext context, String section, Widget fallbackPage) {
+    if (widget.onSelectSection != null) {
+      widget.onSelectSection!(section);
+    } else {
+      _open(context, fallbackPage);
+    }
+  }
+
+  // Mobile: single vertical column beginning immediately below the top bar,
+  // with no repeated page heading or subtitle.
   Widget _mobileBody(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 36),
+      padding: const EdgeInsets.only(top: 16, bottom: 36),
       children: [
-        if (!widget.embedded) ...[
-          _topBar(context),
-          const SizedBox(height: 4),
-        ],
-        _homeHeading(context),
-        const SizedBox(height: 16),
         _featuredBanner(context),
+        const SizedBox(height: 18),
+        _commandCenterHero(context),
         const SizedBox(height: 22),
         _sh('Quick Access',
-            onTap: () => _open(context, LibraryHomePage(user: _userOrGuest))),
+            onTap: () => _navigateToSectionOrOpen(context, 'Library', LibraryHomePage(user: _userOrGuest))),
         const SizedBox(height: 12),
         _quickAccessSection(context),
         const SizedBox(height: 22),
         _studentProgressCard(context),
+        const SizedBox(height: 16),
+        _progressAndGoalsStrip(context),
         const SizedBox(height: 24),
         _sh('Featured Courses',
-            action: 'Browse All', onTap: () => _open(context, CoursesHomePage(user: _u))),
+            action: 'Browse All',
+            onTap: () => _navigateToSectionOrOpen(context, 'Courses', CoursesHomePage(user: _u))),
         const SizedBox(height: 12),
         _featuredCoursesSection(context),
         const SizedBox(height: 24),
@@ -521,24 +538,20 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         _studyToolsSection(context),
         const SizedBox(height: 24),
         _scheduleAnnouncementsSection(context),
+        const SizedBox(height: 16),
+        _tasksAndCalendarSection(context),
+        const SizedBox(height: 16),
+        _recommendedReadsSection(context),
       ],
     );
   }
 
-  // Desktop/web: a two-column dashboard (12-col feel). Primary flow on the
-  // left (banner → quick access → courses → tools), a de-emphasised "at a
-  // glance" rail on the right (progress → schedule/announcements). Reuses
-  // the exact same section widgets as mobile — no duplicated logic.
+  // Desktop/web: two-column dashboard beginning immediately below the top bar,
+  // with no repeated page heading or subtitle.
   Widget _desktopBody(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 40),
+      padding: const EdgeInsets.only(top: 16, bottom: 40),
       children: [
-        if (!widget.embedded) ...[
-          _topBar(context),
-          const SizedBox(height: 4),
-        ],
-        _homeHeading(context),
-        const SizedBox(height: 18),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
@@ -549,15 +562,17 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                 child: Column(
                   children: [
                     _featuredBanner(context),
+                    const SizedBox(height: 18),
+                    _commandCenterHero(context),
                     const SizedBox(height: 22),
                     _sh('Quick Access',
-                        onTap: () => _open(context, LibraryHomePage(user: _userOrGuest))),
+                        onTap: () => _navigateToSectionOrOpen(context, 'Library', LibraryHomePage(user: _userOrGuest))),
                     const SizedBox(height: 12),
                     _quickAccessSection(context),
                     const SizedBox(height: 24),
                     _sh('Featured Courses',
                         action: 'Browse All',
-                        onTap: () => _open(context, CoursesHomePage(user: _u))),
+                        onTap: () => _navigateToSectionOrOpen(context, 'Courses', CoursesHomePage(user: _u))),
                     const SizedBox(height: 12),
                     _featuredCoursesSection(context),
                     const SizedBox(height: 24),
@@ -574,9 +589,13 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                 child: Column(
                   children: [
                     _studentProgressCard(context),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    _progressAndGoalsStrip(context),
+                    const SizedBox(height: 18),
                     _scheduleAnnouncementsSection(context),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
+                    _tasksAndCalendarSection(context),
+                    const SizedBox(height: 18),
                     _recommendedReadsSection(context),
                   ],
                 ),
@@ -588,8 +607,53 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     );
   }
 
-  // Right-rail "Recommended for You" — real Library content (balances the
-  // dashboard's right column; hidden entirely when there's nothing to show).
+  // Tasks & Homework + Calendar & Events row
+  Widget _tasksAndCalendarSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final tasksCard = _panelCard(
+            title: 'Tasks & Homework',
+            actionLabel: 'View all',
+            onAction: () => _navigateToSectionOrOpen(
+              context,
+              'Homework',
+              HomeworkPage(user: _userOrGuest),
+            ),
+            child: _tasksCardContent(context),
+          );
+          final calendarCard = _panelCard(
+            title: 'Academic Calendar',
+            actionLabel: 'Open calendar',
+            onAction: () => _open(context, SchoolCalendarPage(user: _userOrGuest)),
+            child: _myClubContent(context),
+          );
+          if (c.maxWidth < 340) {
+            return Column(
+              children: [
+                tasksCard,
+                const SizedBox(height: 12),
+                calendarCard,
+              ],
+            );
+          }
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: tasksCard),
+                const SizedBox(width: 12),
+                Expanded(child: calendarCard),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Right-rail "Recommended for You" — real Library/Article content.
   Widget _recommendedReadsSection(BuildContext context) {
     return FutureBuilder<List<Object>>(
       future: _recommendedFuture,
@@ -612,7 +676,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                 const Icon(Icons.auto_awesome_rounded, size: 16, color: _cGreen),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text('Recommended for You',
+                  child: Text('Recommended Articles & Reads',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
@@ -661,147 +725,6 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     );
   }
 
-  // ── Top Bar (spec: hamburger · [no logo/name] · search · bell · avatar)
-  Widget _topBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 8, 12, 0),
-      child: Row(
-        children: [
-          Builder(
-            builder: (ctx) => IconButton(
-              icon: const Icon(Icons.menu_rounded, color: _cNavy, size: 24),
-              onPressed: () => Scaffold.of(ctx).openDrawer(),
-              tooltip: 'Menu',
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.search_rounded, color: _cNavy, size: 23),
-            tooltip: 'Search',
-            onPressed: () => _open(context, SearchPage(user: _userOrGuest)),
-          ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_none_rounded, color: _cNavy, size: 23),
-                tooltip: 'Notifications',
-                onPressed: () => _open(context, NotificationsPage(user: _userOrGuest)),
-              ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  width: 9,
-                  height: 9,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDC2626),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: _cCard, width: 1.5),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 2),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              UserAvatar(
-                initials: _isGuest || _userOrGuest.name.isEmpty ? '?' : _userOrGuest.name[0].toUpperCase(),
-                radius: 20,
-                photoUrl: _u?.photoUrl,
-                onTap: () => _open(context, ProfilePage(user: _userOrGuest)),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 11,
-                  height: 11,
-                  decoration: BoxDecoration(
-                    color: _cGreen,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: _cCard, width: 2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 2),
-        ],
-      ),
-    );
-  }
-
-  Widget _messagesTopUnreadBadge() {
-    final uid = _u?.id ?? '';
-    if (uid.isEmpty) return const SizedBox.shrink();
-    return StreamBuilder<List<Conversation>>(
-      stream: _conversationsStream ?? const Stream.empty(),
-      builder: (context, snap) {
-        final total = (snap.data ?? const <Conversation>[])
-            .fold<int>(0, (sum, c) => sum + (c.unreadCount[uid] ?? 0));
-        if (total <= 0) return const SizedBox.shrink();
-        return Positioned(
-          top: 6,
-          right: 6,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
-            constraints: const BoxConstraints(minWidth: 15),
-            decoration: BoxDecoration(color: ac.red, borderRadius: BorderRadius.circular(8)),
-            child: Text(
-              total > 9 ? '9+' : '$total',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(fontSize: 8.5, fontWeight: FontWeight.w700, color: Colors.white),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  // CFPMI STUDENT DASHBOARD — built to the design spec.
-  // Header has no logo/brand text; page heading "Home" stands alone.
-  // ══════════════════════════════════════════════════════════════════
-
-  // ── Page heading: "Home" + session pill (no greeting/subtitle) ──────
-  Widget _homeHeading(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 2, 18, 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            'Home',
-            style: GoogleFonts.inter(
-              fontSize: 25,
-              fontWeight: FontWeight.w800,
-              color: _cNavy,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: _cPaleGreen,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '$_academicSession Session',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: _cDarkGreen,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ── Section header: bold navy title + green "View all →" action ─────
   Widget _sh(String title, {String action = 'View all', VoidCallback? onTap}) {

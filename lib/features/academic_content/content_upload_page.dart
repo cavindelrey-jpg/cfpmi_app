@@ -40,8 +40,12 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
   String _level = kAcademicLevels.last;      // 'All Levels' default
   String _examBoard = kExamBoards.last;      // 'N/A' default
   File? _contentFile;
+  Uint8List? _contentBytes;
+  int? _contentSizeBytes;
   String? _contentFileName;
   File? _thumbnailFile;
+  Uint8List? _thumbnailBytes;
+  String? _thumbnailFileName;
   double _uploadProgress = 0;
   bool _uploading = false;
   String? _error;
@@ -56,33 +60,72 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
   }
 
   Future<void> _pickContentFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: [
-        'pdf','doc','docx','ppt','pptx','xls','xlsx',
-        'mp4','mov','avi','png','jpg','jpeg','zip',
-      ],
-    );
-    if (result != null && result.files.single.path != null) {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        withData: true,
+        allowedExtensions: [
+          'pdf', 'doc', 'docx', 'epub', 'txt', 'md', 'csv',
+          'ppt', 'pptx', 'xls', 'xlsx',
+          'mp4', 'mov', 'avi', 'mkv', 'webm', 'mp3', 'm4a',
+          'png', 'jpg', 'jpeg', 'webp', 'zip',
+        ],
+      );
+      if (result == null || result.files.isEmpty) return;
+      final picked = result.files.single;
+      Uint8List? bytes = picked.bytes;
+      File? file;
+      if (picked.path != null && picked.path!.isNotEmpty) {
+        file = File(picked.path!);
+      }
+      if (bytes == null && file == null) {
+        setState(() => _error = 'Could not read the selected file.');
+        return;
+      }
+      final ext = picked.name.contains('.') ? picked.name.split('.').last.toLowerCase() : '';
       setState(() {
-        _contentFile = File(result.files.single.path!);
-        _contentFileName = result.files.single.name;
+        _contentFile = file;
+        _contentBytes = bytes;
+        _contentSizeBytes = picked.size;
+        _contentFileName = picked.name;
+        _error = null;
+        if (_titleCtrl.text.trim().isEmpty) {
+          _titleCtrl.text = picked.name.replaceAll(RegExp(r'\.[^.]+$'), '').replaceAll('_', ' ');
+        }
+        if (ext == 'epub') {
+          _type = ContentType.book;
+        } else if (const {'mp4', 'mov', 'avi', 'mkv', 'webm'}.contains(ext)) {
+          _type = ContentType.video;
+        }
       });
+    } catch (e) {
+      setState(() => _error = 'File selection failed: $e');
     }
   }
 
   Future<void> _pickThumbnail() async {
-    final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null) {
-      setState(() => _thumbnailFile = File(picked.path));
+    try {
+      final picker = ImagePicker();
+      final picked =
+          await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          _thumbnailBytes = bytes;
+          _thumbnailFileName = picked.name;
+          if (picked.path.isNotEmpty) {
+            _thumbnailFile = File(picked.path);
+          }
+        });
+      }
+    } catch (e) {
+      setState(() => _error = 'Thumbnail selection failed: $e');
     }
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_contentFile == null) {
+    if (_contentFile == null && _contentBytes == null) {
       setState(() => _error = 'Please select a content file.');
       return;
     }
@@ -97,7 +140,9 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
 
     // Upload content file
     final fileResult = await repo.uploadFile(
-      file: _contentFile!,
+      file: _contentFile,
+      bytes: _contentBytes,
+      fileName: _contentFileName,
       folder: 'content_files',
       institutionId: institutionId,
       onProgress: (p) {
@@ -118,9 +163,11 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
     // without one, but say so rather than pretending it worked.
     String? thumbnailUrl;
     String? thumbnailWarning;
-    if (_thumbnailFile != null) {
+    if (_thumbnailBytes != null || _thumbnailFile != null) {
       final thumbResult = await repo.uploadFile(
-        file: _thumbnailFile!,
+        file: _thumbnailFile,
+        bytes: _thumbnailBytes,
+        fileName: _thumbnailFileName ?? 'thumb.jpg',
         folder: 'thumbnails',
         institutionId: institutionId,
         onProgress: (p) {
@@ -143,6 +190,13 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
         .where((t) => t.isNotEmpty)
         .toList();
 
+    int? fileSize = _contentSizeBytes ?? _contentBytes?.length;
+    if (fileSize == null && _contentFile != null) {
+      try {
+        fileSize = await _contentFile!.length();
+      } catch (_) {}
+    }
+
     final content = AcademicContent(
       id: '',
       title: _titleCtrl.text.trim(),
@@ -157,7 +211,7 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
       institutionId: institutionId,
       uploadedBy: widget.user.id,
       uploaderName: widget.user.name,
-      fileSizeBytes: _contentFile != null ? await _contentFile!.length() : null,
+      fileSizeBytes: fileSize,
       uploadDate: DateTime.now(),
       tags: tags,
       folderId: widget.initialFolderId,
@@ -324,7 +378,32 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
               const SizedBox(height: 16),
 
               // Description
-              const _SectionLabel('Description'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const _SectionLabel('Description'),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final data = await Clipboard.getData(Clipboard.kTextPlain);
+                      final text = data?.text;
+                      if (text != null && text.isNotEmpty) {
+                        setState(() {
+                          _descCtrl.text = _descCtrl.text.isEmpty
+                              ? text
+                              : '${_descCtrl.text}\n$text';
+                        });
+                      }
+                    },
+                    icon: Icon(Icons.content_paste_rounded, size: 15, color: ac.primary),
+                    label: Text('Paste', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ac.primary)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               _Field(
                 controller: _descCtrl,
@@ -346,9 +425,9 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
               const _SectionLabel('Content File *'),
               const SizedBox(height: 8),
               _FilePicker(
-                label: _contentFileName ?? 'Choose file…',
+                label: _contentFileName ?? 'Choose file (PDF, Word, EPUB, TXT, Video, Image)…',
                 icon: Icons.attach_file_rounded,
-                selected: _contentFile != null,
+                selected: _contentFile != null || _contentBytes != null,
                 onTap: _uploading ? null : _pickContentFile,
               ),
               const SizedBox(height: 16),
@@ -358,6 +437,7 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
               const SizedBox(height: 8),
               _ThumbnailPicker(
                 file: _thumbnailFile,
+                bytes: _thumbnailBytes,
                 onTap: _uploading ? null : _pickThumbnail,
               ),
               const SizedBox(height: 28),
@@ -599,8 +679,9 @@ class _FilePicker extends StatelessWidget {
 
 class _ThumbnailPicker extends StatelessWidget {
   final File? file;
+  final Uint8List? bytes;
   final VoidCallback? onTap;
-  const _ThumbnailPicker({this.file, this.onTap});
+  const _ThumbnailPicker({this.file, this.bytes, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -622,19 +703,24 @@ class _ThumbnailPicker extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: ac.bdr),
           ),
-          child: file != null
+          child: bytes != null
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.file(file!, fit: BoxFit.cover),
+                  child: Image.memory(bytes!, fit: BoxFit.cover),
                 )
-              : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.add_photo_alternate_outlined,
-                      size: 32, color: ac.muted),
-                  const SizedBox(height: 6),
-                  Text('Add thumbnail image',
-                      style: GoogleFonts.inter(
-                          fontSize: 13, color: ac.muted)),
-                ]),
+              : file != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(file!, fit: BoxFit.cover),
+                    )
+                  : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.add_photo_alternate_outlined,
+                          size: 32, color: ac.muted),
+                      const SizedBox(height: 6),
+                      Text('Add thumbnail image',
+                          style: GoogleFonts.inter(
+                              fontSize: 13, color: ac.muted)),
+                    ]),
         ),
       ),
     );
