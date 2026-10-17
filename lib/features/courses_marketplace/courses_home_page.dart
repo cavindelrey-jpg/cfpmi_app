@@ -640,10 +640,10 @@ class _DownloadedCourseCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: 165,
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr2),
+            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,9 +667,9 @@ class _DownloadedCourseCard extends StatelessWidget {
                                   course.coverImageUrl!,
                                   fit: BoxFit.cover,
                                   gaplessPlayback: true,
-                                  errorBuilder: (_, __, ___) => _coverFallback(ac),
+                                  errorBuilder: (_, __, ___) => courseCoverFallback(course.title),
                                 )
-                              : _coverFallback(ac);
+                              : courseCoverFallback(course.title);
                         },
                       ),
                     ),
@@ -680,13 +680,14 @@ class _DownloadedCourseCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(4),
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 0.8),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.offline_pin_rounded, size: 10, color: ac.primary),
+                          Icon(Icons.offline_pin_rounded, size: 10, color: ac.gold),
                           const SizedBox(width: 3),
                           const Text('Offline',
                               style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w600)),
@@ -699,7 +700,7 @@ class _DownloadedCourseCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 course.title,
-                style: AppText.bodySm.copyWith(fontWeight: FontWeight.w700, fontSize: 12.5),
+                style: AppText.title.copyWith(fontSize: 13, letterSpacing: -0.1),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -732,7 +733,7 @@ class _DownloadedCourseCard extends StatelessWidget {
                             child: LinearProgressIndicator(
                               value: pct,
                               backgroundColor: ac.surf3,
-                              color: pct >= 1.0 ? Colors.green : ac.primary,
+                              color: pct >= 1.0 ? ac.grn : ac.primary,
                               minHeight: 4,
                             ),
                           ),
@@ -748,12 +749,6 @@ class _DownloadedCourseCard extends StatelessWidget {
       ),
     );
   }
-
-  Widget _coverFallback(AppColors ac) => Container(
-        color: ac.primaryBg,
-        alignment: Alignment.center,
-        child: Icon(Icons.school_rounded, color: ac.primary, size: 28),
-      );
 }
 
 class _LevelCard extends StatelessWidget {
@@ -782,13 +777,16 @@ class _LevelCard extends StatelessWidget {
         child: Container(
           width: 108,
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(Rad.md), border: Border.all(color: ac.bdr2)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Rad.md),
+            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+          ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
               child: HierarchyAvatar(label: level.name, icon: icon.emoji, imageUrl: icon.imageUrl, fill: true),
             ),
             const SizedBox(height: 6),
-            Text(level.name, style: AppText.bodySm.copyWith(fontWeight: FontWeight.w700, fontSize: 12.5),
+            Text(level.name, style: AppText.title.copyWith(fontSize: 12.5),
                 maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
             Text('${level.courseCount} course${level.courseCount == 1 ? '' : 's'}',
@@ -886,7 +884,11 @@ class _RecommendedCard extends StatelessWidget {
         onTap: () { HapticFeedback.lightImpact(); onTap(); },
         child: Container(
           width: 160,
-          decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(Rad.md), border: Border.all(color: ac.bdr)),
+          decoration: BoxDecoration(
+            color: ac.surf,
+            borderRadius: BorderRadius.circular(Rad.md),
+            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+          ),
           clipBehavior: Clip.antiAlias,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Stack(children: [
@@ -901,15 +903,23 @@ class _RecommendedCard extends StatelessWidget {
                 Positioned(top: 6, right: 6, child: _BookmarkDot(course: course, userId: currentUser!.id)),
             ]),
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 if (course.category.isNotEmpty) StatusBadge(label: course.category, color: ac.primary),
                 const SizedBox(height: 6),
-                Text(course.title, style: AppText.title.copyWith(fontSize: 12.5),
+                Text(course.title, style: AppText.title.copyWith(fontSize: 13, letterSpacing: -0.1),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
-                Text('By ${course.creatorName}', style: AppText.caption.copyWith(fontSize: 10),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Row(
+                  children: [
+                    Icon(Icons.person_outline_rounded, size: 11, color: ac.muted),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(course.creatorName, style: AppText.caption.copyWith(fontSize: 10.5),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
               ]),
             ),
           ]),
@@ -963,40 +973,51 @@ class _RecentReadTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final meta = [course.category, course.topic].where((s) => s.isNotEmpty).join(' • ');
+    // Nested radius rule: outer Rad.md (16) = inner Rad.xs (8) + 8px padding
+    final outerRadius = BorderRadius.circular(Rad.md);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(Rad.sm),
+        borderRadius: outerRadius,
         child: InkWell(
-          borderRadius: BorderRadius.circular(Rad.sm),
+          borderRadius: outerRadius,
           onTap: () { HapticFeedback.selectionClick(); onTap(); },
-          child: Row(children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 56, height: 56,
-                // Mistake 2 fix: gradient fallback instead of flat solid bg —
-                // never a plain rectangle; still looks designed without a cover.
-                child: (course.coverImageUrl ?? '').isNotEmpty
-                    ? Image.network(course.coverImageUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _recentReadFallback(ac))
-                    : _recentReadFallback(ac),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: ac.surf,
+              borderRadius: outerRadius,
+              border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+              boxShadow: Shad.card,
+            ),
+            child: Row(children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(Rad.xs),
+                child: SizedBox(
+                  width: 56, height: 56,
+                  // Mistake 2 fix: gradient fallback instead of flat solid bg —
+                  // never a plain rectangle; still looks designed without a cover.
+                  child: (course.coverImageUrl ?? '').isNotEmpty
+                      ? Image.network(course.coverImageUrl!, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _recentReadFallback(ac))
+                      : _recentReadFallback(ac),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(course.title, style: AppText.title.copyWith(fontSize: 13.5),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (meta.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(meta, style: AppText.caption.copyWith(fontSize: 11)),
-                ],
-              ]),
-            ),
-            Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
-          ]),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(course.title, style: AppText.title.copyWith(fontSize: 13.5),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (meta.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(meta, style: AppText.caption.copyWith(fontSize: 11)),
+                  ],
+                ]),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
+            ]),
+          ),
         ),
       ),
     );
@@ -1011,7 +1032,7 @@ class _RecentReadTile extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(Rad.xs),
         ),
         alignment: Alignment.center,
         child: Icon(Icons.menu_book_rounded, color: Colors.white.withValues(alpha: .9), size: 22),

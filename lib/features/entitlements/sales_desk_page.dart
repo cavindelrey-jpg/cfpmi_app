@@ -83,8 +83,26 @@ class _SalesDeskPageState extends State<SalesDeskPage>
         iconTheme: IconThemeData(color: ac.txt),
         title: Text('Sales Desk', style: AppText.title),
         bottom: TabBar(controller: _tc, tabs: const [
-          Tab(text: 'RECORD A SALE'),
-          Tab(text: 'VOUCHERS'),
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.point_of_sale_outlined, size: 18),
+                SizedBox(width: 6),
+                Text('Record a Sale'),
+              ],
+            ),
+          ),
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.confirmation_number_outlined, size: 18),
+                SizedBox(width: 6),
+                Text('Vouchers'),
+              ],
+            ),
+          ),
         ]),
       ),
       body: AppBackground(
@@ -216,7 +234,31 @@ class _RecordSaleTabState extends State<_RecordSaleTab> {
 
           Text('Amount collected (FCFA) *',
               style: AppText.title.copyWith(fontSize: 13)),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
+          // Improvement 3: Predefined quick-select options for common amounts
+          // while keeping the custom input below for full flexibility.
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [1000, 2500, 5000, 10000].map((amt) {
+              final selected = _amountCtrl.text.trim() == '$amt';
+              return ChoiceChip(
+                label: Text('$amt FCFA'),
+                selected: selected,
+                onSelected: (_) => setState(() => _amountCtrl.text = '$amt'),
+                selectedColor: ac.primaryBg,
+                labelStyle: AppText.subtitle.copyWith(
+                  fontSize: 12,
+                  color: selected ? ac.primary : ac.txt2,
+                ),
+                side: BorderSide(
+                  color: selected ? ac.primary : ac.bdr.withValues(alpha: 0.8),
+                  width: 0.8,
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
           TextFormField(
             controller: _amountCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -237,56 +279,94 @@ class _RecordSaleTabState extends State<_RecordSaleTab> {
           ),
           const SizedBox(height: 20),
 
-          Text('Payment method *', style: AppText.title.copyWith(fontSize: 13)),
-          const SizedBox(height: 6),
-          DropdownButtonFormField<PaymentMethod>(
-            initialValue: _method,
-            decoration: _dec(ac),
-            style: AppText.body.copyWith(fontSize: 14),
-            dropdownColor: ac.surf,
-            items: PaymentMethod.values
-                .map((m) => DropdownMenuItem(value: m, child: Text(m.label)))
-                .toList(),
-            onChanged: (v) => setState(() => _method = v ?? _method),
+          // Group related payment fields on the same row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Payment method *', style: AppText.title.copyWith(fontSize: 13)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<PaymentMethod>(
+                      initialValue: _method,
+                      isExpanded: true,
+                      decoration: _dec(ac),
+                      style: AppText.body.copyWith(fontSize: 14),
+                      dropdownColor: ac.surf,
+                      items: PaymentMethod.values
+                          .map((m) => DropdownMenuItem(value: m, child: Text(m.label, overflow: TextOverflow.ellipsis)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _method = v ?? _method),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Status *', style: AppText.title.copyWith(fontSize: 13)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<PurchaseStatus>(
+                      initialValue: _status,
+                      isExpanded: true,
+                      decoration: _dec(ac),
+                      style: AppText.body.copyWith(fontSize: 14),
+                      dropdownColor: ac.surf,
+                      items: PurchaseStatus.values
+                          .map((s) => DropdownMenuItem(value: s, child: Text(s.label, overflow: TextOverflow.ellipsis)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _status = v ?? _status),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
 
-          Text('Buyer name', style: AppText.title.copyWith(fontSize: 13)),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _buyerCtrl,
-            style: AppText.body.copyWith(fontSize: 15),
-            decoration: _dec(ac, hint: 'e.g. Mrs. Foka'),
+          // Group related buyer & office fields on the same row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Buyer name', style: AppText.title.copyWith(fontSize: 13)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _buyerCtrl,
+                      style: AppText.body.copyWith(fontSize: 14),
+                      decoration: _dec(ac, hint: 'e.g. Mrs. Foka'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Purchase source', style: AppText.title.copyWith(fontSize: 13)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _sourceCtrl,
+                      style: AppText.body.copyWith(fontSize: 14),
+                      decoration: _dec(ac, hint: 'e.g. Yaoundé Office'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
-            'Who handed over the money. Used for support lookups — the buyer '
-            'usually has no account at all.',
+            'Who handed over the money and where. Used for support lookups.',
             style: AppText.caption,
-          ),
-          const SizedBox(height: 20),
-
-          Text('Purchase source', style: AppText.title.copyWith(fontSize: 13)),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _sourceCtrl,
-            style: AppText.body.copyWith(fontSize: 15),
-            decoration: _dec(ac, hint: 'e.g. Yaoundé Office'),
-          ),
-          const SizedBox(height: 20),
-
-          Text('Transaction status *',
-              style: AppText.title.copyWith(fontSize: 13)),
-          const SizedBox(height: 6),
-          DropdownButtonFormField<PurchaseStatus>(
-            initialValue: _status,
-            decoration: _dec(ac),
-            style: AppText.body.copyWith(fontSize: 14),
-            dropdownColor: ac.surf,
-            items: PurchaseStatus.values
-                .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
-                .toList(),
-            onChanged: (v) => setState(() => _status = v ?? _status),
           ),
           const SizedBox(height: 20),
 
@@ -411,19 +491,18 @@ class _VouchersTab extends StatelessWidget {
           );
         }
         if (!snap.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: 4,
+            itemBuilder: (_, __) => const ShimmerCard(height: 88),
+          );
         }
         final vouchers = snap.data!;
         if (vouchers.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Text(
-                'No vouchers issued yet.\nRecord a sale to generate the first one.',
-                textAlign: TextAlign.center,
-                style: AppText.body.copyWith(color: ac.txt2),
-              ),
-            ),
+          return const EmptyState(
+            icon: Icons.confirmation_number_outlined,
+            title: 'No vouchers issued yet',
+            subtitle: 'Record a sale in the first tab to generate your first voucher code.',
           );
         }
         return ListView.builder(

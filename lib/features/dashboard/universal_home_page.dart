@@ -960,7 +960,8 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
             Container(
               width: 46,
               height: 46,
-              decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(13)),
+              // Nested radius rule: outer 16px - inset = 8px
+              decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(8)),
               child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(height: 12),
@@ -1143,8 +1144,16 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         future: _featuredCourses,
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: SizedBox(
-                width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4)));
+            return ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: 3,
+              separatorBuilder: (_, __) => const SizedBox(width: 13),
+              itemBuilder: (_, __) => const SizedBox(
+                width: 196,
+                child: ShimmerCard(height: 210),
+              ),
+            );
           }
           final courses = snap.data ?? const <PublicCourse>[];
           if (courses.isEmpty) {
@@ -1166,10 +1175,6 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     );
   }
 
-  static const List<Color> _courseCovers = [
-    Color(0xFF1F2937), Color(0xFF0F3D3E), Color(0xFF5B3A1E), Color(0xFF263B6B),
-  ];
-
   // A real featured course card: admin thumbnail (coverImageUrl) when present,
   // tapping opens THAT course (CourseLessonsPage), not a generic list.
   Widget _courseCard(BuildContext context, PublicCourse course) {
@@ -1177,7 +1182,6 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         ? course.subject
         : (course.category.isNotEmpty ? course.category : 'Course');
     final cover = course.coverImageUrl;
-    final fallbackColor = _courseCovers[course.id.hashCode.abs() % _courseCovers.length];
     return GestureDetector(
       onTap: () => _open(context, CourseLessonsPage(course: course, currentUser: _u)),
       child: Container(
@@ -1198,23 +1202,32 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                 width: double.infinity,
                 child: (cover != null && cover.isNotEmpty)
                     ? Image.network(cover, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: fallbackColor,
-                          child: const Center(child: Icon(Icons.auto_stories_rounded,
-                              size: 38, color: Colors.white70)),
-                        ))
-                    : Container(
-                        color: fallbackColor,
-                        child: const Center(child: Icon(Icons.auto_stories_rounded,
-                            size: 38, color: Colors.white70)),
-                      ),
+                        errorBuilder: (_, __, ___) => courseCoverFallback(course.title))
+                    : courseCoverFallback(course.title),
               ),
-              Positioned(top: 8, left: 8, child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                child: Text(subject, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w700, color: _cGreen)),
-              )),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                  ),
+                  child: Text(
+                    subject,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+              ),
             ]),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
@@ -2124,14 +2137,14 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
             () => _open(context, ExamListPage(user: _u!))),
       ('Dictionary', Icons.spellcheck_rounded, ac.primary,
           () => _open(context, const DictionaryScreen())),
-      ('Study Groups', Icons.groups_rounded, ac.grn,
+      ('Study Groups', Icons.groups_outlined, ac.grn,
           () => _open(context, ClubsPage(user: _userOrGuest))),
-      ('Daily Challenges', Icons.local_fire_department_rounded, ac.org,
+      ('Daily Challenges', Icons.local_fire_department_outlined, ac.org,
           () => _open(context, DailyLearningHubPage(user: _userOrGuest))),
-      ('Magazine', Icons.auto_stories_rounded, ac.gold,
+      ('Magazine', Icons.auto_stories_outlined, ac.gold,
           () => _open(context, MagazineFeedPage(user: _userOrGuest))),
       if (_u?.isSuperAdmin == true)
-        ('Command Center', Icons.admin_panel_settings, Colors.red,
+        ('Command Center', Icons.admin_panel_settings_outlined, ac.red,
             () => _open(context, const CommandCenterScreen())),
     ];
 

@@ -175,7 +175,7 @@ class _CourseLessonsPageState extends State<CourseLessonsPage> {
                       decoration: BoxDecoration(
                         color: ac.surf,
                         borderRadius: BorderRadius.circular(Rad.sm),
-                        border: Border.all(color: ac.bdr2),
+                        border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,7 +219,7 @@ class _CourseLessonsPageState extends State<CourseLessonsPage> {
                             child: LinearProgressIndicator(
                               value: pct,
                               backgroundColor: ac.surf3,
-                              color: pct >= 1.0 ? Colors.green : ac.primary,
+                              color: pct >= 1.0 ? ac.grn : ac.primary,
                               minHeight: 5,
                             ),
                           ),
@@ -377,7 +377,7 @@ class _LessonTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Rad.md),
               // Mistake 7: softer border — ac.bdr with reduced alpha instead of bdr2.
-              border: Border.all(color: isCompleted ? Colors.green.withValues(alpha: 0.6) : ac.bdr.withValues(alpha: 0.6)),
+              border: Border.all(color: isCompleted ? ac.grn.withValues(alpha: 0.6) : ac.bdr.withValues(alpha: 0.6), width: 0.8),
             ),
             child: Stack(
               children: [
@@ -411,7 +411,7 @@ class _LessonTile extends StatelessWidget {
                     right: 4,
                     child: Container(
                       padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: ac.grn, shape: BoxShape.circle),
                       // Mistake 10: rounded icon variant + semantic label.
                       child: const Icon(Icons.check_rounded, size: 12, color: Colors.white,
                           semanticLabel: 'Completed'),
@@ -435,7 +435,7 @@ class _LessonTile extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Rad.md),
             // Mistake 7 (list): softer border consistent with grid tile.
-            border: Border.all(color: isCompleted ? Colors.green.withValues(alpha: 0.6) : ac.bdr.withValues(alpha: 0.6)),
+            border: Border.all(color: isCompleted ? ac.grn.withValues(alpha: 0.6) : ac.bdr.withValues(alpha: 0.6), width: 0.8),
           ),
           child: Row(children: [
             _thumb(ac, size: 48),
@@ -449,7 +449,7 @@ class _LessonTile extends StatelessWidget {
             ),
             if (isCompleted) ...[
               // Mistake 10: semantic label on status icon.
-              const Icon(Icons.check_circle_rounded, size: 18, color: Colors.green,
+              Icon(Icons.check_circle_rounded, size: 18, color: ac.grn,
                   semanticLabel: 'Completed'),
               const SizedBox(width: 8),
             ],

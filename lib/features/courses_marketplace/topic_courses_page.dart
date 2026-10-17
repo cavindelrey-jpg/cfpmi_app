@@ -79,9 +79,17 @@ class _CourseTile extends StatelessWidget {
   }
 
   Widget _fallbackThumb(AppColors ac, double? size) => Container(
-      width: size, height: size, color: ac.primaryBg,
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [ac.primary.withValues(alpha: .8), ac.navy.withValues(alpha: .9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
       alignment: Alignment.center,
-      child: Icon(Icons.menu_book_rounded, color: ac.primary, size: 26));
+      child: Icon(Icons.menu_book_rounded, color: Colors.white.withValues(alpha: .9), size: 26));
 
   @override
   Widget build(BuildContext context) {
@@ -94,8 +102,11 @@ class _CourseTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(Rad.md),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(Rad.md), border: Border.all(color: ac.bdr2)),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(Rad.md),
+              border: Border.all(color: ac.bdr.withValues(alpha: 0.6), width: 0.8),
+            ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(child: SizedBox(width: double.infinity, child: _thumb(ac, size: null))),
               const SizedBox(height: 6),
@@ -122,18 +133,32 @@ class _CourseTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(Rad.md),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(Rad.md), border: Border.all(color: ac.bdr2)),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Rad.md),
+            border: Border.all(color: ac.bdr.withValues(alpha: 0.6), width: 0.8),
+          ),
           child: Row(children: [
             _thumb(ac, size: 48),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(course.title, style: AppText.title.copyWith(fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text('Course', style: AppText.caption.copyWith(fontSize: 11)),
+                const SizedBox(height: 2),
+                Text(
+                  course.creatorName.isNotEmpty ? course.creatorName : 'Course',
+                  style: AppText.caption.copyWith(fontSize: 11),
+                ),
               ]),
             ),
-            Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: ac.primaryBg,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text('Open', style: AppText.label.copyWith(color: ac.primary, letterSpacing: 0.3)),
+            ),
           ]),
         ),
       ),

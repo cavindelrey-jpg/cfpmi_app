@@ -130,8 +130,8 @@ class ACard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color ?? ac.surf,
         borderRadius: radius,
-        border: Border.all(color: ac.bdr),
-        boxShadow: Shad.sm,
+        border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+        boxShadow: Shad.card,
       ),
       padding: padding,
       child: child,
@@ -405,13 +405,17 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: bg ?? color.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(Rad.xs),
       ),
-      child: Text(label, style: AppText.label.copyWith(
-          fontSize: 10, letterSpacing: 0.3, color: color)),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppText.label.copyWith(fontSize: 10, letterSpacing: 0.8, color: color),
+      ),
     );
   }
 }
@@ -480,7 +484,7 @@ class AnnCard extends StatelessWidget {
               StatusBadge(label: tag, color: accent),
               if (urgent) ...[
                 const SizedBox(width: 8),
-                StatusBadge(label: 'URGENT', color: ac.red, bg: ac.redBg),
+                StatusBadge(label: 'Urgent', color: ac.red, bg: ac.redBg),
               ],
               const Spacer(),
               Text(date, style: AppText.caption),
@@ -632,19 +636,25 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(Rad.md)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(Rad.md),
+        border: Border.all(color: color.withValues(alpha: .16), width: 0.8),
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(icon, size: 20, color: color),
           const Spacer(),
           if (trend != null)
-            Text(trend!, style: TextStyle(fontSize: 10, color: color.withValues(alpha: .7))),
+            Text(trend!, style: AppText.caption.copyWith(fontSize: 10, color: ac.txt2)),
         ]),
         const SizedBox(height: 10),
-        Text(value, style: AppText.display.copyWith(fontSize: 22, color: color)),
-        Text(label, style: AppText.caption.copyWith(color: color.withValues(alpha: .8))),
+        Text(value, style: AppText.display.copyWith(fontSize: 24, fontWeight: FontWeight.w800, color: color)),
+        const SizedBox(height: 2),
+        Text(label, style: AppText.caption.copyWith(color: ac.txt2, fontWeight: FontWeight.w600)),
       ]),
     );
   }

@@ -209,20 +209,33 @@ class _PremiumUnlockSheetState extends State<PremiumUnlockSheet> {
                   Text('Choose Silver or Gold, and how long.', style: AppText.bodySm),
                 ]),
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: ac.goldBg,
+                  borderRadius: BorderRadius.circular(Rad.sm),
+                  border: Border.all(color: ac.gold.withValues(alpha: .22)),
+                ),
+                child: Text(
+                  '${package.suggestedPriceFcfa} FCFA',
+                  style: AppText.title.copyWith(fontSize: 14, color: ac.navy),
+                ),
+              ),
+              const SizedBox(width: 4),
               IconButton(
                 icon: Icon(Icons.close_rounded, color: ac.muted),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ]),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
-            Text('PLAN', style: AppText.label.copyWith(letterSpacing: 1)),
-            const SizedBox(height: 10),
+            Text('PLAN', style: AppText.label.copyWith(letterSpacing: 0.8)),
+            const SizedBox(height: 8),
             Row(children: [
               Expanded(
                 child: _TierCard(
                   label: 'Silver',
-                  sub: 'No Video Courses',
+                  sub: 'Courses, Library & Quizzes',
                   isSelected: _tier == EntitlementTier.silver,
                   onTap: () => setState(() => _tier = EntitlementTier.silver),
                 ),
@@ -231,45 +244,33 @@ class _PremiumUnlockSheetState extends State<PremiumUnlockSheet> {
               Expanded(
                 child: _TierCard(
                   label: 'Gold',
-                  sub: 'Everything, incl. Video',
+                  sub: 'Everything + Video Lessons',
                   isSelected: _tier == EntitlementTier.gold,
+                  isRecommended: true,
                   onTap: () => setState(() => _tier = EntitlementTier.gold),
                 ),
               ),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            Text('DURATION', style: AppText.label.copyWith(letterSpacing: 1)),
-            const SizedBox(height: 10),
+            Text('DURATION', style: AppText.label.copyWith(letterSpacing: 0.8)),
+            const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 8, children: [1, 3, 6, 12].map((m) {
               final selected = _months == m;
               return ChoiceChip(
-                label: Text(m == 1 ? '1 month' : '$m months'),
+                label: Text(m == 1 ? '1 month' : (m == 12 ? '1 year' : '$m months')),
                 selected: selected,
                 onSelected: (_) => setState(() => _months = m),
                 selectedColor: ac.primaryBg,
                 labelStyle: AppText.subtitle.copyWith(
                     fontSize: 12, color: selected ? ac.primary : ac.txt2),
-                side: BorderSide(color: selected ? ac.primary : ac.bdr),
+                side: BorderSide(color: selected ? ac.primary : ac.bdr.withValues(alpha: 0.8), width: 0.8),
               );
             }).toList()),
             const SizedBox(height: 16),
 
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: ac.goldBg,
-                borderRadius: BorderRadius.circular(Rad.md),
-                border: Border.all(color: ac.gold.withValues(alpha: .18)),
-              ),
-              child: Text('${package.suggestedPriceFcfa} FCFA — ${package.label}',
-                  textAlign: TextAlign.center,
-                  style: AppText.display.copyWith(fontSize: 16, color: ac.navy)),
-            ),
-            const SizedBox(height: 20),
-
-            Text('PAYMENT METHOD', style: AppText.label.copyWith(letterSpacing: 1)),
-            const SizedBox(height: 10),
+            Text('PAYMENT METHOD', style: AppText.label.copyWith(letterSpacing: 0.8)),
+            const SizedBox(height: 8),
             Row(children: [
               Expanded(
                 child: _ProviderCard(
@@ -289,7 +290,7 @@ class _PremiumUnlockSheetState extends State<PremiumUnlockSheet> {
                 ),
               ),
             ]),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             TextFormField(
               controller: _phoneController,
@@ -319,6 +320,8 @@ class _PremiumUnlockSheetState extends State<PremiumUnlockSheet> {
               const SizedBox(height: 12),
             ],
 
+            // Mistake 15: include total price inside the primary purchase CTA so
+            // the user knows what they are about to pay before tapping.
             SizedBox(
               height: 52,
               child: ElevatedButton(
@@ -332,11 +335,11 @@ class _PremiumUnlockSheetState extends State<PremiumUnlockSheet> {
                 child: _isLoading
                     ? const SizedBox(width: 20, height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                    : Text('Pay Now', style: AppText.button),
+                    : Text('Pay ${package.suggestedPriceFcfa} FCFA • ${package.label}', style: AppText.button),
               ),
             ),
             const SizedBox(height: 16),
-            Divider(color: ac.bdr),
+            Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
             const SizedBox(height: 12),
 
             if (!_showVoucherField)
@@ -435,10 +438,11 @@ class _TierCard extends StatelessWidget {
   final String label;
   final String sub;
   final bool isSelected;
+  final bool isRecommended;
   final VoidCallback onTap;
   const _TierCard({
     required this.label, required this.sub,
-    required this.isSelected, required this.onTap,
+    required this.isSelected, this.isRecommended = false, required this.onTap,
   });
 
   @override
@@ -454,11 +458,29 @@ class _TierCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
           decoration: BoxDecoration(
-            color: isSelected ? ac.goldBg : ac.surf3,
-            border: Border.all(color: isSelected ? ac.gold : ac.bdr, width: isSelected ? 1.6 : 1),
+            color: isSelected ? ac.goldBg : ac.surf,
+            border: Border.all(
+              color: isSelected ? ac.gold : (isRecommended ? ac.gold.withValues(alpha: 0.5) : ac.bdr.withValues(alpha: 0.7)),
+              width: isSelected ? 1.6 : (isRecommended ? 1.2 : 0.8),
+            ),
             borderRadius: radius,
+            boxShadow: isRecommended || isSelected ? Shad.card : null,
           ),
           child: Column(children: [
+            if (isRecommended) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                margin: const EdgeInsets.only(bottom: 4),
+                decoration: BoxDecoration(
+                  color: ac.gold,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Most Popular',
+                  style: AppText.label.copyWith(fontSize: 9, color: ac.navy, letterSpacing: 0.5),
+                ),
+              ),
+            ],
             Text(label, style: AppText.title.copyWith(fontSize: 14)),
             const SizedBox(height: 2),
             Text(sub, style: AppText.caption.copyWith(fontSize: 10.5), textAlign: TextAlign.center),

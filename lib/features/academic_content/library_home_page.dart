@@ -811,7 +811,11 @@ class _FolderCard extends StatelessWidget {
         onLongPress: canManage ? () => _showMenu(context) : null,
         child: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: ac.bdr2)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+            boxShadow: Shad.card,
+          ),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Expanded(child: HierarchyAvatar(label: folder.name, icon: folder.emoji, imageUrl: folder.imageUrl, fill: true)),
             const SizedBox(height: 4),
@@ -865,8 +869,13 @@ class _RecommendedCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(Rad.md),
         onTap: () { HapticFeedback.lightImpact(); onTap(); },
         child: Container(
-          width: 140,
-          decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(Rad.md), border: Border.all(color: ac.bdr)),
+          width: 148,
+          decoration: BoxDecoration(
+            color: ac.surf,
+            borderRadius: BorderRadius.circular(Rad.md),
+            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+            boxShadow: Shad.card,
+          ),
           clipBehavior: Clip.antiAlias,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SizedBox(
@@ -877,9 +886,9 @@ class _RecommendedCard extends StatelessWidget {
                   : _placeholder(ac),
             ),
             Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(item.title, style: AppText.title.copyWith(fontSize: 12, color: ac.txt), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(item.title, style: AppText.title.copyWith(fontSize: 12.5, letterSpacing: -0.1, color: ac.txt), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 3),
                 Text(item.contentType.label, style: AppText.caption.copyWith(fontSize: 10, color: ac.muted)),
               ]),
@@ -890,8 +899,16 @@ class _RecommendedCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder(AppColors ac) => Container(color: ac.surf3, alignment: Alignment.center,
-      child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 24)));
+  Widget _placeholder(AppColors ac) => Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [ac.primary.withValues(alpha: .82), ac.navy.withValues(alpha: .92)],
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+      ),
+    ),
+    alignment: Alignment.center,
+    child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 24)),
+  );
 }
 
 class _RecentReadTile extends StatelessWidget {
@@ -903,43 +920,65 @@ class _RecentReadTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+    // Nested radius rule: outer Rad.md (16) = inner Rad.xs (8) + 8px padding
+    final outerRadius = BorderRadius.circular(Rad.md);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(Rad.sm),
+        borderRadius: outerRadius,
         child: InkWell(
-          borderRadius: BorderRadius.circular(Rad.sm),
+          borderRadius: outerRadius,
           onTap: () { HapticFeedback.selectionClick(); onTap(); },
-          child: Row(children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 56, height: 56,
-                child: (item.thumbnailUrl ?? '').isNotEmpty
-                    ? Image.network(item.thumbnailUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(color: ac.surf3))
-                    : Container(color: ac.primaryBg, child: Center(child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 22)))),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: ac.surf,
+              borderRadius: outerRadius,
+              border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+              boxShadow: Shad.card,
+            ),
+            child: Row(children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(Rad.xs),
+                child: SizedBox(
+                  width: 56, height: 56,
+                  child: (item.thumbnailUrl ?? '').isNotEmpty
+                      ? Image.network(item.thumbnailUrl!, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _thumbFallback(ac))
+                      : _thumbFallback(ac),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(item.title, style: AppText.title.copyWith(fontSize: 13.5, color: ac.txt), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(item.contentType.label, style: AppText.caption.copyWith(fontSize: 11, color: ac.muted)),
-                if (recentlyOpened) ...[
-                  const SizedBox(height: 1),
-                  Text('Recently opened', style: AppText.caption.copyWith(fontSize: 10, color: ac.primary)),
-                ],
-              ]),
-            ),
-            Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
-          ]),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(item.title, style: AppText.title.copyWith(fontSize: 13.5, color: ac.txt), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(item.contentType.label, style: AppText.caption.copyWith(fontSize: 11, color: ac.muted)),
+                  if (recentlyOpened) ...[
+                    const SizedBox(height: 1),
+                    Text('Recently opened', style: AppText.caption.copyWith(fontSize: 10, color: ac.primary)),
+                  ],
+                ]),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
+            ]),
+          ),
         ),
       ),
     );
   }
+
+  Widget _thumbFallback(AppColors ac) => Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [ac.primary.withValues(alpha: .82), ac.navy.withValues(alpha: .92)],
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+      ),
+    ),
+    alignment: Alignment.center,
+    child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 22)),
+  );
 }
 
 class _OfflineContentCard extends StatelessWidget {
@@ -955,14 +994,15 @@ class _OfflineContentCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(Rad.md),
         onTap: onTap,
         child: Container(
           width: 148,
           decoration: BoxDecoration(
             color: ac.surf,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: ac.bdr),
+            borderRadius: BorderRadius.circular(Rad.md),
+            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+            boxShadow: Shad.card,
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -994,10 +1034,11 @@ class _OfflineContentCard extends StatelessWidget {
                     top: 6,
                     right: 6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
-                        color: ac.grnBg,
+                        color: Colors.black54,
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1006,7 +1047,7 @@ class _OfflineContentCard extends StatelessWidget {
                           const SizedBox(width: 3),
                           Text(
                             'Offline',
-                            style: AppText.label.copyWith(fontSize: 8.5, color: ac.grn, fontWeight: FontWeight.bold),
+                            style: AppText.label.copyWith(fontSize: 8.5, color: Colors.white, letterSpacing: 0.5),
                           ),
                         ],
                       ),
@@ -1015,13 +1056,13 @@ class _OfflineContentCard extends StatelessWidget {
                 ],
               ),
               Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       item.title,
-                      style: AppText.title.copyWith(fontSize: 12.5),
+                      style: AppText.title.copyWith(fontSize: 12.5, letterSpacing: -0.1),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1044,7 +1085,12 @@ class _OfflineContentCard extends StatelessWidget {
 
   Widget _thumbFallback(AppColors ac) {
     return Container(
-      color: ac.surf2,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [ac.primary.withValues(alpha: .82), ac.navy.withValues(alpha: .92)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        ),
+      ),
       alignment: Alignment.center,
       child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 26)),
     );

@@ -242,19 +242,23 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final row = Container(
-      margin: const EdgeInsets.only(bottom: 10),
+    final radius = BorderRadius.circular(12);
+    final rowContent = Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: ac.surf,
-          borderRadius: BorderRadius.circular(12), border: Border.all(color: ac.bdr)),
+      decoration: BoxDecoration(
+        color: ac.surf,
+        borderRadius: radius,
+        border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+        boxShadow: Shad.card,
+      ),
       child: Row(children: [
         Icon(icon, size: 18, color: ac.primary),
         const SizedBox(width: 12),
-        Text(label, style: GoogleFonts.inter(fontSize: 13, color: ac.txt2)),
+        Text(label, style: AppText.bodySm.copyWith(fontSize: 13, color: ac.txt2)),
         if (value.isNotEmpty) ...[
           const Spacer(),
           Flexible(child: Text(value,
-              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: ac.txt),
+              style: AppText.subtitle.copyWith(fontSize: 13, color: ac.txt),
               textAlign: TextAlign.end)),
         ] else
           const Spacer(),
@@ -264,7 +268,23 @@ class _InfoRow extends StatelessWidget {
         ],
       ]),
     );
-    if (onTap == null) return row;
-    return GestureDetector(onTap: onTap, child: row);
+    if (onTap == null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: rowContent,
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        child: InkWell(
+          borderRadius: radius,
+          onTap: onTap,
+          child: rowContent,
+        ),
+      ),
+    );
   }
 }

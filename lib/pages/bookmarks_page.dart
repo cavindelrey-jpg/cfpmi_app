@@ -5,7 +5,6 @@
 // consumer. Two tabs, both backed by real Firestore streams, no demo data.
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 import '../models/public_course.dart';
 import '../repositories/public_course_repository.dart';
@@ -16,6 +15,8 @@ import '../features/courses_marketplace/course_lessons_page.dart';
 import '../features/magazine/article_reader_page.dart';
 
 import '../widgets/app_background.dart';
+import '../widgets/widgets.dart';
+
 class BookmarksPage extends StatefulWidget {
   final AppUser user;
   const BookmarksPage({super.key, required this.user});
@@ -28,6 +29,14 @@ class _BookmarksPageState extends State<BookmarksPage> with SingleTickerProvider
   @override
   void dispose() { _tc.dispose(); super.dispose(); }
 
+  Widget _buildSkeletonList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 4,
+      itemBuilder: (_, __) => const ShimmerCard(height: 76),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
@@ -35,19 +44,49 @@ class _BookmarksPageState extends State<BookmarksPage> with SingleTickerProvider
       backgroundColor: ac.bg,
       appBar: AppBar(
         backgroundColor: ac.bg, elevation: 0,
-        title: Text('My Bookmarks', style: GoogleFonts.sora(fontWeight: FontWeight.w700, color: ac.txt)),
+        title: Text('My Bookmarks', style: AppText.h2.copyWith(color: ac.txt)),
         iconTheme: IconThemeData(color: ac.txt),
-        bottom: TabBar(controller: _tc, labelColor: ac.primary, unselectedLabelColor: ac.txt2,
-            indicatorColor: ac.primary, tabs: const [Tab(text: 'Courses'), Tab(text: 'Magazine')]),
+        bottom: TabBar(
+          controller: _tc,
+          labelColor: ac.primary,
+          unselectedLabelColor: ac.txt2,
+          indicatorColor: ac.primary,
+          tabs: const [
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.school_outlined, size: 18),
+                  SizedBox(width: 6),
+                  Text('Courses'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.menu_book_outlined, size: 18),
+                  SizedBox(width: 6),
+                  Text('Magazine'),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       body: AppBackground(child: TabBarView(controller: _tc, children: [
         StreamBuilder<List<PublicCourse>>(
           stream: PublicCourseRepository.instance.watchBookmarkedCourses(widget.user.id),
           builder: (context, snap) {
-            if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+            if (!snap.hasData) return _buildSkeletonList();
             final courses = snap.data!;
             if (courses.isEmpty) {
-              return const _Empty(icon: Icons.bookmark_border_rounded, text: 'No saved courses yet.');
+              return const EmptyState(
+                icon: Icons.bookmark_border_rounded,
+                title: 'No saved courses yet',
+                subtitle: 'Tap the bookmark icon on any course to save it here for quick access.',
+              );
             }
             return ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -67,10 +106,14 @@ class _BookmarksPageState extends State<BookmarksPage> with SingleTickerProvider
         StreamBuilder<List<MagazineArticle>>(
           stream: MagazineRepository.instance.watchBookmarkedArticles(widget.user.id),
           builder: (context, snap) {
-            if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+            if (!snap.hasData) return _buildSkeletonList();
             final articles = snap.data!;
             if (articles.isEmpty) {
-              return const _Empty(icon: Icons.bookmark_border_rounded, text: 'No saved articles yet.');
+              return const EmptyState(
+                icon: Icons.bookmark_border_rounded,
+                title: 'No saved articles yet',
+                subtitle: 'Bookmark articles in the Magazine to build your personal reading list.',
+              );
             }
             return ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -101,50 +144,64 @@ class _BookmarkTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+    // Nested radius rule: outer radius (Rad.md = 16) = inner radius (8) + padding (8)
+    final outerRadius = BorderRadius.circular(Rad.md);
     return Material(
-      color: ac.surf, borderRadius: BorderRadius.circular(Rad.md),
+      color: Colors.transparent,
+      borderRadius: outerRadius,
       child: InkWell(
-        borderRadius: BorderRadius.circular(Rad.md),
+        borderRadius: outerRadius,
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: ac.surf,
+            borderRadius: outerRadius,
+            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+            boxShadow: Shad.card,
+          ),
           child: Row(children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(Rad.xs),
               child: (imageUrl ?? '').isNotEmpty
-                  ? Image.network(imageUrl!, width: 56, height: 56, fit: BoxFit.cover)
-                  : Container(width: 56, height: 56, color: ac.surf3,
-                      child: Icon(Icons.menu_book_outlined, color: ac.muted)),
+                  ? Image.network(
+                      imageUrl!,
+                      width: 56, height: 56, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _fallbackThumb(ac),
+                    )
+                  : _fallbackThumb(ac),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: AppText.subtitle.copyWith(color: ac.txt), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
-                Text(subtitle, style: AppText.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Row(children: [
+                  Icon(Icons.person_outline_rounded, size: 12, color: ac.muted),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(subtitle, style: AppText.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ]),
               ]),
             ),
+            const SizedBox(width: 8),
             Icon(Icons.chevron_right_rounded, color: ac.muted),
           ]),
         ),
       ),
     );
   }
-}
 
-class _Empty extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  const _Empty({required this.icon, required this.text});
-  @override
-  Widget build(BuildContext context) {
-    final ac = AppColors.of(context);
-    return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 40, color: ac.muted),
-        const SizedBox(height: 10),
-        Text(text, style: AppText.bodySm.copyWith(color: ac.txt2)),
-      ]),
-    );
-  }
+  Widget _fallbackThumb(AppColors ac) => Container(
+    width: 56, height: 56,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [ac.primary.withValues(alpha: .85), ac.navy.withValues(alpha: .95)],
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+      ),
+    ),
+    alignment: Alignment.center,
+    child: Icon(Icons.menu_book_rounded, color: Colors.white.withValues(alpha: .9), size: 24),
+  );
 }

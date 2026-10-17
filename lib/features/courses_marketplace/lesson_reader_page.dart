@@ -107,6 +107,7 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
     final ac = AppColors.of(context);
     final lesson = widget.lesson;
     final hasVideo = (lesson.videoUrl ?? '').isNotEmpty;
+    final userId = widget.currentUser?.id ?? 'guest';
     return Scaffold(
       backgroundColor: ac.bg,
       appBar: AppBar(
@@ -117,6 +118,78 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
         title: Text(widget.course.title,
             style: AppText.subtitle.copyWith(fontSize: 14, color: ac.txt2),
             maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+      // Sticky bottom action area (Improvement 2 / Mistake 15) — stays visible
+      // while the learner scrolls so they can mark complete or continue anytime.
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: ac.surf,
+          border: Border(top: BorderSide(color: ac.bdr.withValues(alpha: 0.7), width: 0.8)),
+          boxShadow: Shad.sm,
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: StreamBuilder<Set<String>>(
+              stream: CourseOfflineService.instance.watchCompletedLessonIds(userId, widget.course.id),
+              builder: (context, cSnap) {
+                final completed = cSnap.data?.contains(lesson.id) ?? false;
+                return Row(
+                  children: [
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: completed ? ac.grn : ac.primary,
+                        side: BorderSide(color: completed ? ac.grn : ac.primary, width: 1.2),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: Icon(
+                        completed ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
+                        size: 18,
+                        color: completed ? ac.grn : ac.primary,
+                      ),
+                      label: Text(
+                        completed ? 'Completed' : 'Complete',
+                        style: AppText.subtitle.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: completed ? ac.grn : ac.primary,
+                        ),
+                      ),
+                      onPressed: () async {
+                        HapticFeedback.lightImpact();
+                        final nowDone = await CourseOfflineService.instance.toggleLessonCompleted(
+                          userId, widget.course.id, lesson.id,
+                        );
+                        if (context.mounted) {
+                          showToast(context, nowDone ? 'Lesson marked as completed!' : 'Lesson marked as incomplete.');
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: PrimaryBtn(
+                        label: completed ? 'Next Lesson' : 'Mark Complete & Continue',
+                        icon: Icons.arrow_forward_rounded,
+                        onTap: () async {
+                          if (!completed) {
+                            await CourseOfflineService.instance.toggleLessonCompleted(
+                              userId, widget.course.id, lesson.id,
+                            );
+                          }
+                          if (context.mounted) {
+                            _continue(context);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
       ),
       // Reading workspace. Phone/tablet: a single comfortable reading column
       // (never stretched). Desktop: the reading column beside a table-of-
@@ -219,7 +292,7 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
       decoration: BoxDecoration(
         color: ac.surf,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ac.bdr),
+        border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Padding(
@@ -232,7 +305,7 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
               style: AppText.caption.copyWith(fontSize: 11.5, color: ac.txt2),
               maxLines: 2, overflow: TextOverflow.ellipsis),
         ),
-        Divider(height: 1, color: ac.bdr),
+        Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
         Expanded(
           child: FutureBuilder<List<CourseLesson>>(
             future: CourseLessonRepository.instance.lessonsOnce(widget.course.id),
@@ -266,10 +339,11 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
   }
 
   Widget _tocRow(AppColors ac, CourseLesson l, int number, bool current) {
+    final isVideo = (l.videoUrl ?? '').isNotEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Material(
-        color: current ? ac.primary.withValues(alpha: 0.10) : Colors.transparent,
+        color: current ? ac.primary.withValues(alpha: 0.12) : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
@@ -286,7 +360,7 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
                 decoration: BoxDecoration(
                   color: current ? ac.primary : ac.surf2,
                   shape: BoxShape.circle,
-                  border: current ? null : Border.all(color: ac.bdr),
+                  border: current ? null : Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
                 ),
                 child: Text('$number',
                     style: AppText.label.copyWith(
@@ -294,11 +368,20 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
                         color: current ? Colors.white : ac.txt2)),
               ),
               const SizedBox(width: 10),
+              Padding(
+                padding: const EdgeInsets.only(top: 3, right: 5),
+                child: Icon(
+                  isVideo ? Icons.play_circle_outline_rounded : Icons.article_outlined,
+                  size: 13,
+                  color: current ? ac.primary : ac.muted,
+                ),
+              ),
               Expanded(
                 child: Text(l.title,
                     maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: AppText.bodySm.copyWith(
                         fontSize: 13,
+                        letterSpacing: current ? -0.1 : 0,
                         color: current ? ac.txt : ac.txt2,
                         fontWeight: current ? FontWeight.w700 : FontWeight.w500)),
               ),
@@ -402,19 +485,20 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
         if (!hasVideo) ...[
           _LessonBody(lesson: lesson),
           const SizedBox(height: 20),
-          Divider(color: AppColors.of(context).bdr2),
+          Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
           const SizedBox(height: 16),
         ],
         Text('About this lesson', style: AppText.h2.copyWith(fontSize: 15)),
         const SizedBox(height: 6),
         Text(course.description.isNotEmpty ? course.description : 'No description provided.',
-            style: AppText.bodySm.copyWith(fontSize: 13.5)),
+            style: AppText.bodySm.copyWith(fontSize: 13.5, height: 1.6, color: ac.txt2)),
         const SizedBox(height: 14),
         Wrap(spacing: 10, runSpacing: 10, children: [
           if (lesson.durationSeconds != null && lesson.durationSeconds! > 0)
@@ -425,7 +509,7 @@ class _OverviewTab extends StatelessWidget {
           _MetaPill(icon: Icons.update_rounded, label: 'Last updated', value: _dateLabel(lesson.updatedAt)),
         ]),
         const SizedBox(height: 20),
-        Divider(color: AppColors.of(context).bdr2),
+        Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
         const SizedBox(height: 16),
         _CourseInfoRow(course: course, currentUser: currentUser),
         if (course.prerequisiteIds.isNotEmpty) ...[
@@ -434,39 +518,6 @@ class _OverviewTab extends StatelessWidget {
         ],
         const SizedBox(height: 20),
         _ActionRow(course: course, currentUser: currentUser),
-        const SizedBox(height: 24),
-        StreamBuilder<Set<String>>(
-          stream: CourseOfflineService.instance.watchCompletedLessonIds(currentUser?.id ?? 'guest', course.id),
-          builder: (context, cSnap) {
-            final completed = cSnap.data?.contains(lesson.id) ?? false;
-            final ac = AppColors.of(context);
-            return OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: completed ? Colors.green : ac.primary,
-                side: BorderSide(color: completed ? Colors.green : ac.primary),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Rad.sm)),
-              ),
-              icon: Icon(completed ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
-                  color: completed ? Colors.green : ac.primary),
-              label: Text(completed ? 'Lesson Completed' : 'Mark as Complete',
-                  style: AppText.bodySm.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: completed ? Colors.green : ac.primary)),
-              onPressed: () async {
-                HapticFeedback.lightImpact();
-                final nowDone = await CourseOfflineService.instance.toggleLessonCompleted(
-                  currentUser?.id ?? 'guest', course.id, lesson.id,
-                );
-                if (context.mounted) {
-                  showToast(context, nowDone ? 'Lesson marked as completed!' : 'Lesson marked as incomplete.');
-                }
-              },
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        PrimaryBtn(label: 'Continue Lesson', onTap: onContinue),
       ],
     );
   }

@@ -12,7 +12,7 @@ import '../../models/app_user.dart';
 import '../../models/academic_content.dart';
 import '../../repositories/academic_content_repository.dart';
 import '../../core/result.dart';
-import '../../widgets/widgets.dart' show showToast;
+import '../../widgets/widgets.dart' show showToast, ShimmerCard, EmptyState;
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import 'content_edit_page.dart';
@@ -43,15 +43,29 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
       stream: AcademicContentRepository.instance.watchOne(widget.contentId),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: AppBackground(child: Center(child: CircularProgressIndicator())),
+          return Scaffold(
+            appBar: AppBar(elevation: 0),
+            body: AppBackground(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                children: const [
+                  ShimmerCard(height: 190),
+                  SizedBox(height: 16),
+                  ShimmerCard(height: 280),
+                ],
+              ),
+            ),
           );
         }
         final item = snap.data;
         if (item == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Not Found')),
-            body: const Center(child: Text('Content no longer exists.')),
+            body: const EmptyState(
+              icon: Icons.find_in_page_outlined,
+              title: 'Content no longer exists',
+              subtitle: 'This item may have been moved or removed by its author.',
+            ),
           );
         }
 
@@ -76,6 +90,9 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
         return Scaffold(
           backgroundColor: ac.bg,
           appBar: AppBar(
+            backgroundColor: ac.bg,
+            elevation: 0,
+            iconTheme: IconThemeData(color: ac.txt),
             title: Text(item.contentType.label, style: AppText.title),
             actions: [
               StreamBuilder<bool>(
@@ -84,7 +101,7 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
                   final saved = savedSnap.data ?? false;
                   return IconButton(
                     icon: Icon(saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                        color: saved ? ac.grn : ac.txt2),
+                        color: saved ? ac.gold : ac.txt2),
                     tooltip: saved ? 'Saved' : 'Save for offline',
                     onPressed: () async {
                       HapticFeedback.lightImpact();
@@ -124,7 +141,7 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.delete_outline, color: ac.red),
+                  icon: Icon(Icons.delete_outline_rounded, color: ac.red),
                   onPressed: () => showDialog(
                     context: context,
                     builder: (_) => ContentDeleteDialog(
@@ -136,92 +153,156 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
               ],
             ],
           ),
+          // Improvement 2 (Sticky bottom action area): keep the primary action
+          // visible at the bottom while the user scrolls through details.
+          bottomNavigationBar: item.fileUrl != null
+              ? Container(
+                  decoration: BoxDecoration(
+                    color: ac.surf,
+                    border: Border(top: BorderSide(color: ac.bdr.withValues(alpha: 0.7), width: 0.8)),
+                    boxShadow: Shad.sm,
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+                      child: _DownloadButton(item: item, user: widget.user),
+                    ),
+                  ),
+                )
+              : null,
           body: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Thumbnail
-                if (item.thumbnailUrl != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: Image.network(
-                        item.thumbnailUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _PlaceholderThumbnail(type: item.contentType),
+                // Thumbnail with frosted type badge overlay (Mistake 1 & 2)
+                Stack(
+                  children: [
+                    if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(Rad.lg),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Image.network(
+                            item.thumbnailUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _PlaceholderThumbnail(type: item.contentType),
+                          ),
+                        ),
+                      )
+                    else
+                      _PlaceholderThumbnail(type: item.contentType),
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                        ),
+                        child: Text(
+                          item.contentType.label.toUpperCase(),
+                          style: AppText.label.copyWith(
+                            color: Colors.white,
+                            letterSpacing: 0.8,
+                            fontSize: 10,
+                          ),
+                        ),
                       ),
                     ),
-                  )
-                else
-                  _PlaceholderThumbnail(type: item.contentType),
-                const SizedBox(height: 20),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-                // Type badge + classification (subject/level/exam/year)
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  _TypeBadge(type: item.contentType),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: ac.bluBg, borderRadius: BorderRadius.circular(20)),
-                    child: Text(item.subject,
-                        style: AppText.subtitle.copyWith(fontSize: 11, color: ac.blu)),
+                // Improvement 1 (Scrollable card container): soft rounded card
+                // with subtle shadow, consistent 20px internal alignment (Mistake 3).
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: ac.surf,
+                    borderRadius: BorderRadius.circular(Rad.lg),
+                    border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+                    boxShadow: Shad.card,
                   ),
-                  if (item.level.isNotEmpty && item.level != 'All Levels')
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: ac.grnBg, borderRadius: BorderRadius.circular(20)),
-                      child: Text(item.level,
-                          style: AppText.subtitle.copyWith(fontSize: 11, color: ac.grn)),
-                    ),
-                  if (item.examBoard.isNotEmpty && item.examBoard != 'N/A')
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: ac.goldBg, borderRadius: BorderRadius.circular(20)),
-                      child: Text(item.year != null ? '${item.examBoard} ${item.year}' : item.examBoard,
-                          style: AppText.subtitle.copyWith(fontSize: 11, color: ac.gold)),
-                    ),
-                ]),
-                const SizedBox(height: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Scannable classification badges (Mistake 6)
+                      Wrap(spacing: 8, runSpacing: 8, children: [
+                        _TypeBadge(type: item.contentType),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: ac.bluBg, borderRadius: BorderRadius.circular(8)),
+                          child: Text(item.subject,
+                              style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.blu)),
+                        ),
+                        if (item.level.isNotEmpty && item.level != 'All Levels')
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: ac.grnBg, borderRadius: BorderRadius.circular(8)),
+                            child: Text(item.level,
+                                style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.grn)),
+                          ),
+                        if (item.examBoard.isNotEmpty && item.examBoard != 'N/A')
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: ac.goldBg, borderRadius: BorderRadius.circular(8)),
+                            child: Text(item.year != null ? '${item.examBoard} ${item.year}' : item.examBoard,
+                                style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.gold)),
+                          ),
+                      ]),
+                      const SizedBox(height: 12),
 
-                // Title
-                Text(item.title, style: AppText.h1),
-                const SizedBox(height: 12),
+                      // Balanced title hierarchy (Mistake 7)
+                      Text(
+                        item.title,
+                        style: AppText.h1.copyWith(fontSize: 22, height: 1.25, color: ac.txt),
+                      ),
+                      const SizedBox(height: 10),
 
-                // Stats row
-                Row(children: [
-                  _Stat(icon: Icons.visibility_outlined, value: '${item.views} views'),
-                  const SizedBox(width: 16),
-                  _Stat(icon: Icons.download_outlined, value: '${item.downloads} downloads'),
-                  const SizedBox(width: 16),
-                  _Stat(icon: Icons.calendar_today_outlined, value: _formatDate(item.uploadDate)),
-                ]),
-                const SizedBox(height: 20),
+                      // Trust signals right next to title (Mistake 9 & 10)
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
+                        children: [
+                          _Stat(icon: Icons.visibility_outlined, value: '${item.views} views'),
+                          _Stat(icon: Icons.download_outlined, value: '${item.downloads} downloads'),
+                          _Stat(icon: Icons.calendar_today_outlined, value: _formatDate(item.uploadDate)),
+                        ],
+                      ),
 
-                // Description
-                if (item.description.isNotEmpty) ...[
-                  Text('Description', style: AppText.title.copyWith(fontSize: 14)),
-                  const SizedBox(height: 8),
-                  Text(item.description, style: AppText.body.copyWith(fontSize: 14)),
-                  const SizedBox(height: 20),
-                ],
+                      // Description with relaxed line-height & softer contrast (Mistake 8, 11, 12)
+                      if (item.description.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
+                        const SizedBox(height: 16),
+                        Text('Overview', style: AppText.title.copyWith(fontSize: 14)),
+                        const SizedBox(height: 6),
+                        Text(
+                          item.description,
+                          style: AppText.body.copyWith(fontSize: 14.5, height: 1.65, color: ac.txt2),
+                        ),
+                      ],
 
-                // Tags
-                if (item.tags.isNotEmpty) ...[
-                  Text('Tags', style: AppText.title.copyWith(fontSize: 14)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: item.tags.map((t) => _Tag(label: t)).toList(),
+                      // Tags
+                      if (item.tags.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: item.tags.map((t) => _Tag(label: t)).toList(),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                ],
-
-                // Download button
-                if (item.fileUrl != null)
-                  _DownloadButton(item: item, user: widget.user),
+                ),
               ],
             ),
           ),
@@ -241,17 +322,33 @@ class _PlaceholderThumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     return Container(
-      height: 200,
+      height: 190,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: ac.surf2,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ac.bdr),
+        gradient: LinearGradient(
+          colors: [ac.primary.withValues(alpha: 0.88), ac.navy],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(Rad.lg),
       ),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(type.emoji, style: const TextStyle(fontSize: 48)),
-        const SizedBox(height: 8),
-        Text(type.label, style: AppText.bodySm),
+        Container(
+          width: 64,
+          height: 64,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
+          ),
+          child: Text(type.emoji, style: const TextStyle(fontSize: 32)),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          type.label,
+          style: AppText.subtitle.copyWith(color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
+        ),
       ]),
     );
   }
@@ -266,9 +363,9 @@ class _TypeBadge extends StatelessWidget {
     final ac = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: ac.purBg, borderRadius: BorderRadius.circular(20)),
-      child: Text('${type.emoji} ${type.label}',
-          style: AppText.subtitle.copyWith(fontSize: 11, color: ac.pur)),
+      decoration: BoxDecoration(color: ac.purBg, borderRadius: BorderRadius.circular(8)),
+      child: Text(type.label,
+          style: AppText.label.copyWith(fontSize: 10.5, letterSpacing: 0.6, color: ac.pur)),
     );
   }
 }
@@ -282,9 +379,9 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 13, color: ac.muted),
-      const SizedBox(width: 4),
-      Text(value, style: AppText.caption.copyWith(fontSize: 12)),
+      Icon(icon, size: 14, color: ac.muted),
+      const SizedBox(width: 5),
+      Text(value, style: AppText.caption.copyWith(fontSize: 12, color: ac.txt2)),
     ]);
   }
 }
@@ -301,7 +398,7 @@ class _Tag extends StatelessWidget {
       decoration: BoxDecoration(
         color: ac.surf2,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ac.bdr),
+        border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
       ),
       child: Text('#$label', style: AppText.caption.copyWith(fontSize: 11, color: ac.txt2)),
     );
