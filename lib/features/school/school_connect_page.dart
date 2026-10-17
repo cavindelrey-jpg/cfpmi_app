@@ -79,10 +79,8 @@ class SchoolConnectPage extends StatelessWidget {
                 _coreAcademicsRow(context, ac),
                 const SizedBox(height: 12),
                 _academicToolsRow(context, ac),
-                const SizedBox(height: 16),
-                _quickActionBox(context, ac),
                 const SizedBox(height: 20),
-                _sectionLabel(ac, 'How can we help you today?'),
+                _sectionLabel(ac, 'School Services & Requests'),
                 const SizedBox(height: 10),
                 _servicesRow(context, ac),
                 const SizedBox(height: 24),
@@ -293,33 +291,6 @@ class SchoolConnectPage extends StatelessWidget {
     );
   }
 
-  Widget _quickActionBox(BuildContext context, AppColors ac) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Material(
-        color: ac.primaryBg,
-        borderRadius: BorderRadius.circular(Rad.md),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Rad.md),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => SchoolRequestFormPage(user: user, initialType: SchoolRequestType.general))),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              Icon(Icons.chat_bubble_outline_rounded, color: ac.primary, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text('Need something from the school? Send a request.',
-                    style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: ac.primary)),
-              ),
-              Icon(Icons.arrow_forward_rounded, size: 16, color: ac.primary),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _sectionLabel(AppColors ac, String text) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Text(text, style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w800, color: ac.txt)),
@@ -368,48 +339,65 @@ class SchoolConnectPage extends StatelessWidget {
   }
 
   Widget _announcementsAndEventsRow(BuildContext context, AppColors ac, String schoolId) {
+    final announcementsPanel = _panel(
+      ac,
+      icon: Icons.campaign_rounded,
+      iconColor: ac.primary,
+      title: 'Announcements',
+      onViewAll: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => AnnouncementsPage(user: user, canPost: user.canPostAnnouncement))),
+      child: StreamBuilder<List<Announcement>>(
+        stream: AnnouncementRepository.instance.watchAnnouncements(schoolId: schoolId),
+        builder: (context, snap) {
+          final items = snap.data ?? const <Announcement>[];
+          if (items.isEmpty) return _emptyPanelText(ac, 'No announcements yet.');
+          return Column(children: [
+            for (final a in items.take(3)) _announcementRow(ac, a),
+          ]);
+        },
+      ),
+    );
+
+    final eventsPanel = _panel(
+      ac,
+      icon: Icons.event_rounded,
+      iconColor: ac.gold,
+      title: 'Upcoming Events',
+      onViewAll: user.canManageSchool
+          ? () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => SchoolCalendarManagerPage(user: user)))
+          : null,
+      child: StreamBuilder<List<SchoolEvent>>(
+        stream: SchoolEventRepository.instance.watchAll(schoolId),
+        builder: (context, snap) {
+          final upcoming = (snap.data ?? const <SchoolEvent>[]).where((e) => e.isUpcoming).toList();
+          if (upcoming.isEmpty) return _emptyPanelText(ac, 'No upcoming events.');
+          return Column(children: [
+            for (final e in upcoming.take(3)) _eventRow(ac, e),
+          ]);
+        },
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Expanded(child: _panel(
-            ac,
-            icon: Icons.campaign_rounded, iconColor: ac.primary,
-            title: 'Announcements',
-            onViewAll: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => AnnouncementsPage(user: user, canPost: user.canPostAnnouncement))),
-            child: StreamBuilder<List<Announcement>>(
-              stream: AnnouncementRepository.instance.watchAnnouncements(schoolId: schoolId),
-              builder: (context, snap) {
-                final items = snap.data ?? const <Announcement>[];
-                if (items.isEmpty) return _emptyPanelText(ac, 'No announcements yet.');
-                return Column(children: [
-                  for (final a in items.take(3)) _announcementRow(ac, a),
-                ]);
-              },
-            ),
-          )),
-          const SizedBox(width: 12),
-          Expanded(child: _panel(
-            ac,
-            icon: Icons.event_rounded, iconColor: ac.gold,
-            title: 'Upcoming Events',
-            onViewAll: user.canManageSchool
-                ? () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => SchoolCalendarManagerPage(user: user)))
-                : null,
-            child: StreamBuilder<List<SchoolEvent>>(
-              stream: SchoolEventRepository.instance.watchAll(schoolId),
-              builder: (context, snap) {
-                final upcoming = (snap.data ?? const <SchoolEvent>[]).where((e) => e.isUpcoming).toList();
-                if (upcoming.isEmpty) return _emptyPanelText(ac, 'No upcoming events.');
-                return Column(children: [
-                  for (final e in upcoming.take(3)) _eventRow(ac, e),
-                ]);
-              },
-            ),
-          )),
-        ]),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 600) {
+            return Column(children: [
+              announcementsPanel,
+              const SizedBox(height: 12),
+              eventsPanel,
+            ]);
+          }
+          return IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Expanded(child: announcementsPanel),
+              const SizedBox(width: 12),
+              Expanded(child: eventsPanel),
+            ]),
+          );
+        },
       ),
     );
   }

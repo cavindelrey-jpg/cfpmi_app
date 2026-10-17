@@ -23,7 +23,6 @@ class AnnouncementsPage extends StatelessWidget {
       appBar: AppBar(
         title: Text('Announcements',
           style: GoogleFonts.sora(fontSize: 17, fontWeight: FontWeight.w700)),
-        automaticallyImplyLeading: false,
       ),
       body: AppBackground(child: StreamBuilder<List<Announcement>>(
         stream: AnnouncementRepository.instance

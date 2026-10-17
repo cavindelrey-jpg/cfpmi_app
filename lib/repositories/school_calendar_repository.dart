@@ -194,7 +194,7 @@ class SchoolCalendarRepository {
       final key = 'calendar_$schoolId';
       await OfflineCache.instance.put(
         key,
-        OfflineCache.listToJson(list, (e) => (e as SchoolCalendarEvent).toSupabase()),
+        OfflineCache.listToJson(list, (e) => e.toSupabase()),
       );
     } catch (_) {}
   }

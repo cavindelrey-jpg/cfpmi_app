@@ -222,7 +222,7 @@ class SchoolTimetableRepository {
       final key = 'school_timetable_$schoolId';
       await OfflineCache.instance.put(
         key,
-        OfflineCache.listToJson(list, (s) => _toRow(s as SchoolTimetableSlot)),
+        OfflineCache.listToJson(list, (s) => _toRow(s)),
       );
     } catch (_) {}
   }

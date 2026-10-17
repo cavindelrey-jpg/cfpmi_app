@@ -152,7 +152,7 @@ class TeacherManagementRepository {
       final key = 'staff_$schoolId';
       await OfflineCache.instance.put(
         key,
-        OfflineCache.listToJson(list, (u) => (u as AppUser).toSupabase()),
+        OfflineCache.listToJson(list, (u) => u.toSupabase()),
       );
     } catch (_) {}
   }

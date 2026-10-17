@@ -259,6 +259,10 @@ class _HomeShellState extends State<HomeShell> {
     setState(() {
       _section = label;
       _visited.add(label);
+      if (MediaQuery.of(context).size.width < 680) {
+        _sidebarPinned = false;
+        _sidebarHovered = false;
+      }
     });
   }
 
@@ -377,7 +381,7 @@ class _HomeShellState extends State<HomeShell> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _leftSidebar(ac, activeTitle),
+                  _leftSidebar(ac, activeTitle, isCompact: isCompact),
                   Expanded(child: _workspace(sections, currentIdx)),
                 ],
               ),
@@ -388,11 +392,11 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  Widget _leftSidebar(AppColors ac, String activeTitle) {
+  Widget _leftSidebar(AppColors ac, String activeTitle, {required bool isCompact}) {
     final exp = _isSidebarExpanded;
     return MouseRegion(
       onEnter: (_) {
-        if (!_sidebarHovered) setState(() => _sidebarHovered = true);
+        if (!isCompact && !_sidebarHovered) setState(() => _sidebarHovered = true);
       },
       onExit: (_) {
         if (_sidebarHovered || _sidebarPinned) {
@@ -405,15 +409,19 @@ class _HomeShellState extends State<HomeShell> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        width: exp ? 248 : 64,
+        width: exp ? 248 : (isCompact ? 0 : 64),
+        clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
           color: ac.navy,
-          border: Border(
-            right: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
-          ),
+          border: isCompact && !exp
+              ? null
+              : Border(
+                  right: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 0.8),
+                ),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
+            if (constraints.maxWidth < 40) return const SizedBox.shrink();
             // Only render labels/group headers once the animated container has
             // expanded wide enough, preventing transient horizontal overflows.
             final showExpandedDetails = exp && constraints.maxWidth >= 150;

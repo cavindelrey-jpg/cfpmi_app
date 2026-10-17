@@ -248,10 +248,10 @@ class PublicCourseRepository {
         _courseLevels.select().order('sort_order', ascending: true),
         _courses.select().eq('published', true).limit(5000),
       ]);
-      final levelRows = results[0] as List<Map<String, dynamic>>;
+      final levelRows = results[0];
       // Count only what students can actually see (no filler, de-duplicated),
       // so the level tiles' numbers match the lists behind them.
-      final courses = cleanCourses((results[1] as List<Map<String, dynamic>>).map(PublicCourse.fromSupabase));
+      final courses = cleanCourses((results[1]).map(PublicCourse.fromSupabase));
       final counts = <String, int>{};
       for (final c in courses) {
         if (c.level.trim().isNotEmpty) counts[c.level] = (counts[c.level] ?? 0) + 1;

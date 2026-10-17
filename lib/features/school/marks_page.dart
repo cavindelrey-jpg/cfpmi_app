@@ -81,34 +81,6 @@ class _MarksPageState extends State<MarksPage> {
         context: context,
         title: 'Marks',
         subtitle: 'View your academic performance',
-        trailing: [
-          if (u.canRecordAnyMarks) ...[
-            IconButton(
-              icon: Icon(Icons.edit_note_rounded, color: ac.primary),
-              tooltip: 'Enter marks',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => MarksEntryPage(staff: u))).then((_) => _refresh()),
-            ),
-            IconButton(
-              icon: Icon(Icons.upload_file_rounded, color: ac.primary),
-              tooltip: 'Upload CSV',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => MarksCsvImportPage(staff: u))).then((res) {
-                if (res != null && mounted) {
-                  final result = res is MarksImportResult ? res : null;
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => MarksEntryPage(
-                      staff: u,
-                      initialClass: result?.classLevel,
-                      initialSubject: result?.subject,
-                      initialSequence: result?.sequence,
-                    ),
-                  ));
-                }
-              }),
-            ),
-          ],
-        ],
       ),
       body: Column(children: [
         if (u.canRecordAnyMarks)
@@ -143,11 +115,13 @@ class _MarksPageState extends State<MarksPage> {
               ),
               const SizedBox(width: 6),
               OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => MarksCsvImportPage(staff: u))).then((res) {
+                onPressed: () async {
+                  final nav = Navigator.of(context);
+                  final res = await nav.push(MaterialPageRoute(
+                      builder: (_) => MarksCsvImportPage(staff: u)));
                   if (res != null && mounted) {
                     final result = res is MarksImportResult ? res : null;
-                    Navigator.of(context).push(MaterialPageRoute(
+                    nav.push(MaterialPageRoute(
                       builder: (_) => MarksEntryPage(
                         staff: u,
                         initialClass: result?.classLevel,
@@ -156,7 +130,7 @@ class _MarksPageState extends State<MarksPage> {
                       ),
                     ));
                   }
-                }),
+                },
                 icon: const Icon(Icons.upload_file_rounded, size: 14),
                 label: const Text('CSV'),
                 style: OutlinedButton.styleFrom(
@@ -523,13 +497,6 @@ class _StaffMarksHome extends StatelessWidget {
         context: context,
         title: 'Marks Recording',
         subtitle: 'Record and export your classes\' marks',
-        trailing: [
-          IconButton(
-            icon: Icon(Icons.upload_file_rounded, color: ac.primary),
-            tooltip: 'Upload CSV',
-            onPressed: openCsvImport,
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
