@@ -58,19 +58,20 @@ jobs:
           retention-days: 7
 
       # ── Deploy the web build to Cloudflare Pages (production).
-      # Auto-publishes on every push to main. Requires three one-time setup
-      # steps by the account owner (see docs/CLOUDFLARE_DEPLOY.md):
-      #   1. Create a Cloudflare Pages project named "cfpmi" (Direct Upload).
-      #   2. Add repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
-      #   3. Add the custom domain cfpmischools.com to that Pages project.
-      # continue-on-error so the pipeline still succeeds before secrets exist.
+      # Sanitizes whitespace/newlines from repo secrets before invoking wrangler.
       - name: Deploy to Cloudflare Pages
         continue-on-error: true
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=cfpmi --branch=main --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN_RAW" ]; then
+            echo "Cloudflare token not configured. Skipping deploy."
+            exit 0
+          fi
+          export CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN_RAW" | tr -d '\r\n[:space:]')
+          export CLOUDFLARE_ACCOUNT_ID=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID_RAW" | tr -d '\r\n[:space:]')
+          npx --yes wrangler@latest pages deploy build/web --project-name=cfpmi --branch=main --commit-dirty=true
 
       - name: Build Android APK (CFPMI)
         run: flutter build apk --release --flavor cfpmi --dart-define=BRAND_ID=cfpmi --target-platform android-arm64
