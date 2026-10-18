@@ -31,6 +31,9 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
+import '../../pages/notifications_page.dart';
+import '../../pages/profile_page.dart';
+import '../../widgets/application_shell.dart';
 import 'library_folder_page.dart';
 import 'library_search_page.dart';
 import 'content_details_page.dart';
@@ -41,409 +44,60 @@ import 'content_viewer_page.dart';
 
 class LibraryHomePage extends StatelessWidget {
   final AppUser user;
-  final bool embedded;
-  const LibraryHomePage({super.key, required this.user, this.embedded = false});
+  const LibraryHomePage({super.key, required this.user});
 
   bool get _canUpload => user.canUploadContent;
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      body: AppBackground(child: SafeArea(
-        // Desktop: a two-pane file-browsing environment (persistent folder
-        // panel + content workspace). Phone: the vertical discovery list.
-        child: LayoutBuilder(
-          builder: (ctx, c) =>
-              c.maxWidth >= 760 ? _desktopBody(context, ac) : _mobileBody(context, ac),
-        ),
-      )),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          HapticFeedback.mediumImpact();
-          if (user.isGuest) {
-            showToast(context, 'Sign in to upload files to the Library.');
-            return;
-          }
-          _showUploadChoices(context, ac);
-        },
-        backgroundColor: ac.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.upload_file_rounded),
-        label: Text('Upload', style: AppText.button.copyWith(fontSize: 15)),
-      ),
-    );
-  }
-
-  // ── Phone: vertical discovery list ────────────────────────────────
-  Widget _mobileBody(BuildContext context, AppColors ac) {
-    return ListView(
-      padding: EdgeInsets.only(top: embedded ? 14 : 0, bottom: 24),
-      children: [
-        if (!embedded) ...[
-          _header(context, ac),
-          const SizedBox(height: 8),
-        ],
-        _sectionHeader('File Explorer', ac),
-        const SizedBox(height: 12),
-        _fileExplorer(context, ac),
-        const SizedBox(height: 26),
-        _sectionHeader('Recommended for You', ac, onSeeAll: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => RecommendedLibraryPage(user: user)))),
-        const SizedBox(height: 12),
-        // Re-built (and so re-fetched) whenever connectivity flips, so
-        // "needs an internet connection" clears by itself on reconnect.
-        StreamBuilder<bool>(
-          stream: ConnectivityService().watchOffline(),
-          builder: (context, net) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _recommendedRow(context, ac),
-              const SizedBox(height: 24),
-              _sectionHeader('Recent Reads', ac),
-              const SizedBox(height: 12),
-              _recentReads(context, ac),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        _sectionHeader('Available Offline', ac, badge: 'Downloaded'),
-        const SizedBox(height: 12),
-        _offlineSection(context, ac),
-      ],
-    );
-  }
-
-  // ── Desktop: folder panel (left) + content workspace (right) ───────
-  Widget _desktopBody(BuildContext context, AppColors ac) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1280),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(28, embedded ? 18 : 26, 28, 24),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (!embedded) ...[
-              _desktopHeading(context, ac),
-              const SizedBox(height: 20),
-            ],
-            Expanded(
-              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                _folderPanel(context, ac),
-                const SizedBox(width: 24),
-                Expanded(child: _desktopWorkspace(context, ac)),
-              ]),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _desktopHeading(BuildContext context, AppColors ac) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Library', style: AppText.h1.copyWith(fontSize: 28, color: ac.txt)),
-          const SizedBox(height: 6),
-          Text('Browse folders, resume recent reads, and open what you saved for offline.',
-              style: AppText.bodySm.copyWith(color: ac.txt2)),
-        ]),
-      ),
-      const SizedBox(width: 12),
-      ElevatedButton.icon(
-        onPressed: () {
-          HapticFeedback.mediumImpact();
-          if (user.isGuest) {
-            showToast(context, 'Sign in to upload files to the Library.');
-            return;
-          }
-          _showUploadChoices(context, ac);
-        },
-        icon: const Icon(Icons.upload_file_rounded, size: 18, color: Colors.white),
-        label: Text('Upload', style: AppText.button.copyWith(fontSize: 13.5, color: Colors.white)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: ac.primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Rad.sm)),
-        ),
-      ),
-    ]);
-  }
-
-  // Persistent left navigation panel — root folders as rows + a search field.
-  Widget _folderPanel(BuildContext context, AppColors ac) {
-    return Container(
-      width: 264,
-      decoration: BoxDecoration(
-        color: ac.surf,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ac.bdr),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-          child: Row(children: [
-            Icon(Icons.folder_open_rounded, size: 18, color: ac.primary),
-            const SizedBox(width: 8),
-            Text('File Explorer', style: AppText.h2.copyWith(fontSize: 15, color: ac.txt)),
-          ]),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-          child: _searchField(context, ac),
-        ),
-        Divider(height: 1, color: ac.bdr),
-        Expanded(child: _folderList(context, ac)),
-      ]),
-    );
-  }
-
-  Widget _searchField(BuildContext context, AppColors ac) {
-    return Material(
-      color: ac.surf2,
-      borderRadius: BorderRadius.circular(Rad.sm),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Rad.sm),
-        onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => LibrarySearchPage(user: user))),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(
-              color: ac.surf2,
-              borderRadius: BorderRadius.circular(Rad.sm),
-              border: Border.all(color: ac.bdr)),
-          child: Row(children: [
-            Icon(Icons.search_rounded, size: 17, color: ac.muted),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Search library…',
-                style: AppText.bodySm.copyWith(color: ac.muted), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _folderList(BuildContext context, AppColors ac) {
-    return StreamBuilder<List<LibraryFolder>>(
-      stream: LibraryFolderRepository.instance.watchRootFolders(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return ListView(
-            padding: const EdgeInsets.all(10),
-            children: List.generate(5, (_) => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 6),
-              child: ShimmerLine(height: 18),
-            )),
-          );
-        }
-        if (snap.hasError) {
-          CrashService.instance.recordError(snap.error, null, context: 'LibraryHomePage._folderList');
-          return Padding(
-            padding: const EdgeInsets.all(14),
-            child: Text("Couldn't load folders — ${snap.error}",
-                style: AppText.caption.copyWith(color: ac.red, fontSize: 11)),
-          );
-        }
-        final folders = snap.data ?? const <LibraryFolder>[];
-        if (folders.isEmpty && !_canUpload) {
-          return Padding(
-            padding: const EdgeInsets.all(14),
-            child: Text('No folders configured yet.', style: AppText.bodySm.copyWith(color: ac.txt2)),
-          );
-        }
-        return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          children: [
-            for (final f in folders) _folderRow(context, ac, f),
-            if (_canUpload)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () => _createRootFolder(context),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                      child: Row(children: [
-                        Icon(Icons.add_rounded, size: 20, color: ac.primary),
-                        const SizedBox(width: 12),
-                        Text('New folder',
-                            style: AppText.bodySm.copyWith(color: ac.primary, fontWeight: FontWeight.w700)),
-                      ]),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _folderRow(BuildContext context, AppColors ac, LibraryFolder f) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () {
-            HapticFeedback.selectionClick();
-            Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => LibraryFolderPage(folderId: f.id, folderName: f.name, user: user)));
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-            child: Row(children: [
-              SizedBox(
-                width: 30, height: 30,
-                child: HierarchyAvatar(label: f.name, icon: f.emoji, imageUrl: f.imageUrl, fill: true),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(f.name,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: AppText.bodySm.copyWith(color: ac.txt, fontWeight: FontWeight.w600)),
-              ),
-              Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _desktopWorkspace(BuildContext context, AppColors ac) {
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        _deskSection('Recommended for You', ac, onSeeAll: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => RecommendedLibraryPage(user: user)))),
-        const SizedBox(height: 14),
-        _recommendedWrap(context, ac),
-        const SizedBox(height: 30),
-        StreamBuilder<bool>(
-          stream: ConnectivityService().watchOffline(),
-          builder: (context, net) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _deskSection('Recent Reads', ac),
-              const SizedBox(height: 10),
-              _recentReads(context, ac),
-            ],
-          ),
-        ),
-        const SizedBox(height: 30),
-        _deskSection('Available Offline', ac, badge: 'Downloaded'),
-        const SizedBox(height: 14),
-        _offlineWrap(context, ac),
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  Widget _deskSection(String title, AppColors ac, {VoidCallback? onSeeAll, String? badge}) {
-    return Row(children: [
-      Container(width: 4, height: 20,
-          decoration: BoxDecoration(color: ac.primary, borderRadius: BorderRadius.circular(2))),
-      const SizedBox(width: 10),
-      Text(title, style: AppText.h2.copyWith(fontSize: 18, color: ac.txt)),
-      if (badge != null) ...[
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(color: ac.grnBg, borderRadius: BorderRadius.circular(10)),
-          child: Text(badge, style: AppText.label.copyWith(fontSize: 9.5, color: ac.grn, fontWeight: FontWeight.bold, letterSpacing: 0)),
-        ),
-      ],
-      const Spacer(),
-      if (onSeeAll != null)
-        TextButton(
-          onPressed: onSeeAll,
-          child: Text('See all',
-              style: AppText.subtitle.copyWith(color: ac.primary, fontWeight: FontWeight.w700, fontSize: 13)),
-        ),
-    ]);
-  }
-
-  Widget _recommendedWrap(BuildContext context, AppColors ac) {
-    return FutureBuilder<List<AcademicContent>>(
-      future: AcademicContentRepository.instance.recommendedForUser(user.id.isEmpty ? null : user.id, limit: 12),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return Wrap(spacing: 12, runSpacing: 12, children: List.generate(
-              5, (_) => const ShimmerBlock(width: 140, height: 168)));
-        }
-        final items = snap.data ?? const <AcademicContent>[];
-        if (items.isEmpty) {
-          return Text('No resources to recommend yet — check your offline downloads below.',
-              style: AppText.bodySm.copyWith(color: ac.txt2));
-        }
-        return Wrap(spacing: 12, runSpacing: 12, children: [
-          for (final it in items)
-            _RecommendedCard(
-              item: it,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ContentDetailsPage(contentId: it.id, user: user))),
-            ),
-        ]);
-      },
-    );
-  }
-
-  Widget _offlineWrap(BuildContext context, AppColors ac) {
-    return StreamBuilder<List<AcademicContent>>(
-      stream: AcademicContentRepository.instance.watchOfflineContent(),
-      builder: (context, snap) {
-        final items = snap.data ?? const <AcademicContent>[];
-        if (items.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-                color: ac.surf, borderRadius: BorderRadius.circular(16), border: Border.all(color: ac.bdr)),
-            child: Row(children: [
-              Container(width: 44, height: 44,
-                  decoration: BoxDecoration(color: ac.primary.withValues(alpha: .1), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(Icons.cloud_download_outlined, color: ac.primary, size: 24)),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('No offline downloads yet', style: AppText.title.copyWith(fontSize: 14, color: ac.txt)),
-                const SizedBox(height: 2),
-                Text('Save books, past papers, and documents to read them anywhere without internet.',
-                    style: AppText.caption.copyWith(fontSize: 11, color: ac.txt2, height: 1.3)),
-              ])),
-            ]),
-          );
-        }
-        return Wrap(spacing: 12, runSpacing: 12, children: [
-          for (final item in items)
-            _OfflineContentCard(
-              item: item,
-              onTap: () async {
-                HapticFeedback.selectionClick();
-                final path = await AcademicContentRepository.instance.offlineFilePath(item.id);
-                if (!context.mounted) return;
-                final kind = viewableKindFor(path ?? item.fileUrl ?? '') ?? ViewableFileKind.pdf;
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ContentViewerPage(
-                    fileUrl: item.fileUrl ?? path ?? '',
-                    title: item.title,
-                    kind: kind,
-                    contentId: item.id,
-                    userId: user.id,
-                    localFilePath: path,
-                  ),
-                ));
+    return ApplicationShell(
+      user: user,
+      currentTitle: 'Academic Library',
+      currentDestination: AppNavDestination.academicLibrary,
+      floatingActionButton: _canUpload
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                _showUploadChoices(context, ac);
               },
+              backgroundColor: ac.primary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.upload_file_rounded),
+              label: Text('Upload', style: AppText.button.copyWith(fontSize: 15)),
+            )
+          : null,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        children: [
+          _sectionHeader('File Explorer', ac),
+          const SizedBox(height: 12),
+          _fileExplorer(context, ac),
+          const SizedBox(height: 26),
+          _sectionHeader('Recommended for You', ac, onSeeAll: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => RecommendedLibraryPage(user: user)))),
+          const SizedBox(height: 12),
+          // Re-built (and so re-fetched) whenever connectivity flips, so
+          // "needs an internet connection" clears by itself on reconnect.
+          StreamBuilder<bool>(
+            stream: ConnectivityService().watchOffline(),
+            builder: (context, net) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _recommendedRow(context, ac),
+                const SizedBox(height: 24),
+                _sectionHeader('Recent Reads', ac),
+                const SizedBox(height: 12),
+                _recentReads(context, ac),
+              ],
             ),
-        ]);
-      },
+          ),
+          const SizedBox(height: 24),
+          _sectionHeader('Available Offline', ac, badge: 'Downloaded'),
+          const SizedBox(height: 12),
+          _offlineSection(context, ac),
+        ],
+      ),
     );
   }
 
@@ -462,7 +116,7 @@ class LibraryHomePage extends StatelessWidget {
                 decoration: BoxDecoration(color: ac.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
                 child: Icon(Icons.upload_file_rounded, color: ac.primary),
               ),
-              title: Text('Single Item Upload', style: GoogleFonts.sora(fontWeight: FontWeight.w700, fontSize: 14, color: ac.txt)),
+              title: Text('Single Item Upload', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: ac.txt)),
               subtitle: Text('Upload single note, book, video, or paper', style: GoogleFonts.inter(fontSize: 12, color: ac.txt2)),
               onTap: () {
                 Navigator.pop(ctx);
@@ -475,7 +129,7 @@ class LibraryHomePage extends StatelessWidget {
                 decoration: BoxDecoration(color: ac.gold.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: Icon(Icons.drive_folder_upload_rounded, color: ac.gold),
               ),
-              title: Text('Mass Upload Past Papers', style: GoogleFonts.sora(fontWeight: FontWeight.w700, fontSize: 14, color: ac.txt)),
+              title: Text('Mass Upload Past Papers', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: ac.txt)),
               subtitle: Text('Batch upload multiple PDFs with auto-parsed metadata & shared covers', style: GoogleFonts.inter(fontSize: 12, color: ac.txt2)),
               onTap: () {
                 Navigator.pop(ctx);
@@ -488,18 +142,34 @@ class LibraryHomePage extends StatelessWidget {
     );
   }
 
-  // The shell's global top bar owns search / notifications / account; the
-  // page header is just its title. A page-specific library search lives in
-  // the desktop folder panel, and upload is on the FAB.
   Widget _header(BuildContext context, AppColors ac) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Row(children: [
         Expanded(child: Text('Academia Library', style: AppText.h1.copyWith(fontSize: 22, color: ac.txt))),
+        if (_canUpload)
+          IconButton(
+            icon: Icon(Icons.drive_folder_upload_rounded, color: ac.primary),
+            tooltip: 'Mass Upload Past Papers',
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => BulkPastPaperUploadPage(user: user),
+              ));
+            },
+          ),
         IconButton(
           icon: Icon(Icons.search_rounded, color: ac.txt2),
-          tooltip: 'Search library',
           onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LibrarySearchPage(user: user))),
+        ),
+        IconButton(
+          icon: Icon(Icons.notifications_outlined, color: ac.txt2),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotificationsPage(user: user))),
+        ),
+        UserAvatar(
+          initials: user.name.isEmpty ? '?' : user.name[0].toUpperCase(),
+          radius: 18, photoUrl: user.photoUrl,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProfilePage(user: user))),
         ),
       ]),
     );
@@ -838,11 +508,7 @@ class _FolderCard extends StatelessWidget {
         onLongPress: canManage ? () => _showMenu(context) : null,
         child: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
-            boxShadow: Shad.card,
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: ac.bdr2)),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Expanded(child: HierarchyAvatar(label: folder.name, icon: folder.emoji, imageUrl: folder.imageUrl, fill: true)),
             const SizedBox(height: 4),
@@ -896,13 +562,8 @@ class _RecommendedCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(Rad.md),
         onTap: () { HapticFeedback.lightImpact(); onTap(); },
         child: Container(
-          width: 148,
-          decoration: BoxDecoration(
-            color: ac.surf,
-            borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
-            boxShadow: Shad.card,
-          ),
+          width: 140,
+          decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(Rad.md), border: Border.all(color: ac.bdr)),
           clipBehavior: Clip.antiAlias,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SizedBox(
@@ -913,9 +574,9 @@ class _RecommendedCard extends StatelessWidget {
                   : _placeholder(ac),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              padding: const EdgeInsets.all(8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(item.title, style: AppText.title.copyWith(fontSize: 12.5, letterSpacing: -0.1, color: ac.txt), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(item.title, style: AppText.title.copyWith(fontSize: 12, color: ac.txt), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 3),
                 Text(item.contentType.label, style: AppText.caption.copyWith(fontSize: 10, color: ac.muted)),
               ]),
@@ -926,16 +587,8 @@ class _RecommendedCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder(AppColors ac) => Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [ac.primary.withValues(alpha: .82), ac.navy.withValues(alpha: .92)],
-        begin: Alignment.topLeft, end: Alignment.bottomRight,
-      ),
-    ),
-    alignment: Alignment.center,
-    child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 24)),
-  );
+  Widget _placeholder(AppColors ac) => Container(color: ac.surf3, alignment: Alignment.center,
+      child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 24)));
 }
 
 class _RecentReadTile extends StatelessWidget {
@@ -947,65 +600,43 @@ class _RecentReadTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    // Nested radius rule: outer Rad.md (16) = inner Rad.xs (8) + 8px padding
-    final outerRadius = BorderRadius.circular(Rad.md);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Material(
         color: Colors.transparent,
-        borderRadius: outerRadius,
+        borderRadius: BorderRadius.circular(Rad.sm),
         child: InkWell(
-          borderRadius: outerRadius,
+          borderRadius: BorderRadius.circular(Rad.sm),
           onTap: () { HapticFeedback.selectionClick(); onTap(); },
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: ac.surf,
-              borderRadius: outerRadius,
-              border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
-              boxShadow: Shad.card,
+          child: Row(children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 56, height: 56,
+                child: (item.thumbnailUrl ?? '').isNotEmpty
+                    ? Image.network(item.thumbnailUrl!, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(color: ac.surf3))
+                    : Container(color: ac.primaryBg, child: Center(child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 22)))),
+              ),
             ),
-            child: Row(children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(Rad.xs),
-                child: SizedBox(
-                  width: 56, height: 56,
-                  child: (item.thumbnailUrl ?? '').isNotEmpty
-                      ? Image.network(item.thumbnailUrl!, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _thumbFallback(ac))
-                      : _thumbFallback(ac),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(item.title, style: AppText.title.copyWith(fontSize: 13.5, color: ac.txt), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Text(item.contentType.label, style: AppText.caption.copyWith(fontSize: 11, color: ac.muted)),
-                  if (recentlyOpened) ...[
-                    const SizedBox(height: 1),
-                    Text('Recently opened', style: AppText.caption.copyWith(fontSize: 10, color: ac.primary)),
-                  ],
-                ]),
-              ),
-              Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
-            ]),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(item.title, style: AppText.title.copyWith(fontSize: 13.5, color: ac.txt), maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text(item.contentType.label, style: AppText.caption.copyWith(fontSize: 11, color: ac.muted)),
+                if (recentlyOpened) ...[
+                  const SizedBox(height: 1),
+                  Text('Recently opened', style: AppText.caption.copyWith(fontSize: 10, color: ac.primary)),
+                ],
+              ]),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
+          ]),
         ),
       ),
     );
   }
-
-  Widget _thumbFallback(AppColors ac) => Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [ac.primary.withValues(alpha: .82), ac.navy.withValues(alpha: .92)],
-        begin: Alignment.topLeft, end: Alignment.bottomRight,
-      ),
-    ),
-    alignment: Alignment.center,
-    child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 22)),
-  );
 }
 
 class _OfflineContentCard extends StatelessWidget {
@@ -1021,15 +652,14 @@ class _OfflineContentCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(Rad.md),
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Container(
           width: 148,
           decoration: BoxDecoration(
             color: ac.surf,
-            borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
-            boxShadow: Shad.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: ac.bdr),
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -1061,11 +691,10 @@ class _OfflineContentCard extends StatelessWidget {
                     top: 6,
                     right: 6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
+                        color: ac.grnBg,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1074,7 +703,7 @@ class _OfflineContentCard extends StatelessWidget {
                           const SizedBox(width: 3),
                           Text(
                             'Offline',
-                            style: AppText.label.copyWith(fontSize: 8.5, color: Colors.white, letterSpacing: 0.5),
+                            style: AppText.label.copyWith(fontSize: 8.5, color: ac.grn, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -1083,13 +712,13 @@ class _OfflineContentCard extends StatelessWidget {
                 ],
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       item.title,
-                      style: AppText.title.copyWith(fontSize: 12.5, letterSpacing: -0.1),
+                      style: AppText.title.copyWith(fontSize: 12.5),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1112,12 +741,7 @@ class _OfflineContentCard extends StatelessWidget {
 
   Widget _thumbFallback(AppColors ac) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [ac.primary.withValues(alpha: .82), ac.navy.withValues(alpha: .92)],
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-        ),
-      ),
+      color: ac.surf2,
       alignment: Alignment.center,
       child: Text(item.contentType.emoji, style: const TextStyle(fontSize: 26)),
     );

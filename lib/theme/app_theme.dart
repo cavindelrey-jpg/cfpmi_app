@@ -450,20 +450,20 @@ class AppText {
   static Color get _txt2 => _palette.txt2;
   static Color get _muted => _palette.muted;
 
-  static TextStyle get display => GoogleFonts.sora(
+  static TextStyle get display => GoogleFonts.inter(
       fontSize: 30, fontWeight: FontWeight.w800, height: 1.15,
       letterSpacing: -0.5, color: _txt);
 
-  static TextStyle get h1 => GoogleFonts.sora(
+  static TextStyle get h1 => GoogleFonts.inter(
       fontSize: 23, fontWeight: FontWeight.w800, height: 1.2,
       letterSpacing: -0.4, color: _txt);
 
-  static TextStyle get h2 => GoogleFonts.sora(
+  static TextStyle get h2 => GoogleFonts.inter(
       fontSize: 18, fontWeight: FontWeight.w700, height: 1.3,
       letterSpacing: -0.2, color: _txt);
 
   /// Card titles, list-item primary text, section headers.
-  static TextStyle get title => GoogleFonts.sora(
+  static TextStyle get title => GoogleFonts.inter(
       fontSize: 15, fontWeight: FontWeight.w700, height: 1.35, color: _txt);
 
   /// Secondary line under a title — byline, role, metadata row.
@@ -488,7 +488,7 @@ class AppText {
       letterSpacing: 0.8, color: _muted);
 
   /// Button label text.
-  static TextStyle get button => GoogleFonts.sora(
+  static TextStyle get button => GoogleFonts.inter(
       fontSize: 15, fontWeight: FontWeight.w700, height: 1.2,
       letterSpacing: -0.1, color: Colors.white);
 }

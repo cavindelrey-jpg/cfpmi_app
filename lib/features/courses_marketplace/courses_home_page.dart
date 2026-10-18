@@ -16,6 +16,9 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
+import '../../pages/notifications_page.dart';
+import '../../pages/profile_page.dart';
+import '../../widgets/application_shell.dart';
 import 'level_subjects_page.dart';
 import 'course_lessons_page.dart';
 import 'course_search_page.dart';
@@ -24,8 +27,7 @@ import 'curriculum_icon_editor.dart';
 
 class CoursesHomePage extends StatefulWidget {
   final AppUser? user;
-  final bool embedded;
-  const CoursesHomePage({super.key, this.user, this.embedded = false});
+  const CoursesHomePage({super.key, this.user});
 
   @override
   State<CoursesHomePage> createState() => _CoursesHomePageState();
@@ -71,266 +73,56 @@ class _CoursesHomePageState extends State<CoursesHomePage> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      body: AppBackground(child: SafeArea(
-        // Two deliberately different layouts: a desktop discovery workspace
-        // (grids, two-column lower region) vs. the phone's vertical rails.
-        child: LayoutBuilder(
-          builder: (ctx, c) =>
-              c.maxWidth >= 760 ? _desktopBody(context, ac) : _mobileBody(context, ac),
-        ),
-      )),
-    );
-  }
-
-  // ── Phone: stacked sections + horizontal rails ────────────────────
-  Widget _mobileBody(BuildContext context, AppColors ac) {
-    return ListView(
-      padding: EdgeInsets.only(top: widget.embedded ? 14 : 0, bottom: 24),
-      children: [
-        if (!widget.embedded) _header(context, ac),
-        _searchBar(context, ac),
-        const SizedBox(height: 18),
-        _levelRow(context, ac),
-        const SizedBox(height: 26),
-        _sectionHeader('Recommended for You', ac, showNav: true,
-            onSeeAll: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => RecommendedCoursesPage(user: widget.user)))),
-        const SizedBox(height: 12),
-        _recommendedRow(context, ac),
-        const SizedBox(height: 24),
-        _sectionHeader('Recent Reads', ac),
-        const SizedBox(height: 12),
-        _recentReads(context, ac),
-        const SizedBox(height: 24),
-        _sectionHeader('Downloaded Courses', ac),
-        const SizedBox(height: 12),
-        _downloadedCoursesSection(context, ac),
-      ],
-    );
-  }
-
-  // ── Desktop: course-discovery workspace ───────────────────────────
-  Widget _desktopBody(BuildContext context, AppColors ac) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1240),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(32, widget.embedded ? 20 : 28, 32, 48),
-          children: [
-            if (!widget.embedded) ...[
-              _desktopHeading(ac),
-              const SizedBox(height: 20),
-            ],
-            _desktopSearchFilter(context, ac),
-            const SizedBox(height: 30),
-            _deskSection('Education levels', ac),
-            const SizedBox(height: 14),
-            _levelWrap(context, ac),
-            const SizedBox(height: 32),
-            _deskSection('Recommended for You', ac,
-                onSeeAll: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => RecommendedCoursesPage(user: widget.user)))),
-            const SizedBox(height: 14),
-            _recommendedWrap(context, ac),
-            const SizedBox(height: 34),
-            _recentAndDownloads(context, ac),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _desktopHeading(AppColors ac) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Courses', style: AppText.h1.copyWith(fontSize: 28, color: ac.txt)),
-      const SizedBox(height: 6),
-      Text('Browse by education level, pick up where you left off, and discover new courses.',
-          style: AppText.bodySm.copyWith(color: ac.txt2)),
-    ]);
-  }
-
-  Widget _desktopSearchFilter(BuildContext context, AppColors ac) {
-    void openSearch() => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => CourseSearchPage(user: widget.user)));
-    return Row(children: [
-      SizedBox(
-        width: 440,
-        child: Material(
-          color: ac.surf2,
-          borderRadius: BorderRadius.circular(Rad.sm),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(Rad.sm),
-            onTap: openSearch,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              decoration: BoxDecoration(
-                  color: ac.surf2,
-                  borderRadius: BorderRadius.circular(Rad.sm),
-                  border: Border.all(color: ac.bdr)),
-              child: Row(children: [
-                Icon(Icons.search_rounded, size: 18, color: ac.muted),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Search courses, topics, subjects…',
-                    style: AppText.bodySm.copyWith(color: ac.muted))),
-              ]),
-            ),
-          ),
-        ),
-      ),
-      const SizedBox(width: 12),
-      OutlinedButton.icon(
-        onPressed: openSearch,
-        icon: const Icon(Icons.tune_rounded, size: 18),
-        label: const Text('Filters'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: ac.txt2,
-          side: BorderSide(color: ac.bdr),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-        ),
-      ),
-    ]);
-  }
-
-  // A section heading for the desktop workspace (no extra horizontal padding —
-  // the workspace ListView already pads; keeps card edges aligned).
-  Widget _deskSection(String title, AppColors ac, {VoidCallback? onSeeAll}) {
-    return Row(children: [
-      Container(width: 4, height: 20,
-          decoration: BoxDecoration(color: ac.primary, borderRadius: BorderRadius.circular(2))),
-      const SizedBox(width: 10),
-      Expanded(child: Text(title, style: AppText.h2.copyWith(fontSize: 18, color: ac.txt))),
-      if (onSeeAll != null)
-        TextButton(
-          onPressed: onSeeAll,
-          child: Text('See all',
-              style: AppText.subtitle.copyWith(color: ac.primary, fontWeight: FontWeight.w700, fontSize: 13)),
-        ),
-    ]);
-  }
-
-  Widget _levelWrap(BuildContext context, AppColors ac) {
-    return FutureBuilder<List<CourseLevelInfo>>(
-      future: PublicCourseRepository.instance.levelsOnce(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return Wrap(spacing: 12, runSpacing: 12, children: List.generate(
-              5, (_) => const ShimmerBlock(width: 108, height: 118, borderRadius: 16)));
-        }
-        final levels = snap.data ?? const <CourseLevelInfo>[];
-        if (levels.isEmpty) {
-          return Text('No education levels configured yet.',
-              style: AppText.bodySm.copyWith(color: ac.txt2));
-        }
-        return FutureBuilder<Map<String, CurriculumIcon>>(
-          future: _iconsFuture,
-          builder: (context, iconSnap) {
-            final icons = iconSnap.data ?? const <String, CurriculumIcon>{};
-            return Wrap(spacing: 12, runSpacing: 12, children: [
-              for (final lv in levels)
-                _LevelCard(
-                  level: lv,
-                  icon: icons[PublicCourseRepository.eduLevelIconKey(lv.name)] ?? CurriculumIcon.none,
-                  canManage: widget.user?.canUploadContent ?? false,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => LevelSubjectsPage(level: lv.name, user: widget.user)));
-                  },
-                  onChanged: _reloadIcons,
-                ),
-            ]);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _recommendedWrap(BuildContext context, AppColors ac) {
-    return FutureBuilder<List<PublicCourse>>(
-      future: _recommendedFuture,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return Wrap(spacing: 14, runSpacing: 14, children: List.generate(
-              5, (_) => const ShimmerBlock(width: 160, height: 190)));
-        }
-        final courses = snap.data ?? const <PublicCourse>[];
-        if (courses.isEmpty) {
-          return Text('No courses to recommend yet — check back soon.',
-              style: AppText.bodySm.copyWith(color: ac.txt2));
-        }
-        return Wrap(spacing: 14, runSpacing: 14, children: [
-          for (final c in courses)
-            _RecommendedCard(course: c, currentUser: widget.user, onTap: () => _openCourse(context, c)),
-        ]);
-      },
-    );
-  }
-
-  // Lower region: Recent Reads and Downloaded side by side on desktop.
-  Widget _recentAndDownloads(BuildContext context, AppColors ac) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _deskSection('Recent Reads', ac),
+    return ApplicationShell(
+      user: widget.user,
+      currentTitle: 'Academic Courses',
+      currentDestination: AppNavDestination.academicCourses,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        children: [
+          _levelRow(context, ac),
+          const SizedBox(height: 26),
+          _sectionHeader('Recommended for You', ac, showNav: true,
+              onSeeAll: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => RecommendedCoursesPage(user: widget.user)))),
+          const SizedBox(height: 12),
+          _recommendedRow(context, ac),
+          const SizedBox(height: 24),
+          _sectionHeader('Recent Reads', ac),
           const SizedBox(height: 12),
           _recentReads(context, ac),
-        ]),
-      ),
-      const SizedBox(width: 28),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _deskSection('Downloaded Courses', ac),
+          const SizedBox(height: 24),
+          _sectionHeader('Downloaded Courses', ac),
           const SizedBox(height: 12),
-          _downloadedWrap(context, ac),
-        ]),
+          _downloadedCoursesSection(context, ac),
+        ],
       ),
-    ]);
-  }
-
-  Widget _downloadedWrap(BuildContext context, AppColors ac) {
-    return StreamBuilder<List<PublicCourse>>(
-      stream: CourseOfflineService.instance.watchDownloadedCourses(),
-      builder: (context, snap) {
-        final downloaded = snap.data ?? const <PublicCourse>[];
-        if (downloaded.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-                color: ac.surf,
-                borderRadius: BorderRadius.circular(Rad.md),
-                border: Border.all(color: ac.bdr2)),
-            child: Row(children: [
-              Container(width: 44, height: 44,
-                  decoration: BoxDecoration(color: ac.primaryBg, borderRadius: BorderRadius.circular(10)),
-                  child: Icon(Icons.download_for_offline_outlined, color: ac.primary, size: 24)),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('No downloaded courses yet',
-                    style: AppText.subtitle.copyWith(fontSize: 14, color: ac.txt)),
-                const SizedBox(height: 2),
-                Text('Download any course to read all lessons offline.',
-                    style: AppText.caption.copyWith(fontSize: 11, color: ac.txt2)),
-              ])),
-            ]),
-          );
-        }
-        return Wrap(spacing: 14, runSpacing: 14, children: [
-          for (final course in downloaded)
-            _DownloadedCourseCard(course: course, currentUser: widget.user, onTap: () => _openCourse(context, course)),
-        ]);
-      },
     );
   }
 
-  // The shell's global top bar now owns search / notifications / account, so
-  // the page header is just its title — no duplicated global controls.
   Widget _header(BuildContext context, AppColors ac) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      child: Text('Academia Courses', style: AppText.h1.copyWith(fontSize: 22, color: ac.txt)),
+      child: Row(children: [
+        Expanded(child: Text('Academia Courses', style: AppText.h1.copyWith(fontSize: 22, color: ac.txt))),
+        IconButton(
+          icon: Icon(Icons.search_rounded, color: ac.txt2),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => CourseSearchPage(user: widget.user))),
+        ),
+        if (widget.user != null)
+          IconButton(
+            icon: Icon(Icons.notifications_outlined, color: ac.txt2),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => NotificationsPage(user: widget.user!))),
+          ),
+        UserAvatar(
+          initials: (widget.user?.name.isNotEmpty ?? false) ? widget.user!.name[0].toUpperCase() : '?',
+          radius: 18, photoUrl: widget.user?.photoUrl,
+          onTap: widget.user == null ? null : () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => ProfilePage(user: widget.user!))),
+        ),
+      ]),
     );
   }
 
@@ -643,10 +435,10 @@ class _DownloadedCourseCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: 165,
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+            border: Border.all(color: ac.bdr2),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -670,9 +462,9 @@ class _DownloadedCourseCard extends StatelessWidget {
                                   course.coverImageUrl!,
                                   fit: BoxFit.cover,
                                   gaplessPlayback: true,
-                                  errorBuilder: (_, __, ___) => courseCoverFallback(course.title),
+                                  errorBuilder: (_, __, ___) => _coverFallback(ac),
                                 )
-                              : courseCoverFallback(course.title);
+                              : _coverFallback(ac);
                         },
                       ),
                     ),
@@ -683,14 +475,13 @@ class _DownloadedCourseCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 0.8),
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.offline_pin_rounded, size: 10, color: ac.gold),
+                          Icon(Icons.offline_pin_rounded, size: 10, color: ac.primary),
                           const SizedBox(width: 3),
                           const Text('Offline',
                               style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w600)),
@@ -703,7 +494,7 @@ class _DownloadedCourseCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 course.title,
-                style: AppText.title.copyWith(fontSize: 13, letterSpacing: -0.1),
+                style: AppText.bodySm.copyWith(fontWeight: FontWeight.w700, fontSize: 12.5),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -736,7 +527,7 @@ class _DownloadedCourseCard extends StatelessWidget {
                             child: LinearProgressIndicator(
                               value: pct,
                               backgroundColor: ac.surf3,
-                              color: pct >= 1.0 ? ac.grn : ac.primary,
+                              color: pct >= 1.0 ? Colors.green : ac.primary,
                               minHeight: 4,
                             ),
                           ),
@@ -752,6 +543,12 @@ class _DownloadedCourseCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _coverFallback(AppColors ac) => Container(
+        color: ac.primaryBg,
+        alignment: Alignment.center,
+        child: Icon(Icons.school_rounded, color: ac.primary, size: 28),
+      );
 }
 
 class _LevelCard extends StatelessWidget {
@@ -780,16 +577,13 @@ class _LevelCard extends StatelessWidget {
         child: Container(
           width: 108,
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(Rad.md), border: Border.all(color: ac.bdr2)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
               child: HierarchyAvatar(label: level.name, icon: icon.emoji, imageUrl: icon.imageUrl, fill: true),
             ),
             const SizedBox(height: 6),
-            Text(level.name, style: AppText.title.copyWith(fontSize: 12.5),
+            Text(level.name, style: AppText.bodySm.copyWith(fontWeight: FontWeight.w700, fontSize: 12.5),
                 maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
             Text('${level.courseCount} course${level.courseCount == 1 ? '' : 's'}',
@@ -826,50 +620,6 @@ class _LevelCard extends StatelessWidget {
   }
 }
 
-// A deliberate course-cover fallback (never a flat dark rectangle): a
-// subject-derived two-tone gradient + a themed icon, so a cover-less course
-// still looks designed. Seeded by the course title for stable variety.
-Widget courseCoverFallback(String seed) {
-  const palettes = <List<Color>>[
-    [Color(0xFF0B1F3A), Color(0xFF087F5B)],
-    [Color(0xFF087F5B), Color(0xFF0E7C7B)],
-    [Color(0xFF14213D), Color(0xFF3A2C6B)],
-    [Color(0xFF0E4D64), Color(0xFF0B1F3A)],
-    [Color(0xFF5B3A1E), Color(0xFF2A1A10)],
-  ];
-  final s = seed.toLowerCase();
-  final colors = palettes[seed.hashCode.abs() % palettes.length];
-  IconData icon = Icons.school_rounded;
-  if (s.contains('math')) {
-    icon = Icons.functions_rounded;
-  } else if (s.contains('phys')) {
-    icon = Icons.science_rounded;
-  } else if (s.contains('chem')) {
-    icon = Icons.biotech_rounded;
-  } else if (s.contains('bio')) {
-    icon = Icons.eco_rounded;
-  } else if (s.contains('eng') || s.contains('lit') || s.contains('french')) {
-    icon = Icons.menu_book_rounded;
-  } else if (s.contains('hist')) {
-    icon = Icons.account_balance_rounded;
-  } else if (s.contains('geo')) {
-    icon = Icons.public_rounded;
-  } else if (s.contains('comp') || s.contains('ict') || s.contains('program') || s.contains('code')) {
-    icon = Icons.code_rounded;
-  }
-  return Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
-    ),
-    child: Stack(
-      children: [
-        Positioned(right: -8, bottom: -8, child: Icon(icon, size: 64, color: Colors.white.withValues(alpha: 0.14))),
-        Center(child: Icon(icon, color: Colors.white.withValues(alpha: 0.92), size: 26)),
-      ],
-    ),
-  );
-}
-
 class _RecommendedCard extends StatelessWidget {
   final PublicCourse course;
   final AppUser? currentUser;
@@ -887,11 +637,7 @@ class _RecommendedCard extends StatelessWidget {
         onTap: () { HapticFeedback.lightImpact(); onTap(); },
         child: Container(
           width: 160,
-          decoration: BoxDecoration(
-            color: ac.surf,
-            borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
-          ),
+          decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(Rad.md), border: Border.all(color: ac.bdr)),
           clipBehavior: Clip.antiAlias,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Stack(children: [
@@ -899,30 +645,22 @@ class _RecommendedCard extends StatelessWidget {
                 height: 96, width: double.infinity,
                 child: (course.coverImageUrl ?? '').isNotEmpty
                     ? Image.network(course.coverImageUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => courseCoverFallback(course.title))
-                    : courseCoverFallback(course.title),
+                        errorBuilder: (_, __, ___) => Container(color: ac.navy))
+                    : Container(color: ac.navy, child: Icon(Icons.school_rounded, color: ac.gold, size: 28)),
               ),
               if (currentUser != null)
                 Positioned(top: 6, right: 6, child: _BookmarkDot(course: course, userId: currentUser!.id)),
             ]),
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              padding: const EdgeInsets.all(10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 if (course.category.isNotEmpty) StatusBadge(label: course.category, color: ac.primary),
                 const SizedBox(height: 6),
-                Text(course.title, style: AppText.title.copyWith(fontSize: 13, letterSpacing: -0.1),
+                Text(course.title, style: AppText.title.copyWith(fontSize: 12.5),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.person_outline_rounded, size: 11, color: ac.muted),
-                    const SizedBox(width: 3),
-                    Expanded(
-                      child: Text(course.creatorName, style: AppText.caption.copyWith(fontSize: 10.5),
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                  ],
-                ),
+                Text('By ${course.creatorName}', style: AppText.caption.copyWith(fontSize: 10),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
               ]),
             ),
           ]),
@@ -944,22 +682,20 @@ class _BookmarkDot extends StatelessWidget {
       stream: PublicCourseRepository.instance.watchIsBookmarked(course.id, userId),
       builder: (context, snap) {
         final saved = snap.data ?? false;
-        // Mistake 1 fix: frosted container with border so the icon never gets
-        // lost against busy cover imagery.
-        return GestureDetector(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            PublicCourseRepository.instance.toggleBookmark(course.id, userId);
-          },
-          child: Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: Colors.black45,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+        return Material(
+          color: Colors.black38,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              PublicCourseRepository.instance.toggleBookmark(course.id, userId);
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(5),
+              child: Icon(saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  size: 15, color: saved ? ac.gold : Colors.white),
             ),
-            child: Icon(saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                size: 16, color: saved ? ac.gold : Colors.white),
           ),
         );
       },
@@ -976,68 +712,40 @@ class _RecentReadTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final meta = [course.category, course.topic].where((s) => s.isNotEmpty).join(' • ');
-    // Nested radius rule: outer Rad.md (16) = inner Rad.xs (8) + 8px padding
-    final outerRadius = BorderRadius.circular(Rad.md);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Material(
         color: Colors.transparent,
-        borderRadius: outerRadius,
+        borderRadius: BorderRadius.circular(Rad.sm),
         child: InkWell(
-          borderRadius: outerRadius,
+          borderRadius: BorderRadius.circular(Rad.sm),
           onTap: () { HapticFeedback.selectionClick(); onTap(); },
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: ac.surf,
-              borderRadius: outerRadius,
-              border: Border.all(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
-              boxShadow: Shad.card,
+          child: Row(children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 56, height: 56,
+                child: (course.coverImageUrl ?? '').isNotEmpty
+                    ? Image.network(course.coverImageUrl!, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(color: ac.surf3))
+                    : Container(color: ac.primaryBg, child: Icon(Icons.menu_book_rounded, color: ac.primary, size: 22)),
+              ),
             ),
-            child: Row(children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(Rad.xs),
-                child: SizedBox(
-                  width: 56, height: 56,
-                  // Mistake 2 fix: gradient fallback instead of flat solid bg —
-                  // never a plain rectangle; still looks designed without a cover.
-                  child: (course.coverImageUrl ?? '').isNotEmpty
-                      ? Image.network(course.coverImageUrl!, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _recentReadFallback(ac))
-                      : _recentReadFallback(ac),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(course.title, style: AppText.title.copyWith(fontSize: 13.5),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  if (meta.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(meta, style: AppText.caption.copyWith(fontSize: 11)),
-                  ],
-                ]),
-              ),
-              Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
-            ]),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(course.title, style: AppText.title.copyWith(fontSize: 13.5),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (meta.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(meta, style: AppText.caption.copyWith(fontSize: 11)),
+                ],
+              ]),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 18, color: ac.muted),
+          ]),
         ),
       ),
     );
   }
-
-  /// Mistake 2 fix: gradient + icon fallback so covers are never a plain
-  /// flat rectangle even when a URL is absent or fails to load.
-  Widget _recentReadFallback(AppColors ac) => Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [ac.primary.withValues(alpha: .85), ac.navy.withValues(alpha: .95)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(Rad.xs),
-        ),
-        alignment: Alignment.center,
-        child: Icon(Icons.menu_book_rounded, color: Colors.white.withValues(alpha: .9), size: 22),
-      );
 }

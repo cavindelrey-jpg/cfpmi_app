@@ -51,7 +51,7 @@ class NotificationsPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: ac.bg, elevation: 0,
         iconTheme: IconThemeData(color: ac.txt),
-        title: Text('Notifications', style: GoogleFonts.sora(
+        title: Text('Notifications', style: GoogleFonts.inter(
             fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt)),
         actions: [
           TextButton(
@@ -65,11 +65,7 @@ class NotificationsPage extends StatelessWidget {
         stream: NotificationRepository.instance.watchFeed(user.id),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: 5,
-              itemBuilder: (_, __) => const ShimmerCard(height: 84),
-            );
+            return const LoadingView();
           }
           if (snap.hasError && !snap.hasData) {
             return const EmptyState(
@@ -91,7 +87,6 @@ class NotificationsPage extends StatelessWidget {
             itemCount: items.length,
             itemBuilder: (context, i) {
               final n = items[i];
-              final radius = BorderRadius.circular(Rad.md);
               return Dismissible(
                 key: ValueKey(n.id),
                 direction: DismissDirection.endToStart,
@@ -100,71 +95,46 @@ class NotificationsPage extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(color: ac.redBg, borderRadius: radius),
+                  decoration: BoxDecoration(color: ac.redBg, borderRadius: BorderRadius.circular(Rad.md)),
                   child: Icon(Icons.delete_outline_rounded, color: ac.red),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Material(
-                    color: Colors.transparent,
-                    borderRadius: radius,
-                    child: InkWell(
-                      borderRadius: radius,
-                      onTap: () {
-                        NotificationRepository.instance.markRead(user.id, n.id);
-                        NotificationRouter.open(context, user, n);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: n.read ? ac.surf : ac.primaryBg,
-                          borderRadius: radius,
-                          border: Border.all(
-                            color: n.read ? ac.bdr.withValues(alpha: 0.7) : ac.primary.withValues(alpha: 0.35),
-                            width: 0.8,
-                          ),
-                          boxShadow: Shad.card,
-                        ),
-                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Container(
-                            width: 36, height: 36,
-                            decoration: BoxDecoration(color: ac.surf3, shape: BoxShape.circle),
-                            child: Icon(_iconFor(n.type), size: 18, color: ac.primary),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(n.title, style: AppText.subtitle.copyWith(fontSize: 13.5, color: ac.txt)),
-                              const SizedBox(height: 3),
-                              Text(n.body, maxLines: 4, overflow: TextOverflow.ellipsis, style: AppText.bodySm.copyWith(fontSize: 12.5, color: ac.txt2)),
-                              const SizedBox(height: 6),
-                              Text(_formatTimestamp(n.createdAt),
-                                  style: AppText.caption.copyWith(fontSize: 10.5, color: ac.muted)),
-                            ]),
-                          ),
-                          if (!n.read)
-                            Container(
-                              margin: const EdgeInsets.only(top: 2, left: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: ac.goldBg,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 6, height: 6,
-                                    decoration: BoxDecoration(color: ac.gold, shape: BoxShape.circle),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text('New', style: AppText.label.copyWith(fontSize: 9, color: ac.navy, letterSpacing: 0.4)),
-                                ],
-                              ),
-                            ),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: n.read ? ac.surf : ac.primaryBg,
+                    borderRadius: BorderRadius.circular(Rad.md),
+                    border: Border.all(color: ac.bdr),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(Rad.md),
+                    onTap: () {
+                      NotificationRepository.instance.markRead(user.id, n.id);
+                      NotificationRouter.open(context, user, n);
+                    },
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(color: ac.surf3, shape: BoxShape.circle),
+                        child: Icon(_iconFor(n.type), size: 18, color: ac.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(n.title, style: GoogleFonts.inter(
+                              fontSize: 13.5, fontWeight: FontWeight.w700, color: ac.txt)),
+                          const SizedBox(height: 3),
+                          Text(n.body, maxLines: 4, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(fontSize: 12.5, color: ac.txt2, height: 1.4)),
+                          const SizedBox(height: 6),
+                          Text(_formatTimestamp(n.createdAt),
+                              style: GoogleFonts.inter(fontSize: 10.5, color: ac.muted)),
                         ]),
                       ),
-                    ),
+                      if (!n.read)
+                        Container(width: 8, height: 8,
+                            margin: const EdgeInsets.only(top: 4),
+                            decoration: BoxDecoration(color: ac.gold, shape: BoxShape.circle)),
+                    ]),
                   ),
                 ),
               );

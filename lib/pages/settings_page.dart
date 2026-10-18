@@ -5,7 +5,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 import '../providers/theme_provider.dart';
@@ -20,6 +19,8 @@ import 'about_academia_page.dart';
 import '../features/onboarding/school_admin_page.dart';
 
 import '../widgets/app_background.dart';
+import '../widgets/application_shell.dart';
+
 class SettingsPage extends StatelessWidget {
   final AppUser user;
   const SettingsPage({super.key, required this.user});
@@ -27,15 +28,11 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg, elevation: 0,
-        iconTheme: IconThemeData(color: ac.txt),
-        title: Text('Settings', style: GoogleFonts.sora(
-            fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt)),
-      ),
-      body: AppBackground(child: ListView(
+    return ApplicationShell(
+      user: user,
+      currentTitle: 'Settings',
+      currentDestination: AppNavDestination.settings,
+      child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           _sectionLabel(context, 'Appearance'),
@@ -80,51 +77,12 @@ class SettingsPage extends StatelessWidget {
               () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => const AboutAcademiaPage()))),
 
-          const SizedBox(height: 16),
-          _sectionLabel(context, 'Account'),
-          _tile(context, Icons.delete_outline_rounded, 'Request account deletion',
-              'Delete your account & personal data',
-              () => _requestAccountDeletion(context, user), color: ac.red),
-
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           _tile(context, Icons.logout_rounded, 'Sign Out', null,
               () => AuthService.instance.performSignOut(context), color: ac.red),
         ],
-      )),
-    );
-  }
-
-  Future<void> _requestAccountDeletion(BuildContext context, AppUser user) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Request account deletion'),
-        content: const Text(
-          'This starts a request to permanently delete your account and personal data. '
-          'Records the school is legally required to keep (e.g. official results or financial '
-          'records) may be retained. Your request is actioned within 30 days.\n\n'
-          'Continue to send your request?',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Continue')),
-        ],
       ),
     );
-    if (confirm != true) return;
-    final uri = Uri(
-      scheme: 'mailto',
-      path: 'agencydylansdigital@gmail.com',
-      query: 'subject=CFPMI account deletion request'
-          '&body=Please delete my CFPMI account and associated data.%0A%0A'
-          'Name: ${Uri.encodeComponent(user.name)}%0ASchool: ${Uri.encodeComponent(user.schoolName)}',
-    );
-    final ok = await launchUrl(uri);
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Could not open email. Please email agencydylansdigital@gmail.com to request deletion.'),
-      ));
-    }
   }
 
   /// Three-way Light / Dark / System control rather than a plain on-off
@@ -212,8 +170,8 @@ class SettingsPage extends StatelessWidget {
 
   Widget _sectionLabel(BuildContext context, String text) => Padding(
         padding: const EdgeInsets.only(bottom: 10, left: 4),
-        child: Text(text, style: GoogleFonts.sora(
-            fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.of(context).txt2, letterSpacing: .4)),
+        child: Text(text, style: GoogleFonts.inter(
+            fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.of(context).txt2, letterSpacing: .4)),
       );
 
   Widget _tile(BuildContext context, IconData icon, String title, String? subtitle,
