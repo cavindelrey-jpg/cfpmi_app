@@ -546,25 +546,72 @@ class ClassroomControlPage extends StatelessWidget {
   Future<void> _uploadSlideImages(BuildContext context, ClassroomSession s) async {
     final res = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: true, withData: true);
     if (res == null || res.files.isEmpty) return;
-    _toast(context, 'Uploading ${res.files.length} slide(s)…');
     final files = res.files.toList()..sort((a, b) => a.name.compareTo(b.name));
     final urls = <String>[...s.slideUrls];
     var failed = 0;
-    for (final f in files) {
-      final bytes = await _readPlatformBytes(f);
-      if (bytes == null) {
-        failed++;
-        continue;
+
+    if (!context.mounted) return;
+    final progressNotifier = ValueNotifier<String>('Uploading 1 of ${files.length} slide(s)…');
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: progressNotifier,
+                    builder: (_, msg, __) => Text(msg,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      var currentIdx = 0;
+      for (final f in files) {
+        currentIdx++;
+        progressNotifier.value = 'Uploading $currentIdx of ${files.length} slide(s)…';
+        final bytes = await _readPlatformBytes(f);
+        if (bytes == null) {
+          failed++;
+          continue;
+        }
+        final up = await ClassroomUploadService.instance.uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
+        if (up is Success<String>) {
+          urls.add(up.value);
+        } else {
+          failed++;
+        }
       }
-      final up = await ClassroomUploadService.instance.uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
-      if (up is Success<String>) {
-        urls.add(up.value);
-      } else {
-        failed++;
+      final patchRes = await ClassroomRepository.instance.setSlides(sessionId, urls);
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      if (patchRes is Failure) {
+        _toast(context, 'Slides uploaded, but failed to save list: ${(patchRes as Failure).message}');
+        return;
       }
+      _toast(context, failed == 0 ? 'Slides updated (${urls.length}).' : 'Added ${urls.length - s.slideUrls.length} slide(s); $failed failed.');
+    } catch (e) {
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      _toast(context, 'Slide upload failed: $e');
     }
-    await ClassroomRepository.instance.setSlides(sessionId, urls);
-    _toast(context, failed == 0 ? 'Slides updated (${urls.length}).' : 'Added ${urls.length - s.slideUrls.length} slide(s); $failed failed.');
   }
 
   Future<void> _attachPresentation(BuildContext context, ClassroomSession s) async {
@@ -577,16 +624,67 @@ class ClassroomControlPage extends StatelessWidget {
       _toast(context, 'Could not read presentation file: ${f.name}');
       return;
     }
-    _toast(context, 'Uploading presentation ${f.name}…');
-    final up = await ClassroomUploadService.instance.uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
-    if (up is Success<String>) {
-      await ClassroomRepository.instance.setOriginalFile(sessionId, up.value);
-      if (s.slideUrls.isEmpty) {
-        await ClassroomRepository.instance.setSlides(sessionId, [up.value]);
+
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Uploading ${f.name}…',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                      const SizedBox(height: 4),
+                      const Text('Saving presentation and linking to session…',
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final up = await ClassroomUploadService.instance.uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      if (up is Success<String>) {
+        final patchRes = await ClassroomRepository.instance.setOriginalFile(sessionId, up.value);
+        if (patchRes is Failure) {
+          _toast(context, 'Uploaded file, but could not link to session: ${(patchRes as Failure).message}');
+          return;
+        }
+        if (s.slideUrls.isEmpty) {
+          await ClassroomRepository.instance.setSlides(sessionId, [up.value]);
+        }
+        _toast(context, 'Presentation attached to projected lesson.');
+      } else {
+        _toast(context, (up as Failure<String>).friendlyMessage);
       }
-      _toast(context, 'Presentation attached to projected lesson.');
-    } else {
-      _toast(context, (up as Failure<String>).friendlyMessage);
+    } catch (e) {
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      _toast(context, 'Upload encountered an error: $e');
     }
   }
 
@@ -689,11 +787,16 @@ class ClassroomControlPage extends StatelessWidget {
       ),
     );
     if (ok == true && titleCtrl.text.trim().isNotEmpty) {
-      await ClassroomRepository.instance.addResource(ClassroomResource(
+      final res = await ClassroomRepository.instance.addResource(ClassroomResource(
         id: '', sessionId: sessionId, schoolId: s.schoolId,
         title: titleCtrl.text.trim(), kind: kind, url: urlCtrl.text.trim(),
         visibility: ResourceVisibility.hidden,
       ));
+      if (res is Success) {
+        _toast(context, 'Resource added to classroom.');
+      } else {
+        _toast(context, 'Failed to save resource: ${(res as Failure).message}');
+      }
     }
   }
 }

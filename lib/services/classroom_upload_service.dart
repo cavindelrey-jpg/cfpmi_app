@@ -30,13 +30,22 @@ class ClassroomUploadService {
   }) async {
     final db = _db;
     if (db == null) return const Failure('Upload is offline right now.');
+    
+    // Attempt auto-refresh if current session needs restoration
+    if (db.auth.currentUser == null) {
+      try {
+        await db.auth.refreshSession();
+      } catch (_) {}
+    }
+
     if (db.auth.currentUser == null) {
       return const Failure('Guests cannot upload files. Please sign in as a teacher or administrator.');
     }
     try {
       final safe = filename.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final safeSchool = schoolId.trim().isEmpty ? 'shared' : schoolId.trim().replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
       final ext = safe.contains('.') ? safe.split('.').last.toLowerCase() : '';
-      final path = 'classroom/${schoolId.isEmpty ? 'shared' : schoolId}/'
+      final path = 'classroom/$safeSchool/'
           '${DateTime.now().millisecondsSinceEpoch}_$safe';
       await db.storage
           .from(_bucket)
@@ -44,8 +53,10 @@ class ClassroomUploadService {
               fileOptions: FileOptions(contentType: mimeForExt(ext), upsert: true))
           .timeout(const Duration(minutes: 5));
       return Success(db.storage.from(_bucket).getPublicUrl(path));
+    } on StorageException catch (se) {
+      return Failure('Storage error: ${se.message}', se);
     } catch (e) {
-      return Failure('Upload failed — check your connection and try again.', e);
+      return Failure('Upload failed: $e', e);
     }
   }
 

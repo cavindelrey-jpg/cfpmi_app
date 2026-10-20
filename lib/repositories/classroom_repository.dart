@@ -44,6 +44,11 @@ class ClassroomRepository {
   }
 
   Future<Result<void>> _patch(String id, Map<String, dynamic> data) async {
+    if (_db?.auth.currentUser == null) {
+      try {
+        await _db?.auth.refreshSession();
+      } catch (_) {}
+    }
     final authUser = _db?.auth.currentUser;
     if (authUser == null) {
       return const Failure('Guests cannot update classroom sessions. Please sign in as a teacher.');
@@ -54,7 +59,7 @@ class ClassroomRepository {
       await t.update(data).eq('id', id);
       return const Success(null);
     } catch (e) {
-      return Failure('Could not update the class.', e);
+      return Failure('Could not update the class: $e', e);
     }
   }
 
@@ -75,6 +80,11 @@ class ClassroomRepository {
 
   // ── Resources ──────────────────────────────────────────────────────
   Future<Result<void>> addResource(ClassroomResource r) async {
+    if (_db?.auth.currentUser == null) {
+      try {
+        await _db?.auth.refreshSession();
+      } catch (_) {}
+    }
     final authUser = _db?.auth.currentUser;
     if (authUser == null) {
       return const Failure('Guests cannot upload classroom resources. Please sign in as a teacher.');
@@ -87,7 +97,7 @@ class ClassroomRepository {
       await t.insert(map);
       return const Success(null);
     } catch (e) {
-      return Failure('Could not add the resource.', e);
+      return Failure('Could not add the resource: $e', e);
     }
   }
 
