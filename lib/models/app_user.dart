@@ -302,6 +302,8 @@ class AppUser {
       isTeacher ||
       isAdmin;
 
+  bool get isStaff => isSchoolStaff;
+
   /// Marks/attendance-record permission for one (subject, classLevel) —
   /// item 22/23/24. Admins (schoolAdmin+) can record anywhere in their own
   /// school; a class master can record for their own class regardless of
