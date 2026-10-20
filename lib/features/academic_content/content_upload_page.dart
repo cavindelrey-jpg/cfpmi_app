@@ -2,6 +2,7 @@
 // Upload new academic content with file + thumbnail. Uses Firebase Storage.
 
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -75,7 +76,7 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
       final picked = result.files.single;
       Uint8List? bytes = picked.bytes;
       File? file;
-      if (picked.path != null && picked.path!.isNotEmpty) {
+      if (!kIsWeb && picked.path != null && picked.path!.isNotEmpty) {
         file = File(picked.path!);
       }
       if (bytes == null && file == null) {
@@ -113,7 +114,7 @@ class _ContentUploadPageState extends State<ContentUploadPage> {
         setState(() {
           _thumbnailBytes = bytes;
           _thumbnailFileName = picked.name;
-          if (picked.path.isNotEmpty) {
+          if (!kIsWeb && picked.path.isNotEmpty) {
             _thumbnailFile = File(picked.path);
           }
         });

@@ -3,7 +3,9 @@
 // Follows the same pattern as Marks CSV import:
 // Download template -> Fill externally -> Upload -> Validate & Conflict check -> Bulk import.
 
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -57,14 +59,15 @@ class _TimetableCsvImportPageState extends State<TimetableCsvImportPage> {
       result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv'],
+        withData: true,
       );
     } catch (_) {
       if (mounted) showToast(context, 'Couldn\'t open file picker. Check storage permissions and try again.', isError: true);
       return;
     }
 
-    final path = result?.files.single.path;
-    if (path == null) return;
+    if (result == null || result.files.isEmpty) return;
+    final pickedFile = result.files.single;
 
     setState(() {
       _busy = true;
@@ -72,13 +75,20 @@ class _TimetableCsvImportPageState extends State<TimetableCsvImportPage> {
       _importedCount = 0;
       _failedCount = 0;
       _importError = null;
-      _fileName = result!.files.single.name;
+      _fileName = pickedFile.name;
     });
 
     try {
       final String content;
       try {
-        content = await File(path).readAsString();
+        if (pickedFile.bytes != null) {
+          content = utf8.decode(pickedFile.bytes!);
+        } else if (!kIsWeb && pickedFile.path != null) {
+          content = await File(pickedFile.path!).readAsString();
+        } else {
+          setState(() => _importError = 'Could not read the selected file.');
+          return;
+        }
       } on FileSystemException {
         setState(() => _importError = 'That file couldn\'t be opened. Save it as "CSV UTF-8" and try again.');
         return;

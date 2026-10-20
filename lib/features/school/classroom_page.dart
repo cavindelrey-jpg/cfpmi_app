@@ -40,7 +40,23 @@ class ClassroomPage extends StatelessWidget {
       currentTitle: 'Classroom',
       subtitle: 'Live classroom sessions, class group discussion, and subject schedule',
       headerActions: [
-        if (_canTeach)
+        if (_canTeach) ...[
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  settings: const RouteSettings(name: '/classroom/teacher'),
+                  builder: (_) => ClassroomTeacherPage(user: user),
+                ),
+              );
+            },
+            icon: const Icon(Icons.upload_file_rounded, size: 16),
+            label: const Text('Upload Lesson Material'),
+            style: OutlinedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          const SizedBox(width: 8),
           ElevatedButton.icon(
             onPressed: () {
               Navigator.of(context).push(
@@ -57,7 +73,8 @@ class ClassroomPage extends StatelessWidget {
               foregroundColor: Colors.white,
               visualDensity: VisualDensity.compact,
             ),
-          )
+          ),
+        ]
         else if (!user.isGuest && schoolId.isNotEmpty)
           OutlinedButton.icon(
             onPressed: () {
@@ -89,34 +106,27 @@ class ClassroomPage extends StatelessWidget {
   }
 
   Widget _classBanner(BuildContext context, AppColors ac) {
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: ac.surf,
-        borderRadius: BorderRadius.circular(Rad.md),
-        border: Border.all(color: ac.bdr),
-      ),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        alignment: WrapAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: ac.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(Icons.school_rounded, color: ac.primary, size: 28),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 720;
+        final infoWidget = Row(
+          mainAxisSize: isCompact ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: ac.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
               ),
-              const SizedBox(width: 16),
-              Column(
+              child: Icon(Icons.school_rounded, color: ac.primary, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: isCompact ? 1 : 0,
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     user.classLevel.isNotEmpty
@@ -137,32 +147,78 @@ class ClassroomPage extends StatelessWidget {
                   ),
                 ],
               ),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (canOpenClassGroup(user))
-                ElevatedButton.icon(
-                  onPressed: () => openClassGroup(context, user),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ac.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+            ),
+          ],
+        );
+
+        final actionButtons = Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (_canTeach)
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      settings: const RouteSettings(name: '/classroom/teacher'),
+                      builder: (_) => ClassroomTeacherPage(user: user),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Rad.sm),
-                    ),
-                  ),
-                  icon: const Icon(Icons.forum_outlined, size: 18),
-                  label: const Text('Open Class Chat'),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Rad.sm)),
                 ),
-            ],
+                icon: const Icon(Icons.upload_file_rounded, size: 18),
+                label: const Text('Upload Material'),
+              ),
+            if (canOpenClassGroup(user))
+              ElevatedButton.icon(
+                onPressed: () => openClassGroup(context, user),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ac.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Rad.sm),
+                  ),
+                ),
+                icon: const Icon(Icons.forum_outlined, size: 18),
+                label: const Text('Open Class Chat'),
+              ),
+          ],
+        );
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: ac.surf,
+            borderRadius: BorderRadius.circular(Rad.md),
+            border: Border.all(color: ac.bdr),
           ),
-        ],
-      ),
+          child: isCompact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    infoWidget,
+                    const SizedBox(height: 16),
+                    actionButtons,
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: infoWidget),
+                    const SizedBox(width: 16),
+                    actionButtons,
+                  ],
+                ),
+        );
+      },
     );
   }
 
@@ -174,7 +230,90 @@ class ClassroomPage extends StatelessWidget {
     if (_canTeach) {
       return LayoutBuilder(
         builder: (context, constraints) {
-          final isCompact = constraints.maxWidth < 620;
+          final isCompact = constraints.maxWidth < 680;
+          final headerIcon = Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5A93C).withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.cast_for_education_rounded,
+              color: Color(0xFFE5A93C),
+              size: 26,
+            ),
+          );
+
+          final textContent = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Interactive Classroom Presenter',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Start a live presentation, sync slides with student devices, and upload or release lesson resources.',
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  color: const Color(0xFFC0D2F0),
+                  height: 1.4,
+                ),
+              ),
+            ],
+          );
+
+          final actions = Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      settings: const RouteSettings(name: '/classroom/teacher'),
+                      builder: (_) => ClassroomTeacherPage(user: user),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE5A93C),
+                  foregroundColor: const Color(0xFF081630),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                icon: const Icon(Icons.slideshow_rounded, size: 18),
+                label: const Text('Manage Sessions'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      settings: const RouteSettings(name: '/classroom/teacher'),
+                      builder: (_) => ClassroomTeacherPage(user: user),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Color(0xFFE5A93C)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                ),
+                icon: const Icon(Icons.upload_file_rounded, size: 18, color: Color(0xFFE5A93C)),
+                label: const Text('Upload Lesson / Slides'),
+              ),
+            ],
+          );
+
           return Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -189,125 +328,22 @@ class ClassroomPage extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE5A93C).withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.cast_for_education_rounded,
-                              color: Color(0xFFE5A93C),
-                              size: 24,
-                            ),
-                          ),
+                          headerIcon,
                           const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Interactive Classroom Presenter',
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                          Expanded(child: textContent),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Start a live presentation, sync slides with student devices, and release lesson resources in real time.',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.5,
-                          color: const Color(0xFFC0D2F0),
-                          height: 1.4,
-                        ),
-                      ),
                       const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                settings: const RouteSettings(name: '/classroom/teacher'),
-                                builder: (_) => ClassroomTeacherPage(user: user),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE5A93C),
-                            foregroundColor: const Color(0xFF081630),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                          ),
-                          icon: const Icon(Icons.slideshow_rounded, size: 18),
-                          label: const Text('Manage Sessions'),
-                        ),
-                      ),
+                      actions,
                     ],
                   )
                 : Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE5A93C).withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.cast_for_education_rounded,
-                          color: Color(0xFFE5A93C),
-                          size: 26,
-                        ),
-                      ),
+                      headerIcon,
                       const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Interactive Classroom Presenter',
-                              style: GoogleFonts.inter(
-                                fontSize: 15.5,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Start a live presentation, sync slides with student devices, and release lesson resources in real time.',
-                              style: GoogleFonts.inter(
-                                fontSize: 12.5,
-                                color: const Color(0xFFC0D2F0),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      Expanded(child: textContent),
                       const SizedBox(width: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              settings: const RouteSettings(name: '/classroom/teacher'),
-                              builder: (_) => ClassroomTeacherPage(user: user),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE5A93C),
-                          foregroundColor: const Color(0xFF081630),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        icon: const Icon(Icons.slideshow_rounded, size: 18),
-                        label: const Text('Manage Sessions'),
-                      ),
+                      actions,
                     ],
                   ),
           );

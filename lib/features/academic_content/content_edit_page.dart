@@ -2,6 +2,7 @@
 // Edit existing academic content. Supports replacing file/thumbnail.
 
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -40,8 +41,10 @@ class _ContentEditPageState extends State<ContentEditPage> {
   late String _level;     // locked to kAcademicLevels
   late String _examBoard; // locked to kExamBoards
   File? _newContentFile;
+  Uint8List? _newContentBytes;
   String? _newContentFileName;
   File? _newThumbnailFile;
+  Uint8List? _newThumbnailBytes;
   bool _saving = false;
   double _uploadProgress = 0;
   String? _error;
@@ -75,15 +78,20 @@ class _ContentEditPageState extends State<ContentEditPage> {
 
   Future<void> _pickNewFile() async {
     final result = await FilePicker.platform.pickFiles(
+      withData: true,
       allowedExtensions: [
         'pdf','doc','docx','ppt','pptx','xls','xlsx',
         'mp4','mov','avi','png','jpg','jpeg','zip',
       ],
     );
-    if (result != null && result.files.single.path != null) {
+    if (result != null && result.files.isNotEmpty) {
+      final picked = result.files.single;
       setState(() {
-        _newContentFile = File(result.files.single.path!);
-        _newContentFileName = result.files.single.name;
+        _newContentBytes = picked.bytes;
+        _newContentFileName = picked.name;
+        if (!kIsWeb && picked.path != null && picked.path!.isNotEmpty) {
+          _newContentFile = File(picked.path!);
+        }
       });
     }
   }
@@ -93,7 +101,13 @@ class _ContentEditPageState extends State<ContentEditPage> {
     final picked =
         await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked != null) {
-      setState(() => _newThumbnailFile = File(picked.path));
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _newThumbnailBytes = bytes;
+        if (!kIsWeb && picked.path.isNotEmpty) {
+          _newThumbnailFile = File(picked.path);
+        }
+      });
     }
   }
 
@@ -113,9 +127,11 @@ class _ContentEditPageState extends State<ContentEditPage> {
     String? thumbnailUrl = widget.content.thumbnailUrl;
 
     // Replace content file if a new one was chosen
-    if (_newContentFile != null) {
+    if (_newContentBytes != null || _newContentFile != null) {
       final result = await repo.uploadFile(
-        file: _newContentFile!,
+        file: _newContentFile,
+        bytes: _newContentBytes,
+        fileName: _newContentFileName,
         folder: 'content_files',
         institutionId: institutionId,
         onProgress: (p) {
@@ -138,9 +154,10 @@ class _ContentEditPageState extends State<ContentEditPage> {
     // needs to know "Content updated" doesn't mean every field actually
     // changed.
     String? thumbnailWarning;
-    if (_newThumbnailFile != null) {
+    if (_newThumbnailBytes != null || _newThumbnailFile != null) {
       final result = await repo.uploadFile(
-        file: _newThumbnailFile!,
+        file: _newThumbnailFile,
+        bytes: _newThumbnailBytes,
         folder: 'thumbnails',
         institutionId: institutionId,
         onProgress: (p) {

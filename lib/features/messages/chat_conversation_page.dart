@@ -44,6 +44,8 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -212,11 +214,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   };
 
   Future<void> _pickAndSendFile() async {
-    final result = await FilePicker.platform.pickFiles(withData: false);
+    final result = await FilePicker.platform.pickFiles(withData: true);
     if (result == null || result.files.isEmpty) return;
     final picked = result.files.single;
-    final path = picked.path;
-    if (path == null) {
+    final bytes = picked.bytes;
+    final path = !kIsWeb ? picked.path : null;
+    if (bytes == null && (path == null || path.isEmpty)) {
       if (mounted) showToast(context, 'Could not read that file.', isError: true);
       return;
     }
@@ -225,13 +228,20 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       if (mounted) showToast(context, 'That file type isn\'t allowed as an attachment.', isError: true);
       return;
     }
-    await _uploadAndSendFile(File(path), picked.name);
+    await _uploadAndSendFile(
+      file: path != null ? File(path) : null,
+      bytes: bytes,
+      fileName: picked.name,
+    );
   }
 
-  Future<void> _uploadAndSendFile(File file, String fileName) async {
+  Future<void> _uploadAndSendFile({File? file, Uint8List? bytes, required String fileName}) async {
     setState(() { _sending = true; _uploadProgress = 0; });
     final upload = await MessagingRepository.instance.uploadChatFile(
-      conversationId: widget.conversationId, file: file, fileName: fileName,
+      conversationId: widget.conversationId,
+      file: file,
+      bytes: bytes,
+      fileName: fileName,
       onProgress: (p) { if (mounted) setState(() => _uploadProgress = p); },
     );
     if (upload is Success<String>) {
@@ -242,7 +252,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         fileUrl: upload.value, fileName: fileName,
       );
     } else if (mounted) {
-      _showUploadFailedSnackBar(() => _uploadAndSendFile(file, fileName));
+      _showUploadFailedSnackBar(() => _uploadAndSendFile(file: file, bytes: bytes, fileName: fileName));
     }
     if (mounted) setState(() { _sending = false; _uploadProgress = null; });
   }

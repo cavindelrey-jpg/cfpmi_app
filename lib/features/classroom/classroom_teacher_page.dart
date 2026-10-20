@@ -5,6 +5,7 @@
 
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -76,6 +77,18 @@ class _ClassroomTeacherPageState extends State<ClassroomTeacherPage> {
       currentTitle: 'Classroom Sessions',
       subtitle: 'Start a live presentation or manage lesson resources',
       currentDestination: AppNavDestination.classroom,
+      headerActions: [
+        ElevatedButton.icon(
+          onPressed: _startClassDialog,
+          icon: const Icon(Icons.add_rounded, size: 16),
+          label: const Text('New Session / Upload'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFE5A93C),
+            foregroundColor: const Color(0xFF081630),
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+      ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _startClassDialog,
         icon: const Icon(Icons.cast_rounded),
@@ -102,7 +115,7 @@ class _ClassroomTeacherPageState extends State<ClassroomTeacherPage> {
             const SizedBox(height: 12),
             Text('No classes yet', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt)),
             const SizedBox(height: 6),
-            Text('Tap "Start Class" to begin a live lesson on the projector.',
+            Text('Tap "Start Class" or "New Session / Upload" to begin and upload presentation slides.',
                 textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12.5, color: ac.txt2)),
           ]),
         ),
@@ -118,31 +131,83 @@ class _ClassroomTeacherPageState extends State<ClassroomTeacherPage> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(14), border: Border.all(color: ac.bdr)),
-        child: Row(
-          children: [
-            Container(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 560;
+            final leadingIcon = Container(
               width: 44, height: 44,
               decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
               child: Icon(live ? Icons.sensors_rounded : Icons.slideshow_rounded, color: color),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            );
+
+            final textInfo = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text('${s.classLevel} · ${s.subject}',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: ac.txt)),
-                Text(s.topic.isEmpty ? '${s.slideCount} slides' : s.topic,
+                const SizedBox(height: 2),
+                Text(s.topic.isEmpty ? '${s.slideCount} slides' : '${s.topic} • ${s.slideCount} slides',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(fontSize: 12, color: ac.txt2)),
-              ]),
-            ),
-            Container(
+              ],
+            );
+
+            final statusBadge = Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
               decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
               child: Text(live ? 'LIVE' : s.status.name,
                   style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w800, color: color)),
-            ),
-          ],
+            );
+
+            final uploadChip = Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: ac.surf2,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: ac.bdr),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.upload_file_rounded, size: 13, color: ac.primary),
+                  const SizedBox(width: 4),
+                  Text('Upload / Slides', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: ac.txt)),
+                ],
+              ),
+            );
+
+            if (isNarrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      leadingIcon,
+                      const SizedBox(width: 12),
+                      Expanded(child: textInfo),
+                      const SizedBox(width: 8),
+                      statusBadge,
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  uploadChip,
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                leadingIcon,
+                const SizedBox(width: 12),
+                Expanded(child: textInfo),
+                const SizedBox(width: 8),
+                uploadChip,
+                const SizedBox(width: 8),
+                statusBadge,
+              ],
+            );
+          },
         ),
       ),
     );
@@ -268,33 +333,39 @@ class ClassroomControlPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: ac.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(Icons.cast_for_education_rounded, color: ac.primary, size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Area 1: Projected Lesson',
-                                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isCompact = constraints.maxWidth < 640;
+                        final titleWidget = Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: ac.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              Text(
-                                'Multi-page presentation or slide deck shown on the classroom projector screen',
-                                style: GoogleFonts.inter(fontSize: 12, color: ac.txt2),
+                              child: Icon(Icons.cast_for_education_rounded, color: ac.primary, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Area 1: Projected Lesson',
+                                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt),
+                                  ),
+                                  Text(
+                                    'Multi-page presentation or slide deck shown on the classroom projector screen',
+                                    style: GoogleFonts.inter(fontSize: 12, color: ac.txt2),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        ElevatedButton.icon(
+                            ),
+                          ],
+                        );
+
+                        final button = ElevatedButton.icon(
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => ClassroomDisplayPage(sessionId: sessionId),
@@ -307,8 +378,27 @@ class ClassroomControlPage extends StatelessWidget {
                             foregroundColor: Colors.white,
                             visualDensity: VisualDensity.compact,
                           ),
-                        ),
-                      ],
+                        );
+
+                        if (isCompact) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              titleWidget,
+                              const SizedBox(height: 10),
+                              button,
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: titleWidget),
+                            const SizedBox(width: 12),
+                            button,
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 14),
 
@@ -361,16 +451,20 @@ class ClassroomControlPage extends StatelessWidget {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        OutlinedButton.icon(
+                        FilledButton.icon(
                           onPressed: () => _attachPresentation(context, s),
                           icon: const Icon(Icons.upload_file_rounded, size: 16),
                           label: Text(
                             (s.originalFile ?? '').isEmpty
-                                ? 'Upload Presentation (PDF / PowerPoint)'
+                                ? 'Upload Presentation (PDF / PPT)'
                                 : 'Replace Presentation Document',
                           ),
-                          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: ac.primary,
+                            visualDensity: VisualDensity.compact,
+                          ),
                         ),
                         OutlinedButton.icon(
                           onPressed: () => _uploadSlideImages(context, s),
@@ -381,7 +475,8 @@ class ClassroomControlPage extends StatelessWidget {
                         if ((s.originalFile ?? '').isNotEmpty)
                           FilledButton.icon(
                             style: FilledButton.styleFrom(
-                              backgroundColor: ac.primary,
+                              backgroundColor: const Color(0xFF162544),
+                              foregroundColor: Colors.white,
                               visualDensity: VisualDensity.compact,
                             ),
                             onPressed: () {
@@ -432,33 +527,39 @@ class ClassroomControlPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE5A93C).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.folder_shared_rounded, color: Color(0xFFE5A93C), size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Area 2: Student Resources',
-                                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isCompact = constraints.maxWidth < 640;
+                        final titleWidget = Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE5A93C).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              Text(
-                                'Reference materials, formula sheets, and homework sheets. Kept separate from projected slides.',
-                                style: GoogleFonts.inter(fontSize: 12, color: ac.txt2),
+                              child: const Icon(Icons.folder_shared_rounded, color: Color(0xFFE5A93C), size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Area 2: Student Resources',
+                                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt),
+                                  ),
+                                  Text(
+                                    'Reference materials, formula sheets, and homework sheets. Kept separate from projected slides.',
+                                    style: GoogleFonts.inter(fontSize: 12, color: ac.txt2),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        FilledButton.icon(
+                            ),
+                          ],
+                        );
+
+                        final button = FilledButton.icon(
                           onPressed: () => _addResourceDialog(context, s),
                           icon: const Icon(Icons.add_rounded, size: 16),
                           label: const Text('Add Resource'),
@@ -466,8 +567,27 @@ class ClassroomControlPage extends StatelessWidget {
                             backgroundColor: ac.primary,
                             visualDensity: VisualDensity.compact,
                           ),
-                        ),
-                      ],
+                        );
+
+                        if (isCompact) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              titleWidget,
+                              const SizedBox(height: 10),
+                              button,
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: titleWidget),
+                            const SizedBox(width: 12),
+                            button,
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     _ResourceControlList(sessionId: sessionId, ac: ac),
@@ -532,7 +652,7 @@ class ClassroomControlPage extends StatelessWidget {
 
   Future<Uint8List?> _readPlatformBytes(PlatformFile f) async {
     if (f.bytes != null && f.bytes!.isNotEmpty) return f.bytes;
-    if (f.path != null && f.path!.isNotEmpty) {
+    if (!kIsWeb && f.path != null && f.path!.isNotEmpty) {
       try {
         final file = File(f.path!);
         if (await file.exists()) {
@@ -719,69 +839,176 @@ class ClassroomControlPage extends StatelessWidget {
     final urlCtrl = TextEditingController();
     String kind = 'document';
     bool uploading = false;
+    String? selectedFileName;
+    String? uploadSuccessMsg;
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setD) => AlertDialog(
-          title: const Text('Add resource'),
+          title: const Text('Add Classroom Resource'),
           content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
-              const SizedBox(height: 10),
-              TextField(controller: urlCtrl, decoration: const InputDecoration(labelText: 'File URL / link', border: OutlineInputBorder())),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: uploading
-                      ? null
-                      : () async {
-                          final r = await FilePicker.platform.pickFiles(withData: true);
-                          if (r == null || r.files.isEmpty) return;
-                          final f = r.files.first;
-                          final bytes = await _readPlatformBytes(f);
-                          if (bytes == null) {
-                            _toast(context, 'Could not read file: ${f.name}');
-                            return;
-                          }
-                          setD(() => uploading = true);
-                          final up = await ClassroomUploadService.instance
-                              .uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
-                          final ext = f.name.contains('.') ? f.name.split('.').last.toLowerCase() : '';
-                          setD(() {
-                            uploading = false;
-                            if (up is Success<String>) {
-                              urlCtrl.text = up.value;
-                              kind = ClassroomUploadService.kindForExt(ext);
-                              if (titleCtrl.text.trim().isEmpty) titleCtrl.text = f.name;
-                            }
-                          });
-                        },
-                  icon: uploading
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.upload_file_rounded, size: 18),
-                  label: Text(uploading ? 'Uploading…' : 'Upload file'),
-                ),
-              ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                initialValue: kind,
-                decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
-                items: const [
-                  DropdownMenuItem(value: 'document', child: Text('Document')),
-                  DropdownMenuItem(value: 'pdf', child: Text('PDF')),
-                  DropdownMenuItem(value: 'image', child: Text('Image')),
-                  DropdownMenuItem(value: 'video', child: Text('Video')),
-                  DropdownMenuItem(value: 'pptx', child: Text('PowerPoint')),
-                  DropdownMenuItem(value: 'link', child: Text('Link')),
+            child: SizedBox(
+              width: 440,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Prominent File Dropzone / Uploader
+                  Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      onTap: uploading
+                          ? null
+                          : () async {
+                              final r = await FilePicker.platform.pickFiles(withData: true);
+                              if (r == null || r.files.isEmpty) return;
+                              final f = r.files.first;
+                              final bytes = await _readPlatformBytes(f);
+                              if (bytes == null) {
+                                _toast(context, 'Could not read file: ${f.name}');
+                                return;
+                              }
+                              setD(() {
+                                uploading = true;
+                                selectedFileName = f.name;
+                                uploadSuccessMsg = null;
+                              });
+                              final up = await ClassroomUploadService.instance
+                                  .uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
+                              final ext = f.name.contains('.') ? f.name.split('.').last.toLowerCase() : '';
+                              setD(() {
+                                uploading = false;
+                                if (up is Success<String>) {
+                                  urlCtrl.text = up.value;
+                                  kind = ClassroomUploadService.kindForExt(ext);
+                                  if (titleCtrl.text.trim().isEmpty) titleCtrl.text = f.name;
+                                  uploadSuccessMsg = 'Uploaded ${f.name} successfully!';
+                                } else {
+                                  uploadSuccessMsg = 'Upload failed: ${(up as Failure<String>).friendlyMessage}';
+                                }
+                              });
+                            },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF081630).withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: uploadSuccessMsg != null && !uploadSuccessMsg!.startsWith('Upload failed')
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFF2563EB).withValues(alpha: 0.4),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            if (uploading) ...[
+                              const SizedBox(
+                                width: 26,
+                                height: 26,
+                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Uploading $selectedFileName…',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF2563EB),
+                                ),
+                              ),
+                            ] else if (uploadSuccessMsg != null && !uploadSuccessMsg!.startsWith('Upload failed')) ...[
+                              const Icon(Icons.check_circle_rounded, size: 32, color: Color(0xFF10B981)),
+                              const SizedBox(height: 6),
+                              Text(
+                                uploadSuccessMsg!,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF10B981),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tap to choose a different file',
+                                style: GoogleFonts.inter(fontSize: 11, color: Colors.grey),
+                              ),
+                            ] else ...[
+                              const Icon(Icons.cloud_upload_outlined, size: 36, color: Color(0xFF2563EB)),
+                              const SizedBox(height: 8),
+                              Text(
+                                selectedFileName ?? 'Tap to select & upload file',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'PDF, PPTX, Word, Images, Audio, Videos',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(fontSize: 11.5, color: Colors.grey),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text('OR SPECIFY DETAILS', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey)),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(labelText: 'Title *', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: urlCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'File URL / web link',
+                      border: OutlineInputBorder(),
+                      hintText: 'https://...',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: kind,
+                    decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+                    items: const [
+                      DropdownMenuItem(value: 'document', child: Text('Document')),
+                      DropdownMenuItem(value: 'pdf', child: Text('PDF')),
+                      DropdownMenuItem(value: 'image', child: Text('Image')),
+                      DropdownMenuItem(value: 'video', child: Text('Video')),
+                      DropdownMenuItem(value: 'pptx', child: Text('PowerPoint')),
+                      DropdownMenuItem(value: 'link', child: Text('Link')),
+                    ],
+                    onChanged: (v) => setD(() => kind = v ?? 'document'),
+                  ),
                 ],
-                onChanged: (v) => setD(() => kind = v ?? 'document'),
               ),
-            ]),
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add')),
+            FilledButton(
+              onPressed: uploading ? null : () => Navigator.pop(ctx, true),
+              child: const Text('Add Resource'),
+            ),
           ],
         ),
       ),

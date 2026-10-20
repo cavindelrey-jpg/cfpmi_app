@@ -21,8 +21,8 @@
 //   academia-cameroon's version still uses.
 
 import 'dart:async';
-
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/messaging.dart';
 import '../models/app_user.dart';
@@ -455,31 +455,39 @@ class MessagingRepository {
   /// sensible name rather than a bare timestamp.
   Future<Result<String>> uploadChatFile({
     required String conversationId,
-    required File file,
+    File? file,
+    Uint8List? bytes,
     required String fileName,
     void Function(double)? onProgress,
   }) async {
     final path = 'chat_files/$conversationId/${DateTime.now().millisecondsSinceEpoch}_$fileName';
-    return _uploadWithRetry(path, file, onProgress);
+    return _uploadWithRetry(path, file: file, bytes: bytes, onProgress: onProgress);
   }
 
   /// Shared upload path for chat attachments: times out instead of
   /// hanging forever on a dead connection, retries once on failure.
   Future<Result<String>> _uploadWithRetry(
-    String path,
-    File file,
-    void Function(double)? onProgress, {
+    String path, {
+    File? file,
+    Uint8List? bytes,
+    void Function(double)? onProgress,
     int attempt = 1,
   }) async {
     try {
       onProgress?.call(0);
-      await _db.storage.from(_bucket).upload(path, file).timeout(const Duration(minutes: 5));
+      if (bytes != null) {
+        await _db.storage.from(_bucket).uploadBinary(path, bytes).timeout(const Duration(minutes: 5));
+      } else if (file != null) {
+        await _db.storage.from(_bucket).upload(path, file).timeout(const Duration(minutes: 5));
+      } else {
+        return const Failure('No file data provided');
+      }
       onProgress?.call(1);
       return Success(_db.storage.from(_bucket).getPublicUrl(path));
     } catch (e) {
       if (attempt < 2) {
         onProgress?.call(0);
-        return _uploadWithRetry(path, file, onProgress, attempt: attempt + 1);
+        return _uploadWithRetry(path, file: file, bytes: bytes, onProgress: onProgress, attempt: attempt + 1);
       }
       return Failure('Upload failed — check your connection and try again', e);
     }

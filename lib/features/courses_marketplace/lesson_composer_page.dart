@@ -119,7 +119,7 @@ class _LessonComposerPageState extends State<LessonComposerPage> {
     if (result == null || result.files.isEmpty) return;
     final picked = result.files.single;
     Uint8List? bytes = picked.bytes;
-    if (bytes == null && picked.path != null && picked.path!.isNotEmpty) {
+    if (bytes == null && !kIsWeb && picked.path != null && picked.path!.isNotEmpty) {
       try {
         bytes = await File(picked.path!).readAsBytes();
       } catch (_) {}

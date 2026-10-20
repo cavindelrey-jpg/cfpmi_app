@@ -13,6 +13,7 @@
 // inline (subject/year/paper number) before the batch proceeds.
 
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -91,7 +92,11 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
     if (result == null) return;
     final newItems = <_BatchItem>[];
     for (final f in result.files) {
-      if (f.path == null && f.bytes == null) continue;
+      if (kIsWeb) {
+        if (f.bytes == null) continue;
+      } else {
+        if (f.path == null && f.bytes == null) continue;
+      }
       final parsed = parsePastPaperFilename(f.name);
       final cleanTitle = f.name.replaceAll(RegExp(r'\.[^.]+$'), '').replaceAll('_', ' ');
       final fallbackDiscipline = cleanTitle.split(RegExp(r'\s+')).firstWhere(
@@ -105,7 +110,7 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
       final paperNumber = parsed?.paperNumber ?? 1;
       final isComplete = discipline.trim().isNotEmpty;
       newItems.add(_BatchItem(
-        file: f.path != null ? File(f.path!) : null,
+        file: (!kIsWeb && f.path != null) ? File(f.path!) : null,
         bytes: f.bytes,
         sizeBytes: f.size,
         originalName: f.name,
@@ -155,7 +160,7 @@ class _BulkPastPaperUploadPageState extends State<BulkPastPaperUploadPage> {
       setState(() {
         final key = discipline.toLowerCase();
         _pickedThumbnailBytes[key] = bytes;
-        if (picked.path.isNotEmpty) {
+        if (!kIsWeb && picked.path.isNotEmpty) {
           _pickedThumbnails[key] = File(picked.path);
         }
       });
