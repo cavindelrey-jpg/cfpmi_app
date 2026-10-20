@@ -602,6 +602,7 @@ class _ConversationRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
+                  settings: RouteSettings(name: '/messages/${conversation.id}'),
                   builder: (_) => ChatConversationPage(
                     conversationId: conversation.id,
                     currentUser: user,

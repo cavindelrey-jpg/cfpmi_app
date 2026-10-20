@@ -187,6 +187,7 @@ class _ClubsPageState extends State<ClubsPage> {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
+                              settings: const RouteSettings(name: '/clubs/create'),
                               builder: (_) => CreateClubPage(user: widget.user),
                             ),
                           );
@@ -232,6 +233,7 @@ class _ClubsPageState extends State<ClubsPage> {
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
+                                    settings: const RouteSettings(name: '/clubs/create'),
                                     builder: (_) => CreateClubPage(user: widget.user),
                                   ),
                                 );
@@ -406,6 +408,7 @@ class _ClubsPageState extends State<ClubsPage> {
                 club: myClubs[i],
                 pending: !joinedIds.contains(myClubs[i].id),
                 onOpen: () => Navigator.push(context, MaterialPageRoute(
+                    settings: RouteSettings(name: '/clubs/${myClubs[i].id}'),
                     builder: (_) => ClubDetailPage(club: myClubs[i], user: widget.user))),
               ),
             ),
@@ -433,6 +436,7 @@ class _ClubsPageState extends State<ClubsPage> {
               isMember: false,
               isPending: false,
               onOpen: () => Navigator.push(context, MaterialPageRoute(
+                  settings: RouteSettings(name: '/clubs/${recommended[i].id}'),
                   builder: (_) => ClubDetailPage(club: recommended[i], user: widget.user))),
             ),
           ),
@@ -454,6 +458,7 @@ class _ClubsPageState extends State<ClubsPage> {
             child: InkWell(
               borderRadius: BorderRadius.circular(Rad.xs),
               onTap: () => Navigator.push(context, MaterialPageRoute(
+                  settings: const RouteSettings(name: '/clubs/discover'),
                   builder: (_) => AllClubsPage(clubs: unfilteredClubs, user: widget.user))),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -482,6 +487,7 @@ class _ClubsPageState extends State<ClubsPage> {
                 isMember: false,
                 isPending: false,
                 onOpen: () => Navigator.push(context, MaterialPageRoute(
+                    settings: RouteSettings(name: '/clubs/${discoverClubs[i].id}'),
                     builder: (_) => ClubDetailPage(club: discoverClubs[i], user: widget.user))),
               ),
             ),
@@ -975,6 +981,7 @@ class AllClubsPage extends StatelessWidget {
               itemBuilder: (_, i) => _DiscoverClubCard(
                 club: clubs[i], user: user, fullWidth: true,
                 onOpen: () => Navigator.push(context, MaterialPageRoute(
+                    settings: RouteSettings(name: '/clubs/${clubs[i].id}'),
                     builder: (_) => ClubDetailPage(club: clubs[i], user: user))),
               ),
             )),
@@ -1168,6 +1175,7 @@ class _Hero extends StatelessWidget {
               icon: Icons.chat_bubble_outline_rounded,
               tooltip: 'Group chat',
               onTap: () => Navigator.push(context, MaterialPageRoute(
+                  settings: RouteSettings(name: '/clubs/${club.id}/chat'),
                   builder: (_) => ClubChatPage(club: club, user: user))),
             ),
             const SizedBox(width: 8),
@@ -1338,6 +1346,7 @@ class _Hero extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(
+                    settings: RouteSettings(name: '/clubs/${club.id}/settings'),
                     builder: (_) => ClubSettingsPage(club: club, currentUser: user)));
               },
             ),
@@ -1347,6 +1356,7 @@ class _Hero extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(
+                  settings: RouteSettings(name: '/clubs/${club.id}/members'),
                   builder: (_) => ClubMembersPage(club: club, currentUser: user)));
             },
           ),
@@ -1944,6 +1954,7 @@ class _DiscussionsTab extends StatelessWidget {
               return _DiscussionCard(
                 discussion: d,
                 onOpen: () => Navigator.push(context, MaterialPageRoute(
+                    settings: RouteSettings(name: '/clubs/${club.id}/discussions/${d.id}'),
                     builder: (_) => ClubDiscussionDetailPage(club: club, user: user, discussion: d))),
               );
             },
@@ -1955,6 +1966,7 @@ class _DiscussionsTab extends StatelessWidget {
         icon: Icon(Icons.add_rounded, color: ac.gold),
         label: Text('Ask', style: AppText.button.copyWith(fontSize: 13)),
         onPressed: () => Navigator.push(context, MaterialPageRoute(
+            settings: RouteSettings(name: '/clubs/${club.id}/discussions/new'),
             builder: (_) => AskQuestionPage(club: club, user: user))),
       ),
     );

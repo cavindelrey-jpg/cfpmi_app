@@ -68,6 +68,12 @@ import '../pages/change_password_page.dart';
 import '../pages/notifications_page.dart';
 import '../pages/profile_page.dart';
 import '../pages/profile_edit_page.dart';
+import '../pages/privacy_policy_page.dart';
+import '../pages/about_academia_page.dart';
+import '../pages/delete_account_page.dart';
+import '../pages/notification_preferences_page.dart';
+import '../features/onboarding/school_admin_page.dart';
+import '../pages/not_found_page.dart';
 import '../widgets/application_shell.dart';
 import '../pages/help_support_page.dart';
 import '../pages/bookmarks_page.dart';
@@ -121,7 +127,107 @@ class AppRouter extends StatefulWidget {
         page = VoucherEntryScreen(onBrowseAsGuest: () {});
         break;
 
-      // ── 1. Academic Library & Past Questions Hierarchy ──
+      // ── Academia Hub Hierarchy ────────────────────────────
+      case 'academia':
+        if (segments.length == 1) {
+          page = user.isParent ? ParentDashboardPage(user: user) : UniversalHomePage(user: user);
+        } else {
+          final sub = segments[1];
+          switch (sub) {
+            case 'library':
+              if (segments.length == 2) {
+                page = LibraryHomePage(user: user);
+              } else if (segments[2] == 'past-papers') {
+                if (segments.length >= 4) {
+                  page = ContentDetailsPage(contentId: segments[3], user: user);
+                } else {
+                  page = LibraryHomePage(
+                    user: user,
+                    initialCollectionFilter: 'past_papers',
+                    navDestination: AppNavDestination.pastQuestions,
+                  );
+                }
+              } else if (segments[2] == 'books') {
+                if (segments.length >= 4) {
+                  page = ContentDetailsPage(contentId: segments[3], user: user);
+                } else {
+                  page = LibraryHomePage(user: user);
+                }
+              } else if (segments[2] == 'folders' && segments.length >= 4) {
+                page = LibraryFolderPage(
+                  folderId: segments[3],
+                  folderName: q['name'] ?? 'Folder',
+                  user: user,
+                  navDestination: AppNavDestination.academicLibrary,
+                );
+              } else {
+                page = LibraryHomePage(user: user);
+              }
+              break;
+
+            case 'courses':
+              if (segments.length == 2) {
+                page = CoursesHomePage(user: user);
+              } else if (segments.length >= 3 && segments[2] == 'create') {
+                page = CourseComposerPage(user: user);
+              } else {
+                page = CoursesHomePage(user: user);
+              }
+              break;
+
+            case 'tests':
+            case 'quizzes':
+              page = QuizCategoriesPage(user: user);
+              break;
+
+            case 'exam-composer':
+            case 'set-exam':
+              page = ExamListPage(user: user);
+              break;
+
+            default:
+              page = LibraryHomePage(user: user);
+          }
+        }
+        break;
+
+      // ── Settings Hierarchy ────────────────────────────────
+      case 'settings':
+        if (segments.length == 1) {
+          page = SettingsPage(user: user);
+        } else {
+          final sub = segments[1];
+          switch (sub) {
+            case 'privacy':
+              page = PrivacyPolicyPage(user: user);
+              break;
+            case 'security':
+            case 'password':
+              page = const ChangePasswordPage();
+              break;
+            case 'notifications':
+              page = NotificationPreferencesPage(userId: user.id);
+              break;
+            case 'account':
+            case 'profile':
+              page = ProfileEditPage(user: user);
+              break;
+            case 'about':
+              page = const AboutAcademiaPage();
+              break;
+            case 'help':
+              page = HelpSupportPage(user: user);
+              break;
+            case 'delete-account':
+              page = DeleteAccountPage(user: user);
+              break;
+            default:
+              page = SettingsPage(user: user);
+          }
+        }
+        break;
+
+      // ── Academic Library & Past Questions Hierarchy ──
       case 'library':
         if (segments.length == 1) {
           page = LibraryHomePage(user: user);
@@ -133,7 +239,7 @@ class AppRouter extends StatefulWidget {
             user: user,
             navDestination: AppNavDestination.academicLibrary,
           );
-        } else if (segments.length >= 3 && segments[1] == 'item') {
+        } else if (segments.length >= 3 && (segments[1] == 'item' || segments[1] == 'books')) {
           page = ContentDetailsPage(contentId: segments[2], user: user);
         } else if (segments.length >= 2 && segments[1] == 'upload') {
           page = ContentUploadPage(user: user);
@@ -146,6 +252,8 @@ class AppRouter extends StatefulWidget {
       case 'past-papers':
         if (segments.length >= 2 && segments[1] == 'upload') {
           page = BulkPastPaperUploadPage(user: user);
+        } else if (segments.length >= 2 && segments[1] != 'upload') {
+          page = ContentDetailsPage(contentId: segments[1], user: user);
         } else {
           page = LibraryHomePage(
             user: user,
@@ -155,7 +263,7 @@ class AppRouter extends StatefulWidget {
         }
         break;
 
-      // ── 2. Academic Courses Hierarchy ───────────────────
+      // ── Academic Courses Hierarchy ───────────────────
       case 'courses':
         if (segments.length == 1) {
           page = CoursesHomePage(user: user);
@@ -166,7 +274,7 @@ class AppRouter extends StatefulWidget {
         }
         break;
 
-      // ── 3. Groups & Clubs Hierarchy ─────────────────────
+      // ── Groups & Clubs Hierarchy ─────────────────────
       case 'groups':
       case 'clubs':
         if (segments.length == 1) {
@@ -178,12 +286,22 @@ class AppRouter extends StatefulWidget {
         }
         break;
 
-      // ── 4. Messaging Hierarchy ──────────────────────────
+      // ── Messaging Hierarchy ──────────────────────────
       case 'messages':
         if (segments.length >= 3 && segments[1] == 't') {
           final convId = segments[2];
           final otherId = q['u'] ?? '';
           final otherName = q['name'] ?? 'Chat';
+          page = ChatConversationPage(
+            conversationId: convId,
+            currentUser: user,
+            otherUserId: otherId,
+            otherUserName: otherName,
+          );
+        } else if (segments.length >= 2 && segments[1] != 'find' && segments[1] != 'people') {
+          final convId = segments[1];
+          final otherId = q['u'] ?? '';
+          final otherName = q['name'] ?? 'Conversation';
           page = ChatConversationPage(
             conversationId: convId,
             currentUser: user,
@@ -197,25 +315,38 @@ class AppRouter extends StatefulWidget {
         }
         break;
 
-      // ── 5. Live Classroom & Projector Hierarchy ─────────
+      // ── Live Classroom & Projector Hierarchy ─────────
       case 'classroom':
-        if (segments.length >= 4 && segments[1] == 'session' && (segments[3] == 'projector' || segments[3] == 'display')) {
-          final sessionId = segments[2];
-          page = ClassroomDisplayPage(sessionId: sessionId);
-        } else if (segments.length >= 4 && segments[1] == 'session' && segments[3] == 'teacher') {
-          final sessionId = segments[2];
-          page = ClassroomControlPage(user: user, sessionId: sessionId);
-        } else if (segments.length >= 3 && segments[1] == 'session') {
-          final sessionId = segments[2];
-          page = user.isStaff
-              ? ClassroomControlPage(user: user, sessionId: sessionId)
-              : StudentClassroomPage(user: user);
-        } else {
+        if (segments.length == 1) {
           page = ClassroomPage(user: user);
+        } else if (segments[1] == 'teacher') {
+          page = ClassroomTeacherPage(user: user);
+        } else if (segments[1] == 'student') {
+          page = StudentClassroomPage(user: user);
+        } else {
+          final targetId = segments[1];
+          if (segments.length >= 3) {
+            final action = segments[2];
+            if (action == 'presentation' || action == 'projector' || action == 'display') {
+              page = ClassroomDisplayPage(sessionId: targetId);
+            } else if (action == 'resources') {
+              page = StudentClassroomPage(user: user);
+            } else if (action == 'teacher') {
+              page = ClassroomControlPage(user: user, sessionId: targetId);
+            } else {
+              page = user.isStaff
+                  ? ClassroomControlPage(user: user, sessionId: targetId)
+                  : StudentClassroomPage(user: user);
+            }
+          } else {
+            page = user.isStaff
+                ? ClassroomControlPage(user: user, sessionId: targetId)
+                : StudentClassroomPage(user: user);
+          }
         }
         break;
 
-      // ── 6. Tests, Quizzes & Exam Composer ───────────────
+      // ── Tests, Quizzes & Exam Composer ───────────────
       case 'tests':
       case 'quizzes':
         page = QuizCategoriesPage(user: user);
@@ -226,7 +357,7 @@ class AppRouter extends StatefulWidget {
         page = ExamListPage(user: user);
         break;
 
-      // ── 7. School Hub & Hierarchical Sub-routes ──────────
+      // ── School Hub & Hierarchical Sub-routes ──────────
       case 'school':
         if (segments.length == 1) {
           page = SchoolConnectPage(user: user);
@@ -234,11 +365,25 @@ class AppRouter extends StatefulWidget {
           final sub = segments[1];
           switch (sub) {
             case 'classes':
-              page = ClassManagementPage(user: user);
+              if (segments.length >= 4 && segments[3] == 'attendance') {
+                page = AttendancePage(user: user, initialClass: Uri.decodeComponent(segments[2]));
+              } else if (segments.length >= 4 && segments[3] == 'marks') {
+                page = MarksPage(user: user);
+              } else if (segments.length >= 4 && segments[3] == 'students') {
+                page = StudentRosterPage(user: user, initialClass: Uri.decodeComponent(segments[2]));
+              } else if (segments.length >= 4 && segments[3] == 'timetable') {
+                page = TimetablePage(user: user, initialClass: Uri.decodeComponent(segments[2]));
+              } else if (segments.length >= 3) {
+                page = StudentRosterPage(user: user, initialClass: Uri.decodeComponent(segments[2]));
+              } else {
+                page = ClassManagementPage(user: user);
+              }
               break;
             case 'students':
               if (segments.length >= 3 && segments[2] == 'import') {
                 page = StudentRosterCsvImportPage(staff: user, targetClass: q['class']);
+              } else if (segments.length >= 3) {
+                page = StudentRosterPage(user: user);
               } else {
                 page = StudentRosterPage(user: user, initialClass: q['class']);
               }
@@ -296,6 +441,9 @@ class AppRouter extends StatefulWidget {
               } else {
                 page = DailyNoticesPage(user: user);
               }
+              break;
+            case 'admin':
+              page = SchoolAdminPage(user: user);
               break;
             default:
               page = SchoolConnectPage(user: user);
@@ -359,7 +507,7 @@ class AppRouter extends StatefulWidget {
         page = SchoolConnectPage(user: user);
         break;
 
-      // ── 8. Profile, Notifications, Magazine, Dictionary, Settings ──
+      // ── Profile, Notifications, Magazine, Dictionary ──────
       case 'magazine':
         page = MagazineFeedPage(user: user);
         break;
@@ -379,22 +527,15 @@ class AppRouter extends StatefulWidget {
           page = ProfilePage(user: user);
         }
         break;
-      case 'settings':
-        if (segments.length >= 2 && (segments[1] == 'security' || segments[1] == 'password')) {
-          page = const ChangePasswordPage();
-        } else {
-          page = SettingsPage(user: user);
-        }
-        break;
       case 'help':
         page = HelpSupportPage(user: user);
         break;
 
       default:
-        return null;
+        page = NotFoundPage(user: user, attemptedPath: rawName);
     }
 
-    if (page == null) return null;
+    page ??= NotFoundPage(user: user, attemptedPath: rawName);
 
     return PageRouteBuilder(
       settings: settings,

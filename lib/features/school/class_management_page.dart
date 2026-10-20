@@ -777,6 +777,7 @@ class _ClassManagementPageState extends State<ClassManagementPage> {
                 label: const Text('Students', style: TextStyle(fontSize: 12)),
                 onPressed: () {
                   Navigator.of(context).push(MaterialPageRoute(
+                    settings: RouteSettings(name: '/school/classes/${cls.id}/students'),
                     builder: (_) => StudentRosterPage(
                       user: widget.user,
                       initialClass: cls.name,
@@ -794,6 +795,7 @@ class _ClassManagementPageState extends State<ClassManagementPage> {
                 label: const Text('Timetable', style: TextStyle(fontSize: 12)),
                 onPressed: () {
                   Navigator.of(context).push(MaterialPageRoute(
+                    settings: RouteSettings(name: '/school/classes/${cls.id}/timetable'),
                     builder: (_) => TimetablePage(
                       user: widget.user,
                       initialClass: cls.name,

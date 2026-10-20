@@ -445,6 +445,7 @@ class _CoursesHomePageState extends State<CoursesHomePage> {
   void _openCourse(BuildContext context, PublicCourse course) {
     HapticFeedback.selectionClick();
     Navigator.of(context).push(MaterialPageRoute(
+        settings: RouteSettings(name: '/courses/${course.id}'),
         builder: (_) => CourseLessonsPage(course: course, currentUser: widget.user)));
   }
 }

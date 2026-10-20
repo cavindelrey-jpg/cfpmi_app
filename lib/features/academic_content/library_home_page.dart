@@ -58,15 +58,20 @@ class LibraryHomePage extends StatelessWidget {
   bool get _canUpload => user.canUploadContent;
 
   void _openContentDirectly(BuildContext context, AcademicContent item) {
+    final routePath = item.contentType == ContentType.pastPaper
+        ? '/past-questions/${item.id}'
+        : '/library/books/${item.id}';
     if ((item.fileUrl ?? '').isNotEmpty) {
       Navigator.of(context).push(
         MaterialPageRoute(
+          settings: RouteSettings(name: routePath),
           builder: (_) => ContentViewerPage(content: item, user: user),
         ),
       );
     } else {
       Navigator.of(context).push(
         MaterialPageRoute(
+          settings: RouteSettings(name: routePath),
           builder: (_) => ContentDetailsPage(contentId: item.id, user: user),
         ),
       );

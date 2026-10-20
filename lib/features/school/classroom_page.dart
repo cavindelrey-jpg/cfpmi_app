@@ -45,6 +45,7 @@ class ClassroomPage extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
+                  settings: const RouteSettings(name: '/classroom/teacher'),
                   builder: (_) => ClassroomTeacherPage(user: user),
                 ),
               );
@@ -62,6 +63,7 @@ class ClassroomPage extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
+                  settings: const RouteSettings(name: '/classroom/live'),
                   builder: (_) => StudentClassroomPage(user: user),
                 ),
               );
@@ -228,6 +230,7 @@ class ClassroomPage extends StatelessWidget {
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
+                                settings: const RouteSettings(name: '/classroom/teacher'),
                                 builder: (_) => ClassroomTeacherPage(user: user),
                               ),
                             );
@@ -289,6 +292,7 @@ class ClassroomPage extends StatelessWidget {
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
+                              settings: const RouteSettings(name: '/classroom/teacher'),
                               builder: (_) => ClassroomTeacherPage(user: user),
                             ),
                           );
@@ -389,6 +393,7 @@ class ClassroomPage extends StatelessWidget {
                             onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
+                                  settings: const RouteSettings(name: '/classroom/live'),
                                   builder: (_) => StudentClassroomPage(user: user),
                                 ),
                               );
@@ -461,6 +466,7 @@ class ClassroomPage extends StatelessWidget {
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
+                                settings: const RouteSettings(name: '/classroom/live'),
                                 builder: (_) => StudentClassroomPage(user: user),
                               ),
                             );
@@ -508,7 +514,10 @@ class ClassroomPage extends StatelessWidget {
             TextButton.icon(
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => TimetablePage(user: user)),
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: '/school/timetable'),
+                    builder: (_) => TimetablePage(user: user),
+                  ),
                 );
               },
               icon: const Icon(Icons.calendar_today_rounded, size: 15),
@@ -604,6 +613,7 @@ class ClassroomPage extends StatelessWidget {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
+                          settings: const RouteSettings(name: '/school/timetable'),
                           builder: (_) => TimetablePage(user: user),
                         ),
                       );

@@ -46,6 +46,7 @@ class _ExamListPageState extends State<ExamListPage> {
           tooltip: 'My Collections',
           onPressed: () {
             Navigator.of(context).push(MaterialPageRoute(
+              settings: const RouteSettings(name: '/academia/exam-composer/collections'),
               builder: (_) => QuestionCollectionsPage(user: widget.user),
             ));
           },
@@ -55,6 +56,7 @@ class _ExamListPageState extends State<ExamListPage> {
           tooltip: 'Mass Upload Past Papers',
           onPressed: () {
             Navigator.of(context).push(MaterialPageRoute(
+              settings: const RouteSettings(name: '/academia/exam-composer/bulk-upload'),
               builder: (_) => BulkPastPaperUploadPage(user: widget.user),
             ));
           },
@@ -65,6 +67,7 @@ class _ExamListPageState extends State<ExamListPage> {
             tooltip: 'School Letterheads & Templates',
             onPressed: () {
               Navigator.of(context).push(MaterialPageRoute(
+                settings: const RouteSettings(name: '/academia/exam-composer/templates'),
                 builder: (_) => SchoolExamTemplatesPage(user: widget.user),
               ));
             },
@@ -73,6 +76,7 @@ class _ExamListPageState extends State<ExamListPage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.of(context).push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/academia/exam-composer/new'),
             builder: (_) => ExamMetadataPage(user: widget.user),
           ));
         },
@@ -113,6 +117,7 @@ class _ExamListPageState extends State<ExamListPage> {
                     ElevatedButton.icon(
                       onPressed: () {
                         Navigator.of(context).push(MaterialPageRoute(
+                          settings: const RouteSettings(name: '/academia/exam-composer/new'),
                           builder: (_) => ExamMetadataPage(user: widget.user),
                         ));
                       },
@@ -140,11 +145,13 @@ class _ExamListPageState extends State<ExamListPage> {
                 user: widget.user,
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
+                    settings: RouteSettings(name: '/academia/exam-composer/${exam.id}'),
                     builder: (_) => ExamComposerPage(examination: exam, user: widget.user),
                   ));
                 },
                 onPreview: () {
                   Navigator.of(context).push(MaterialPageRoute(
+                    settings: RouteSettings(name: '/academia/exam-composer/${exam.id}/preview'),
                     builder: (_) => ExamPreviewPage(examination: exam, user: widget.user),
                   ));
                 },

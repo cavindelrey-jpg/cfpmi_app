@@ -103,6 +103,7 @@ class _MarksPageState extends State<MarksPage> {
               ),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    settings: const RouteSettings(name: '/academia/exam-composer/new'),
                     builder: (_) => ExamMetadataPage(user: u))),
                 icon: const Icon(Icons.note_add_rounded, size: 14),
                 label: const Text('Set Exam'),
@@ -114,6 +115,7 @@ class _MarksPageState extends State<MarksPage> {
               const SizedBox(width: 6),
               ElevatedButton.icon(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    settings: const RouteSettings(name: '/school/marks/entry'),
                     builder: (_) => MarksEntryPage(staff: u))).then((_) => _refresh()),
                 icon: const Icon(Icons.edit_rounded, size: 14),
                 label: const Text('Record Marks'),
@@ -127,10 +129,12 @@ class _MarksPageState extends State<MarksPage> {
               const SizedBox(width: 6),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    settings: const RouteSettings(name: '/school/marks/import'),
                     builder: (_) => MarksCsvImportPage(staff: u))).then((res) {
                   if (res != null && mounted) {
                     final result = res is MarksImportResult ? res : null;
                     Navigator.of(context).push(MaterialPageRoute(
+                      settings: const RouteSettings(name: '/school/marks/entry'),
                       builder: (_) => MarksEntryPage(
                         staff: u,
                         initialClass: result?.classLevel,
@@ -467,6 +471,7 @@ class _StaffMarksHomeState extends State<_StaffMarksHome> {
     }
 
     void open(String? cls, String? subject, {AcademicSequence? sequence}) => Navigator.of(context).push(MaterialPageRoute(
+        settings: const RouteSettings(name: '/school/marks/entry'),
         builder: (_) => MarksEntryPage(
               staff: widget.staff,
               initialClass: cls,
@@ -476,6 +481,7 @@ class _StaffMarksHomeState extends State<_StaffMarksHome> {
 
     Future<void> openCsvImport() async {
       final res = await Navigator.of(context).push(MaterialPageRoute(
+          settings: const RouteSettings(name: '/school/marks/import'),
           builder: (_) => MarksCsvImportPage(staff: widget.staff)));
       if (res != null && context.mounted) {
         if (res is MarksImportResult && res.classLevel != null) {

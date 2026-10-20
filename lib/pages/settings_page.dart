@@ -49,10 +49,12 @@ class SettingsPage extends StatelessWidget {
           _tile(context, Icons.person_outline_rounded, 'Edit Profile',
               'Photo, bio, and education level',
               () => Navigator.of(context).push(MaterialPageRoute(
+                  settings: const RouteSettings(name: '/settings/account'),
                   builder: (_) => ProfileEditPage(user: user)))),
           _tile(context, Icons.lock_outline_rounded, 'Change Password',
               'Update your sign-in password',
               () => Navigator.of(context).push(MaterialPageRoute(
+                  settings: const RouteSettings(name: '/settings/security'),
                   builder: (_) => const ChangePasswordPage()))),
 
           const SizedBox(height: 24),
@@ -60,6 +62,7 @@ class SettingsPage extends StatelessWidget {
           _tile(context, Icons.notifications_outlined, 'Notification Preferences',
               "Tomorrow's programme, reminders, comments",
               () => Navigator.of(context).push(MaterialPageRoute(
+                  settings: const RouteSettings(name: '/settings/notifications'),
                   builder: (_) => NotificationPreferencesPage(userId: user.id)))),
 
           if (user.canManageSchool || user.isAdmin || user.isSchoolClassMaster) ...[
@@ -68,11 +71,13 @@ class SettingsPage extends StatelessWidget {
             _tile(context, Icons.meeting_room_outlined, 'Class Management',
                 'Configure custom classes, technical programmes, and academic years',
                 () => Navigator.of(context).push(MaterialPageRoute(
+                    settings: const RouteSettings(name: '/school/classes'),
                     builder: (_) => ClassManagementPage(user: user)))),
             if (user.canManageUsers)
               _tile(context, Icons.badge_outlined, 'School Access Admin',
                   'Register schools, issue voucher codes',
                   () => Navigator.of(context).push(MaterialPageRoute(
+                      settings: const RouteSettings(name: '/school/admin'),
                       builder: (_) => SchoolAdminPage(user: user)))),
           ],
 
@@ -80,15 +85,19 @@ class SettingsPage extends StatelessWidget {
           _sectionLabel(context, 'Support'),
           _tile(context, Icons.help_outline_rounded, 'Help & Support', 'FAQs and contact',
               () => Navigator.of(context).push(MaterialPageRoute(
+                  settings: const RouteSettings(name: '/settings/help'),
                   builder: (_) => HelpSupportPage(user: user)))),
           _tile(context, Icons.info_outline_rounded, 'About', 'Version 2.0.0',
               () => Navigator.of(context).push(MaterialPageRoute(
+                  settings: const RouteSettings(name: '/settings/about'),
                   builder: (_) => const AboutAcademiaPage()))),
           _tile(context, Icons.privacy_tip_outlined, 'Privacy Policy', 'Data protection and institutional rights',
               () => Navigator.of(context).push(MaterialPageRoute(
+                  settings: const RouteSettings(name: '/settings/privacy'),
                   builder: (_) => PrivacyPolicyPage(user: user)))),
           _tile(context, Icons.delete_outline_rounded, 'Delete Account', 'Permanently delete your profile and personal data',
               () => Navigator.of(context).push(MaterialPageRoute(
+                  settings: const RouteSettings(name: '/settings/delete-account'),
                   builder: (_) => DeleteAccountPage(user: user))), color: ac.red),
 
           const SizedBox(height: 24),

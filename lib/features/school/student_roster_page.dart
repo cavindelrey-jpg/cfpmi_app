@@ -85,6 +85,7 @@ class _StudentRosterPageState extends State<StudentRosterPage> {
   Future<void> _openImport() async {
     final updated = await Navigator.of(context).push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: '/school/students/import'),
         builder: (_) => StudentRosterCsvImportPage(
           staff: widget.user,
           targetClass: _selectedClass,
@@ -554,6 +555,7 @@ class _StudentRosterPageState extends State<StudentRosterPage> {
                 child: OutlinedButton.icon(
                   onPressed: () async {
                     await Navigator.of(context).push(MaterialPageRoute(
+                      settings: const RouteSettings(name: '/school/classes'),
                       builder: (_) => ClassManagementPage(user: widget.user),
                     ));
                     _loadClasses();

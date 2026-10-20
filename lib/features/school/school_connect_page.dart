@@ -64,6 +64,7 @@ class SchoolConnectPage extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
+                settings: const RouteSettings(name: '/school/requests/admin'),
                 builder: (_) => SchoolRequestsAdminPage(staff: user),
               ),
             ),
@@ -116,6 +117,7 @@ class SchoolConnectPage extends StatelessWidget {
               title: 'Marks',
               subtitle: 'Grades & Reports',
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                settings: const RouteSettings(name: '/school/marks'),
                 builder: (_) => MarksPage(user: user),
               )),
             ),
@@ -131,6 +133,7 @@ class SchoolConnectPage extends StatelessWidget {
               title: 'Homework',
               subtitle: 'Tasks & Quizzes',
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                settings: const RouteSettings(name: '/school/homework'),
                 builder: (_) => HomeworkPage(user: user),
               )),
             ),
@@ -146,6 +149,7 @@ class SchoolConnectPage extends StatelessWidget {
               title: 'Timetable',
               subtitle: 'Class Schedule',
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                settings: const RouteSettings(name: '/school/timetable'),
                 builder: (_) => TimetablePage(user: user),
               )),
             ),
@@ -209,6 +213,7 @@ class SchoolConnectPage extends StatelessWidget {
         title: 'Daily Notices',
         subtitle: "Tomorrow's Programme",
         onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          settings: const RouteSettings(name: '/school/notices'),
           builder: (_) => DailyNoticesPage(user: user),
         )),
       ),
@@ -222,6 +227,7 @@ class SchoolConnectPage extends StatelessWidget {
           title: 'Exam Composer',
           subtitle: 'Question Bank',
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/academia/exam-composer'),
             builder: (_) => ExamListPage(user: user),
           )),
         ),
@@ -235,6 +241,7 @@ class SchoolConnectPage extends StatelessWidget {
           title: 'Discipline',
           subtitle: 'Conduct Logs',
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/school/discipline'),
             builder: (_) => DisciplinaryRecordsPage(user: user),
           )),
         ),
@@ -248,6 +255,7 @@ class SchoolConnectPage extends StatelessWidget {
           title: 'Classes',
           subtitle: 'Custom Levels',
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/school/classes'),
             builder: (_) => ClassManagementPage(user: user),
           )),
         ),
@@ -340,6 +348,7 @@ class SchoolConnectPage extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(Rad.md),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              settings: const RouteSettings(name: '/school/requests/new'),
               builder: (_) => SchoolRequestFormPage(user: user, initialType: SchoolRequestType.general))),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -386,6 +395,7 @@ class SchoolConnectPage extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(Rad.md),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  settings: const RouteSettings(name: '/school/requests/new'),
                   builder: (_) => SchoolRequestFormPage(user: user, initialType: type))),
               child: Container(
                 width: 96,
@@ -415,6 +425,7 @@ class SchoolConnectPage extends StatelessWidget {
             icon: Icons.campaign_rounded, iconColor: ac.primary,
             title: 'Announcements',
             onViewAll: () => Navigator.of(context).push(MaterialPageRoute(
+                settings: const RouteSettings(name: '/school/announcements'),
                 builder: (_) => AnnouncementsPage(user: user, canPost: user.canPostAnnouncement))),
             child: StreamBuilder<List<Announcement>>(
               stream: AnnouncementRepository.instance.watchAnnouncements(schoolId: schoolId),
@@ -434,6 +445,7 @@ class SchoolConnectPage extends StatelessWidget {
             title: 'Upcoming Events',
             onViewAll: user.canManageSchool
                 ? () => Navigator.of(context).push(MaterialPageRoute(
+                    settings: const RouteSettings(name: '/school/calendar/manage'),
                     builder: (_) => SchoolCalendarManagerPage(user: user)))
                 : null,
             child: StreamBuilder<List<SchoolEvent>>(

@@ -194,6 +194,7 @@ class _AttendancePageState extends State<AttendancePage> {
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute(
+                settings: const RouteSettings(name: '/school/attendance/summary'),
                 builder: (_) => AttendanceSummaryPage(user: widget.user),
               ),
             );
