@@ -470,62 +470,77 @@ class _WorkspaceSubHeader extends StatelessWidget {
     final hasTopRow = (breadcrumbs != null && breadcrumbs!.isNotEmpty) ||
         (actions != null && actions!.isNotEmpty);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: ac.surf,
-        border: Border(bottom: BorderSide(color: ac.bdr)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (hasTopRow)
-            Row(
-              children: [
-                if (breadcrumbs != null && breadcrumbs!.isNotEmpty)
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (int i = 0; i < breadcrumbs!.length; i++) ...[
-                            if (i > 0)
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 6),
-                                child: Icon(
-                                  Icons.chevron_right_rounded,
-                                  size: 16,
-                                  color: ac.muted,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 600;
+        return Container(
+          decoration: BoxDecoration(
+            color: ac.surf,
+            border: Border(bottom: BorderSide(color: ac.bdr)),
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 12 : 20,
+            vertical: isCompact ? 8 : 10,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasTopRow)
+                Row(
+                  children: [
+                    if (breadcrumbs != null && breadcrumbs!.isNotEmpty)
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              for (int i = 0; i < breadcrumbs!.length; i++) ...[
+                                if (i > 0)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(horizontal: 6),
+                                    child: Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 16,
+                                      color: ac.muted,
+                                    ),
+                                  ),
+                                _BreadcrumbChip(
+                                  crumb: breadcrumbs![i],
+                                  isLast: i == breadcrumbs!.length - 1,
                                 ),
-                              ),
-                            _BreadcrumbChip(
-                              crumb: breadcrumbs![i],
-                              isLast: i == breadcrumbs!.length - 1,
-                            ),
-                          ],
-                        ],
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  )
-                else
-                  const Spacer(),
-                if (actions != null && actions!.isNotEmpty) ...[
-                  const SizedBox(width: 12),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: actions!,
-                  ),
-                ],
+                    if (actions != null && actions!.isNotEmpty) ...[
+                      if (breadcrumbs != null && breadcrumbs!.isNotEmpty)
+                        const SizedBox(width: 8)
+                      else
+                        const Spacer(),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: actions!,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              if (bottom != null) ...[
+                if (hasTopRow) const SizedBox(height: 10),
+                bottom!,
               ],
-            ),
-          if (bottom != null) ...[
-            if (hasTopRow) const SizedBox(height: 10),
-            bottom!,
-          ],
-        ],
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -638,202 +653,246 @@ class _GlobalTopBar extends StatelessWidget {
     final screenW = MediaQuery.of(context).size.width;
     final isCompact = screenW < 760;
 
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: const BoxDecoration(
-        color: Color(0xFF081630),
-        border: Border(bottom: BorderSide(color: Color(0xFF162544), width: 1)),
-      ),
-      child: Row(
-        children: [
-          // Academia Brand Badge (clickable to Home)
-          InkWell(
-            onTap: onNavigateHome,
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFE5A93C), Color(0xFFD48817)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: const Icon(
-                      Icons.school_rounded,
-                      size: 17,
-                      color: Color(0xFF081630),
-                    ),
-                  ),
-                  if (!isCompact) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      'Academia',
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFFE5A93C),
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    Container(
-                      height: 18,
-                      width: 1,
-                      margin: const EdgeInsets.symmetric(horizontal: 12),
-                      color: const Color(0xFF203666),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final topBarW = constraints.maxWidth;
+        final isCompact = topBarW < 780;
+        final isNarrow = topBarW < 520;
+        final isUltraNarrow = topBarW < 380;
+
+        return Container(
+          height: 60,
+          padding: EdgeInsets.symmetric(
+            horizontal: isUltraNarrow ? 8 : (isNarrow ? 10 : 14),
           ),
-
-          // Optional Back Button for nested pages
-          if (showBackButton) ...[
-            IconButton(
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-                color: Color(0xFFC0D2F0),
-                size: 20,
-              ),
-              tooltip: 'Back',
-              onPressed: onBack,
-            ),
-            const SizedBox(width: 2),
-          ],
-
-          // Current Page Title & optional Subtitle
-          Flexible(
-            flex: isCompact ? 2 : 1,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  pageTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: isCompact ? 15.5 : 17.5,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                if (subtitle != null && subtitle!.isNotEmpty && !isCompact)
-                  Text(
-                    subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: const Color(0xFF8CA3CF),
-                    ),
-                  ),
-              ],
-            ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF081630),
+            border: Border(bottom: BorderSide(color: Color(0xFF162544), width: 1)),
           ),
-
-          const SizedBox(width: 16),
-
-          // Center/Right: Global Search Bar
-          if (!isCompact)
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              SearchPage(user: user ?? AppUser.guest()),
+          child: Row(
+            children: [
+              // Academia Brand Badge (clickable to Home)
+              InkWell(
+                onTap: onNavigateHome,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isUltraNarrow ? 2 : 6,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFE5A93C), Color(0xFFD48817)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(7),
                         ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      height: 38,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF102142),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFF203666)),
+                        child: const Icon(
+                          Icons.school_rounded,
+                          size: 17,
+                          color: Color(0xFF081630),
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.search_rounded,
-                            size: 17,
-                            color: Color(0xFF8CA3CF),
+                      if (!isCompact) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          'Academia',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFFE5A93C),
+                            letterSpacing: -0.3,
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Search courses, books, past papers, topics...',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 12.5,
-                                color: const Color(0xFF8CA3CF),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
+                        Container(
+                          height: 18,
+                          width: 1,
+                          margin: const EdgeInsets.symmetric(horizontal: 12),
+                          color: const Color(0xFF203666),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
-            )
-          else
-            IconButton(
-              icon: const Icon(
-                Icons.search_rounded,
-                color: Color(0xFFC0D2F0),
-                size: 20,
-              ),
-              tooltip: 'Search',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SearchPage(user: user ?? AppUser.guest()),
+
+              // Optional Back Button for nested pages
+              if (showBackButton) ...[
+                IconButton(
+                  constraints: isNarrow
+                      ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                      : const BoxConstraints(minWidth: 40, minHeight: 40),
+                  padding: isNarrow
+                      ? const EdgeInsets.all(4)
+                      : const EdgeInsets.all(8),
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Color(0xFFC0D2F0),
+                    size: 20,
                   ),
-                );
-              },
-            ),
+                  tooltip: 'Back',
+                  onPressed: onBack,
+                ),
+                const SizedBox(width: 2),
+              ],
 
-          const SizedBox(width: 10),
+              // Current Page Title & optional Subtitle
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      pageTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: isUltraNarrow ? 14 : (isCompact ? 15.5 : 17.5),
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (subtitle != null && subtitle!.isNotEmpty && !isNarrow)
+                      Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: const Color(0xFF8CA3CF),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
 
-          // Light/Dark Mode Toggle
-          IconButton(
-            icon: Icon(
-              isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-              color: const Color(0xFFC0D2F0),
-              size: 20,
-            ),
-            tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-            onPressed: () => themeProvider?.toggle(),
-          ),
+              const SizedBox(width: 6),
 
-          // Real Notifications Icon + Live Unread Count Badge
-          if (!isGuest)
-            StreamBuilder<int>(
-              stream: _safeWatchNotificationCount(uid),
-              builder: (context, snap) {
-                final unread = snap.data ?? 0;
-                return _TopBarBadgeIcon(
+              // Center/Right: Global Search Bar
+              if (!isCompact)
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  SearchPage(user: user ?? AppUser.guest()),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF102142),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFF203666)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.search_rounded,
+                                size: 17,
+                                color: Color(0xFF8CA3CF),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Search courses, books, past papers, topics...',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5,
+                                    color: const Color(0xFF8CA3CF),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else if (!isUltraNarrow)
+                IconButton(
+                  constraints: isNarrow
+                      ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                      : const BoxConstraints(minWidth: 40, minHeight: 40),
+                  padding: isNarrow
+                      ? const EdgeInsets.all(4)
+                      : const EdgeInsets.all(8),
+                  icon: const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFFC0D2F0),
+                    size: 20,
+                  ),
+                  tooltip: 'Search',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SearchPage(user: user ?? AppUser.guest()),
+                      ),
+                    );
+                  },
+                ),
+
+              if (!isNarrow) ...[
+                const SizedBox(width: 4),
+                // Light/Dark Mode Toggle
+                IconButton(
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  padding: const EdgeInsets.all(8),
+                  icon: Icon(
+                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                    color: const Color(0xFFC0D2F0),
+                    size: 20,
+                  ),
+                  tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+                  onPressed: () => themeProvider?.toggle(),
+                ),
+              ],
+
+              // Real Notifications Icon + Live Unread Count Badge
+              if (!isGuest)
+                StreamBuilder<int>(
+                  stream: _safeWatchNotificationCount(uid),
+                  builder: (context, snap) {
+                    final unread = snap.data ?? 0;
+                    return _TopBarBadgeIcon(
+                      icon: Icons.notifications_outlined,
+                      tooltip: 'Notifications',
+                      badgeCount: unread,
+                      compact: isNarrow,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                NotificationsPage(user: user ?? AppUser.guest()),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                )
+              else
+                _TopBarBadgeIcon(
                   icon: Icons.notifications_outlined,
                   tooltip: 'Notifications',
-                  badgeCount: unread,
+                  badgeCount: 0,
+                  compact: isNarrow,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -842,112 +901,105 @@ class _GlobalTopBar extends StatelessWidget {
                       ),
                     );
                   },
-                );
-              },
-            )
-          else
-            _TopBarBadgeIcon(
-              icon: Icons.notifications_outlined,
-              tooltip: 'Notifications',
-              badgeCount: 0,
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        NotificationsPage(user: user ?? AppUser.guest()),
-                  ),
-                );
-              },
-            ),
+                ),
 
-          // Real Messages Icon + Live Unread Count Badge
-          if (!isGuest)
-            StreamBuilder<List<Conversation>>(
-              stream: _safeWatchConversations(uid),
-              builder: (context, snap) {
-                final convs = snap.data ?? const <Conversation>[];
-                int unread = 0;
-                for (final c in convs) {
-                  unread += c.unreadCount[uid] ?? 0;
-                }
-                return _TopBarBadgeIcon(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  tooltip: 'Messages',
-                  badgeCount: unread,
-                  onTap: () {
+              // Real Messages Icon + Live Unread Count Badge
+              if (!isUltraNarrow) ...[
+                if (!isGuest)
+                  StreamBuilder<List<Conversation>>(
+                    stream: _safeWatchConversations(uid),
+                    builder: (context, snap) {
+                      final convs = snap.data ?? const <Conversation>[];
+                      int unread = 0;
+                      for (final c in convs) {
+                        unread += c.unreadCount[uid] ?? 0;
+                      }
+                      return _TopBarBadgeIcon(
+                        icon: Icons.chat_bubble_outline_rounded,
+                        tooltip: 'Messages',
+                        badgeCount: unread,
+                        compact: isNarrow,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  MessagesHomePage(user: user ?? AppUser.guest()),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  )
+                else
+                  _TopBarBadgeIcon(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    tooltip: 'Messages',
+                    badgeCount: 0,
+                    compact: isNarrow,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              MessagesHomePage(user: user ?? AppUser.guest()),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+
+              // Bookmarks & Saved Content shortcut
+              if (!isCompact)
+                IconButton(
+                  icon: const Icon(
+                    Icons.bookmark_border_rounded,
+                    color: Color(0xFFC0D2F0),
+                    size: 20,
+                  ),
+                  tooltip: 'Bookmarks & Saved Items',
+                  onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) =>
-                            MessagesHomePage(user: user ?? AppUser.guest()),
+                            BookmarksPage(user: user ?? AppUser.guest()),
                       ),
                     );
                   },
-                );
-              },
-            )
-          else
-            _TopBarBadgeIcon(
-              icon: Icons.chat_bubble_outline_rounded,
-              tooltip: 'Messages',
-              badgeCount: 0,
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        MessagesHomePage(user: user ?? AppUser.guest()),
-                  ),
-                );
-              },
-            ),
-
-          // Bookmarks & Saved Content shortcut (replaces duplicate Quick Notes message link)
-          if (!isCompact)
-            IconButton(
-              icon: const Icon(
-                Icons.bookmark_border_rounded,
-                color: Color(0xFFC0D2F0),
-                size: 20,
-              ),
-              tooltip: 'Bookmarks & Saved Items',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        BookmarksPage(user: user ?? AppUser.guest()),
-                  ),
-                );
-              },
-            ),
-
-          // Create / Upload Content Button (only for authenticated users who can upload)
-          if (!isGuest && (user?.canUploadContent ?? false))
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1B3260),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.add_rounded,
-                  color: Colors.white,
-                  size: 20,
                 ),
-                tooltip: 'Create or Upload Content',
-                onPressed: () {
-                  if (user != null) {
-                    showCreateContentSheet(context, user!);
-                  }
-                },
-              ),
-            ),
 
-          const SizedBox(width: 6),
+              // Create / Upload Content Button
+              if (!isGuest && (user?.canUploadContent ?? false) && !isNarrow)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1B3260),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    constraints:
+                        const BoxConstraints(minWidth: 36, minHeight: 36),
+                    padding: const EdgeInsets.all(6),
+                    icon: const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    tooltip: 'Create or Upload Content',
+                    onPressed: () {
+                      if (user != null) {
+                        showCreateContentSheet(context, user!);
+                      }
+                    },
+                  ),
+                ),
 
-          // User Profile Chip (real user data, never hardcoded fallback)
-          _UserProfileChip(user: user, compact: isCompact),
-        ],
-      ),
+              SizedBox(width: isUltraNarrow ? 2 : 4),
+
+              // User Profile Chip (real user data, never hardcoded fallback)
+              _UserProfileChip(user: user, compact: isCompact),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -957,12 +1009,14 @@ class _TopBarBadgeIcon extends StatelessWidget {
   final String tooltip;
   final int badgeCount;
   final VoidCallback onTap;
+  final bool compact;
 
   const _TopBarBadgeIcon({
     required this.icon,
     required this.tooltip,
     required this.badgeCount,
     required this.onTap,
+    this.compact = false,
   });
 
   @override
@@ -971,14 +1025,18 @@ class _TopBarBadgeIcon extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         IconButton(
-          icon: Icon(icon, color: const Color(0xFFC0D2F0), size: 20),
+          constraints: compact
+              ? const BoxConstraints(minWidth: 32, minHeight: 32)
+              : const BoxConstraints(minWidth: 40, minHeight: 40),
+          padding: compact ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
+          icon: Icon(icon, color: const Color(0xFFC0D2F0), size: compact ? 18 : 20),
           tooltip: tooltip,
           onPressed: onTap,
         ),
         if (badgeCount > 0)
           Positioned(
-            right: 6,
-            top: 6,
+            right: compact ? 2 : 6,
+            top: compact ? 2 : 6,
             child: IgnorePointer(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
@@ -1034,12 +1092,12 @@ class _UserProfileChip extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(20),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 2 : 6, vertical: 4),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircleAvatar(
-              radius: 15,
+              radius: compact ? 13 : 15,
               backgroundColor: const Color(0xFFE5A93C),
               backgroundImage: (!isGuest &&
                       user?.photoUrl != null &&
