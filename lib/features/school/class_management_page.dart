@@ -193,7 +193,7 @@ class _ClassManagementPageState extends State<ClassManagementPage> {
                     SnackBar(content: Text('Class "${newClass.name}" created successfully')),
                   );
                   _loadClasses();
-                } else if (res is Failure) {
+                } else if (res is Failure<SchoolClass>) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(res.message), backgroundColor: Colors.red),
                   );
@@ -476,7 +476,7 @@ class _ClassManagementPageState extends State<ClassManagementPage> {
                       SnackBar(content: Text('Class "${cls.name}" removed')),
                     );
                     _loadClasses();
-                  } else if (res is Failure) {
+                  } else if (res is Failure<bool>) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(res.message), backgroundColor: Colors.red),
                     );

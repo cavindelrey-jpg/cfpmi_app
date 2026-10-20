@@ -600,7 +600,7 @@ class _StaffMarksHomeState extends State<_StaffMarksHome> {
                                 style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: ac.txt)),
                             const SizedBox(height: 2),
                             Text(
-                              subject ?? (staff.classMasterOfClass == cls ? 'All subjects · Class master' : 'All subjects'),
+                              subject ?? (widget.staff.classMasterOfClass == cls ? 'All subjects · Class master' : 'All subjects'),
                               softWrap: true,
                               style: GoogleFonts.inter(fontSize: 12, color: ac.txt2),
                             ),

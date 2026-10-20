@@ -298,7 +298,6 @@ class AppUser {
       schoolRole == SchoolRole.teacher ||
       schoolRole == SchoolRole.admin ||
       schoolRole == SchoolRole.classMaster ||
-      schoolRole == SchoolRole.principal ||
       schoolRole == SchoolRole.itSupport ||
       isTeacher ||
       isAdmin;
