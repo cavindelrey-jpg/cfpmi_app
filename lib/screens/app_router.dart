@@ -22,6 +22,27 @@ import '../services/auth_service.dart';
 import 'first_login_screen.dart';
 import '../features/dashboard/universal_home_page.dart';
 import '../features/school/parent_dashboard_page.dart';
+import '../features/courses_marketplace/courses_home_page.dart';
+import '../features/academic_content/library_home_page.dart';
+import '../features/testing/quiz_categories_page.dart';
+import '../features/magazine/magazine_feed_page.dart';
+import '../features/clubs/clubs_page.dart';
+import '../features/messages/messages_home_page.dart';
+import '../features/school/school_connect_page.dart';
+import '../features/school/marks_page.dart';
+import '../features/school/homework_page.dart';
+import '../features/school/timetable_page.dart';
+import '../features/school/attendance_page.dart';
+import '../features/school/fees_page.dart';
+import '../features/school/classroom_page.dart';
+import '../features/school/daily_notices/daily_notices_page.dart';
+import '../features/school/exam_composer/exam_list_page.dart';
+import '../pages/settings_page.dart';
+import '../pages/help_support_page.dart';
+import '../pages/bookmarks_page.dart';
+import '../features/timetable/personal_study_page.dart';
+import 'dictionary_screen.dart';
+import 'login_screen.dart';
 
 // ────────────────────────────────────────────────────────────────────────────
 // AppRouter — watches Firebase auth state only.
@@ -34,6 +55,93 @@ import '../features/school/parent_dashboard_page.dart';
 
 class AppRouter extends StatefulWidget {
   const AppRouter({super.key});
+
+  static Route<dynamic>? generateRoute(RouteSettings settings) {
+    final name = settings.name;
+    if (name == null || name == '/' || name.isEmpty) return null;
+
+    final user = AuthService.instance.lastKnownUser ?? AppUser.guest();
+
+    Widget page;
+    switch (name) {
+      case '/courses':
+        page = CoursesHomePage(user: user);
+        break;
+      case '/library':
+        page = LibraryHomePage(user: user);
+        break;
+      case '/past-questions':
+        page = LibraryHomePage(user: user, initialContentType: ContentType.pastPaper);
+        break;
+      case '/tests':
+      case '/quizzes':
+        page = QuizCategoriesPage(user: user);
+        break;
+      case '/homework':
+        page = HomeworkPage(user: user);
+        break;
+      case '/marks':
+        page = MarksPage(user: user);
+        break;
+      case '/classroom':
+        page = ClassroomPage(user: user);
+        break;
+      case '/set-exam':
+      case '/exam-composer':
+        page = ExamListPage(user: user);
+        break;
+      case '/messages':
+        page = MessagesHomePage(user: user);
+        break;
+      case '/clubs':
+        page = ClubsPage(user: user);
+        break;
+      case '/timetable':
+        page = TimetablePage(user: user);
+        break;
+      case '/attendance':
+        page = AttendancePage(user: user);
+        break;
+      case '/fees':
+        page = FeesPage(user: user);
+        break;
+      case '/announcements':
+        page = DailyNoticesPage(user: user);
+        break;
+      case '/magazine':
+        page = MagazineFeedPage(user: user);
+        break;
+      case '/dictionary':
+        page = DictionaryScreen(user: user);
+        break;
+      case '/bookmarks':
+        page = BookmarksPage(user: user);
+        break;
+      case '/study-plan':
+        page = PersonalStudyPage(user: user);
+        break;
+      case '/school-connect':
+        page = SchoolConnectPage(user: user);
+        break;
+      case '/settings':
+        page = SettingsPage(user: user);
+        break;
+      case '/help':
+        page = HelpSupportPage(user: user);
+        break;
+      case '/login':
+        page = const LoginScreen();
+        break;
+      default:
+        return null;
+    }
+
+    return PageRouteBuilder(
+      settings: settings,
+      pageBuilder: (_, __, ___) => page,
+      transitionDuration: Duration.zero,
+    );
+  }
 
   @override
   State<AppRouter> createState() => _AppRouterState();
@@ -55,7 +163,16 @@ class _AppRouterState extends State<AppRouter> {
       initialData: AuthService.instance.firebaseUser,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting && snap.data == null) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            backgroundColor: Color(0xFFF5F7FA),
+            body: Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1A56DB)),
+              ),
+            ),
+          );
         }
         if (snap.data == null) {
           return HomeShell(user: AppUser.guest());
@@ -92,7 +209,16 @@ class _AppUserGateState extends State<_AppUserGate> {
       initialData: AuthService.instance.lastKnownUser,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting && snap.data == null) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            backgroundColor: Color(0xFFF5F7FA),
+            body: Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1A56DB)),
+              ),
+            ),
+          );
         }
         final user = snap.data;
         if (user == null) {

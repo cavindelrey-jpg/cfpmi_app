@@ -9,6 +9,7 @@ import '../../../repositories/exam_repository.dart';
 import '../../../repositories/school_class_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/application_shell.dart';
 import 'exam_composer_page.dart';
 
 class ExamMetadataPage extends StatefulWidget {
@@ -145,13 +146,23 @@ class _ExamMetadataPageState extends State<ExamMetadataPage> {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
 
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        title: Text('Examination Details', style: AppText.title),
-        backgroundColor: ac.bg,
-      ),
-      body: SingleChildScrollView(
+    return ApplicationShell(
+      user: widget.user,
+      currentDestination: AppNavDestination.examComposer,
+      currentTitle: 'Set Exam',
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Exam Composer',
+          icon: Icons.assignment_outlined,
+          onTap: () => Navigator.of(context).maybePop(),
+        ),
+        const ShellBreadcrumb(
+          label: 'Examination Details',
+          icon: Icons.edit_note_rounded,
+        ),
+      ],
+      showBackButton: true,
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,

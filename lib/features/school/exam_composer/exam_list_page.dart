@@ -16,6 +16,7 @@ import 'exam_preview_page.dart';
 import 'question_collections_page.dart';
 import 'school_exam_templates_page.dart';
 import '../../academic_content/bulk_past_paper_upload_page.dart';
+import '../../../widgets/application_shell.dart';
 
 class ExamListPage extends StatefulWidget {
   final AppUser user;
@@ -35,42 +36,40 @@ class _ExamListPageState extends State<ExamListPage> {
     final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
     final canManageTemplates = widget.user.isAdmin || widget.user.canManageSchool;
 
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        title: Text('Exam Composer', style: AppText.title),
-        backgroundColor: ac.bg,
-        actions: [
+    return ApplicationShell(
+      user: widget.user,
+      currentDestination: AppNavDestination.examComposer,
+      currentTitle: 'Exam Composer',
+      headerActions: [
+        IconButton(
+          icon: const Icon(Icons.collections_bookmark_outlined),
+          tooltip: 'My Collections',
+          onPressed: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => QuestionCollectionsPage(user: widget.user),
+            ));
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.drive_folder_upload_rounded),
+          tooltip: 'Mass Upload Past Papers',
+          onPressed: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => BulkPastPaperUploadPage(user: widget.user),
+            ));
+          },
+        ),
+        if (canManageTemplates)
           IconButton(
-            icon: const Icon(Icons.collections_bookmark_outlined),
-            tooltip: 'My Collections',
+            icon: const Icon(Icons.style_outlined),
+            tooltip: 'School Letterheads & Templates',
             onPressed: () {
               Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => QuestionCollectionsPage(user: widget.user),
+                builder: (_) => SchoolExamTemplatesPage(user: widget.user),
               ));
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.drive_folder_upload_rounded),
-            tooltip: 'Mass Upload Past Papers',
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => BulkPastPaperUploadPage(user: widget.user),
-              ));
-            },
-          ),
-          if (canManageTemplates)
-            IconButton(
-              icon: const Icon(Icons.style_outlined),
-              tooltip: 'School Letterheads & Templates',
-              onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => SchoolExamTemplatesPage(user: widget.user),
-                ));
-              },
-            ),
-        ],
-      ),
+      ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.of(context).push(MaterialPageRoute(
@@ -82,7 +81,7 @@ class _ExamListPageState extends State<ExamListPage> {
         icon: const Icon(Icons.add_rounded),
         label: const Text('Create Examination'),
       ),
-      body: StreamBuilder<List<Examination>>(
+      child: StreamBuilder<List<Examination>>(
         stream: ExamRepository.instance.watchExaminations(
           schoolId: schoolId,
           teacherId: widget.user.isAdmin ? null : widget.user.id,

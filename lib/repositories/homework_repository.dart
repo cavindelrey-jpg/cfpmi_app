@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/core.dart';
 import '../models/homework.dart';
 import '../core/realtime_tolerant.dart';
+import 'student_roster_repository.dart';
 
 class HomeworkRepository {
   HomeworkRepository._();
@@ -25,8 +26,9 @@ class HomeworkRepository {
   /// -- powers a student's "My Homework" list.
   Stream<List<Homework>> watchForClass(String schoolId, String classLevel) {
     if (schoolId.isEmpty || classLevel.isEmpty) return Stream.value(const []);
-    return _streamCache.watch('watchForClass_${schoolId}_$classLevel', () => 
-      _homework.stream(primaryKey: ['id']).eq('school_id', schoolId)
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
+    return _streamCache.watch('watchForClass_${resolvedSchoolId}_$classLevel', () => 
+      _homework.stream(primaryKey: ['id']).eq('school_id', resolvedSchoolId)
         .realtimeTolerant().map((rows) {
         final list = rows.where((r) => r['class_level'] == classLevel).map(_fromRow).toList()
           ..sort((a, b) => b.dueAt.compareTo(a.dueAt));
@@ -100,7 +102,7 @@ class HomeworkRepository {
   }
 
   Map<String, dynamic> _toRow(Homework h) => {
-        'school_id': h.schoolId,
+        'school_id': StudentRosterRepository.resolveSchoolId(h.schoolId),
         'class_level': h.classLevel,
         'subject': h.subject,
         'teacher_id': h.teacherId,

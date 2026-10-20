@@ -10,11 +10,46 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/classroom.dart';
 import '../../repositories/classroom_repository.dart';
+import '../../widgets/web_doc_embed.dart';
 import 'classroom_slide.dart';
 
 class ClassroomDisplayPage extends StatelessWidget {
   final String sessionId;
   const ClassroomDisplayPage({super.key, required this.sessionId});
+
+  Widget _buildSlideContent(ClassroomSession s) {
+    if (s.slideUrls.isNotEmpty) {
+      final url = s.currentSlideUrl;
+      final ext = (url ?? '').contains('.') ? url!.split('.').last.toLowerCase().split('?').first : '';
+      if (ext == 'pptx' || ext == 'ppt' || ext == 'pdf') {
+        final embedUrl = ext == 'pdf' ? url! : officeViewerUrl(url!);
+        return WebDocEmbed(url: embedUrl);
+      }
+      return ClassroomSlide(
+        url: url,
+        index: s.currentSlide,
+        total: s.slideCount,
+        topic: s.topic,
+        large: true,
+      );
+    }
+
+    final orig = s.originalFile ?? '';
+    final ext = orig.contains('.') ? orig.split('.').last.toLowerCase().split('?').first : '';
+    final isDoc = orig.isNotEmpty && (ext == 'pptx' || ext == 'ppt' || ext == 'pdf');
+    if (isDoc) {
+      final embedUrl = ext == 'pdf' ? orig : officeViewerUrl(orig);
+      return WebDocEmbed(url: embedUrl);
+    }
+
+    return ClassroomSlide(
+      url: null,
+      index: 0,
+      total: 0,
+      topic: s.topic,
+      large: true,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,13 +65,7 @@ class ClassroomDisplayPage extends StatelessWidget {
           return Stack(
             children: [
               Positioned.fill(
-                child: ClassroomSlide(
-                  url: s.currentSlideUrl,
-                  index: s.currentSlide,
-                  total: s.slideCount,
-                  topic: s.topic,
-                  large: true,
-                ),
+                child: _buildSlideContent(s),
               ),
               // Minimal lesson banner, top-left, so a late arrival can orient.
               Positioned(

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/result.dart';
 import '../models/school.dart';
 import '../core/realtime_tolerant.dart';
+import 'student_roster_repository.dart';
 
 class SchoolRepository {
   SchoolRepository._();
@@ -68,16 +69,21 @@ class SchoolRepository {
 
   Future<School?> getByIdOnce(String schoolId, {bool forceRefresh = false}) async {
     if (schoolId.isEmpty) return null;
+    final resolvedId = StudentRosterRepository.resolveSchoolId(schoolId);
     
+    if (!forceRefresh && _idCache.containsKey(resolvedId)) {
+      return _idCache[resolvedId];
+    }
     if (!forceRefresh && _idCache.containsKey(schoolId)) {
       return _idCache[schoolId];
     }
 
-    final row = await _supabase.from('institutions').select().eq('id', schoolId).maybeSingle();
+    final row = await _supabase.from('institutions').select().eq('id', resolvedId).maybeSingle();
     if (row == null) return null;
     
     final school = School.fromSupabase(row);
     _idCache[schoolId] = school;
+    _idCache[resolvedId] = school;
     _codeCache[school.code.toUpperCase()] = school;
     return school;
   }

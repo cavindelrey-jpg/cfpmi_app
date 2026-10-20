@@ -178,32 +178,41 @@ class _ClubsPageState extends State<ClubsPage> {
                   currentTitle: 'Study Groups & Clubs',
                   subtitle: 'Join academic clubs, subject study groups, and campus communities',
                   currentDestination: AppNavDestination.clubs,
-                  headerActions: [
-                    if (_canCreate)
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CreateClubPage(user: widget.user),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Create Group'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF081630),
-                          foregroundColor: Colors.white,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                  ],
                   bottomHeader: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _searchBar(ac),
+                      Row(
+                        children: [
+                          Expanded(child: _searchBar(ac)),
+                          if (_canCreate) ...[
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                HapticFeedback.mediumImpact();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CreateClubPage(user: widget.user),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: const Text('Create Group'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF081630),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                       if (categories.length > 1) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         _categoryChips(categories, ac),
                       ],
                     ],
@@ -233,37 +242,34 @@ class _ClubsPageState extends State<ClubsPage> {
   }
 
   Widget _searchBar(AppColors ac) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: TextField(
-        controller: _searchCtrl,
-        style: AppText.bodySm.copyWith(color: ac.txt),
-        decoration: InputDecoration(
-          hintText: 'Search groups by name, interest or subject…',
-          hintStyle: AppText.bodySm.copyWith(color: ac.muted, fontSize: 13),
-          prefixIcon: Icon(Icons.search_rounded, color: ac.muted, size: 20),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: Icon(Icons.clear_rounded, color: ac.muted, size: 18),
-                  onPressed: () => _searchCtrl.clear(),
-                )
-              : null,
-          filled: true,
-          fillColor: ac.surf,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: ac.bdr),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: ac.bdr),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: ac.primary),
-          ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+    return TextField(
+      controller: _searchCtrl,
+      style: AppText.bodySm.copyWith(color: ac.txt),
+      decoration: InputDecoration(
+        hintText: 'Search groups by name, interest or subject…',
+        hintStyle: AppText.bodySm.copyWith(color: ac.muted, fontSize: 13),
+        prefixIcon: Icon(Icons.search_rounded, color: ac.muted, size: 20),
+        suffixIcon: _searchQuery.isNotEmpty
+            ? IconButton(
+                icon: Icon(Icons.clear_rounded, color: ac.muted, size: 18),
+                onPressed: () => _searchCtrl.clear(),
+              )
+            : null,
+        filled: true,
+        fillColor: ac.surf,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: ac.bdr),
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: ac.bdr),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: ac.primary),
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
       ),
     );
   }
@@ -273,7 +279,7 @@ class _ClubsPageState extends State<ClubsPage> {
     return SizedBox(
       height: 36,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.zero,
         scrollDirection: Axis.horizontal,
         itemCount: chips.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),

@@ -114,6 +114,34 @@ enum AppNavDestination {
   none,
 }
 
+extension AppNavDestinationRouting on AppNavDestination {
+  String get routePath => switch (this) {
+    AppNavDestination.home => '/',
+    AppNavDestination.academicCourses => '/courses',
+    AppNavDestination.academicLibrary => '/library',
+    AppNavDestination.pastQuestions => '/past-questions',
+    AppNavDestination.testsAndQuizzes => '/tests',
+    AppNavDestination.magazine => '/magazine',
+    AppNavDestination.clubs => '/clubs',
+    AppNavDestination.messages => '/messages',
+    AppNavDestination.dictionary => '/dictionary',
+    AppNavDestination.bookmarks => '/bookmarks',
+    AppNavDestination.studyPlan => '/study-plan',
+    AppNavDestination.schoolConnect => '/school-connect',
+    AppNavDestination.marks => '/marks',
+    AppNavDestination.homework => '/homework',
+    AppNavDestination.timetable => '/timetable',
+    AppNavDestination.attendance => '/attendance',
+    AppNavDestination.fees => '/fees',
+    AppNavDestination.classroom => '/classroom',
+    AppNavDestination.announcements => '/announcements',
+    AppNavDestination.examComposer => '/set-exam',
+    AppNavDestination.settings => '/settings',
+    AppNavDestination.help => '/help',
+    AppNavDestination.none => '/',
+  };
+}
+
 class ShellBreadcrumb {
   final String label;
   final VoidCallback? onTap;
@@ -322,6 +350,7 @@ class _ApplicationShellState extends State<ApplicationShell> {
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
+        settings: RouteSettings(name: dest.routePath),
         pageBuilder: (_, __, ___) => page,
         transitionDuration: Duration.zero,
       ),
@@ -424,21 +453,7 @@ class _ApplicationShellState extends State<ApplicationShell> {
                                   bottom: widget.bottomHeader,
                                 ),
                               Expanded(
-                                child: Align(
-                                  alignment: Alignment.topLeft,
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxWidth: isDesktop
-                                          ? (width >= 1600
-                                              ? (width * 0.38).clamp(600.0, 920.0)
-                                              : (width >= 1200
-                                                  ? (width * 0.44).clamp(560.0, 860.0)
-                                                  : 840.0))
-                                          : double.infinity,
-                                    ),
-                                    child: widget.child,
-                                  ),
-                                ),
+                                child: widget.child,
                               ),
                             ],
                           ),

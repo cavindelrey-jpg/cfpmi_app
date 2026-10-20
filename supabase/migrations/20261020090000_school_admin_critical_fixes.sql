@@ -562,3 +562,76 @@ create policy "school exam templates all" on public.school_exam_templates
 do $$ begin alter publication supabase_realtime add table public.examinations; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.question_collections; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.school_exam_templates; exception when duplicate_object then null; end $$;
+
+-- ── 6. homework RLS ──────────────────────────────────────────────────────────
+
+drop policy if exists "homework select" on public.homework;
+create policy "homework select" on public.homework
+  for select
+  using (
+    exists (
+      select 1 from public.users u
+      where u.id = auth.uid()
+        and (
+          u.role = 'super_admin'
+          or (
+            (u.institution_id = homework.school_id or homework.school_id = '446007a8-4389-40eb-bfa7-5452541b5a1f'::uuid)
+            and (
+              u.class_level = homework.class_level
+              or u.role in ('lecturer', 'department_admin', 'school_admin')
+            )
+          )
+        )
+    )
+    or exists (
+      select 1 from public.school_memberships m
+      where m.user_id = auth.uid()
+        and (m.school_id = homework.school_id or homework.school_id = '446007a8-4389-40eb-bfa7-5452541b5a1f'::uuid)
+    )
+  );
+
+drop policy if exists "homework insert" on public.homework;
+create policy "homework insert" on public.homework
+  for insert
+  with check (
+    teacher_id = auth.uid()
+    and (
+      exists (
+        select 1 from public.users u
+        where u.id = auth.uid()
+          and (
+            u.role = 'super_admin'
+            or (
+              (u.institution_id = homework.school_id or homework.school_id = '446007a8-4389-40eb-bfa7-5452541b5a1f'::uuid)
+              and u.role in ('lecturer', 'department_admin', 'school_admin')
+            )
+          )
+      )
+      or exists (
+        select 1 from public.school_memberships m
+        where m.user_id = auth.uid()
+          and (m.school_id = homework.school_id or homework.school_id = '446007a8-4389-40eb-bfa7-5452541b5a1f'::uuid)
+          and public.role_level(m.role) >= public.role_level('lecturer')
+      )
+    )
+  );
+
+drop policy if exists "homework update" on public.homework;
+create policy "homework update" on public.homework
+  for update
+  using (
+    teacher_id = auth.uid()
+    or public.has_school_role(homework.school_id, 'school_admin')
+  )
+  with check (
+    teacher_id = auth.uid()
+    or public.has_school_role(homework.school_id, 'school_admin')
+  );
+
+drop policy if exists "homework delete" on public.homework;
+create policy "homework delete" on public.homework
+  for delete
+  using (
+    teacher_id = auth.uid()
+    or public.has_school_role(homework.school_id, 'school_admin')
+  );

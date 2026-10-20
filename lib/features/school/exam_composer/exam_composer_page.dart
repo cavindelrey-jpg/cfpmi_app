@@ -12,6 +12,7 @@ import '../../../repositories/exam_repository.dart';
 import '../../../repositories/student_roster_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/application_shell.dart';
 import 'exam_preview_page.dart';
 import 'question_bank_picker_sheet.dart';
 import 'question_editor_dialog.dart';
@@ -243,71 +244,75 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
     final totalMarks = _exam.computedTotalMarks;
     final topicCount = _exam.questions.map((q) => q.topic).where((t) => t.isNotEmpty).toSet().length;
 
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_exam.title, style: AppText.title.copyWith(fontSize: 16)),
-            Text('${_exam.subject} · ${_exam.classLevel}',
-                style: AppText.caption.copyWith(color: ac.muted, fontSize: 11)),
-          ],
-        ),
-        backgroundColor: ac.bg,
-        actions: [
-          TextButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ExamPreviewPage(examination: _exam, user: widget.user),
-              ));
-            },
-            icon: const Icon(Icons.preview_rounded, size: 18),
-            label: const Text('Preview'),
+    final bottomBar = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: ac.surf,
+        border: Border(top: BorderSide(color: ac.bdr)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _showAddQuestionOptions,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Question'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => ExamPreviewPage(examination: _exam, user: widget.user),
+                ));
+              },
+              icon: const Icon(Icons.assignment_turned_in_rounded),
+              label: const Text('Finalize / Preview'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ac.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
           ),
         ],
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: ac.surf,
-          border: Border(top: BorderSide(color: ac.bdr)),
+    );
+
+    return ApplicationShell(
+      user: widget.user,
+      currentDestination: AppNavDestination.examComposer,
+      currentTitle: _exam.title.isNotEmpty ? _exam.title : 'Exam Composer',
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Exam Composer',
+          icon: Icons.assignment_outlined,
+          onTap: () => Navigator.of(context).maybePop(),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _showAddQuestionOptions,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Question'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => ExamPreviewPage(examination: _exam, user: widget.user),
-                  ));
-                },
-                icon: const Icon(Icons.assignment_turned_in_rounded),
-                label: const Text('Finalize / Preview'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ac.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ],
+        ShellBreadcrumb(
+          label: '${_exam.subject} (${_exam.classLevel})',
+          icon: Icons.playlist_play_rounded,
         ),
-      ),
-      body: Column(
+      ],
+      showBackButton: true,
+      headerActions: [
+        TextButton.icon(
+          onPressed: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ExamPreviewPage(examination: _exam, user: widget.user),
+            ));
+          },
+          icon: const Icon(Icons.preview_rounded, size: 18),
+          label: const Text('Preview'),
+        ),
+      ],
+      child: Column(
         children: [
           // Playlist Summary Header Bar
           Container(
@@ -376,6 +381,9 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
                     },
                   ),
           ),
+
+          // Bottom Action Bar
+          bottomBar,
         ],
       ),
     );

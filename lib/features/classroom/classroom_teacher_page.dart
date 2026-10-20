@@ -439,6 +439,9 @@ class ClassroomControlPage extends StatelessWidget {
     final up = await ClassroomUploadService.instance.uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
     if (up is Success<String>) {
       await ClassroomRepository.instance.setOriginalFile(sessionId, up.value);
+      if (s.slideUrls.isEmpty) {
+        await ClassroomRepository.instance.setSlides(sessionId, [up.value]);
+      }
       final ext = f.name.contains('.') ? f.name.split('.').last.toLowerCase() : 'pptx';
       await ClassroomRepository.instance.addResource(ClassroomResource(
         id: '',

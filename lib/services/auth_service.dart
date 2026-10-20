@@ -38,6 +38,7 @@ import 'analytics_service.dart' show AuditService, AuditSeverity;
 import 'app_user_cache_service.dart';
 import 'message_cache_service.dart';
 import '../core/realtime_tolerant.dart';
+import '../repositories/student_roster_repository.dart';
 
 class AuthService {
   AuthService._();
@@ -159,19 +160,24 @@ class AuthService {
   /// existing "sees everything" contract everywhere else in the app.
   Future<void> _assertBelongsToThisBrand(AppUser user) async {
     if (Branding.current.brandId == 'academia' || user.isSuperAdmin) return;
-    final mismatch = user.schoolId == null
-        ? true
-        : (await SchoolRepository.instance.getByIdOnce(user.schoolId!))?.code !=
-            Branding.current.voucherPrefix;
-    if (mismatch) {
-      await _supabase.auth.signOut();
-      unawaited(AuditService.instance.log(
-        institutionId: user.schoolId, actorId: user.id, actorRole: user.roleLabel,
-        action: 'login_blocked_wrong_brand', severity: AuditSeverity.warning,
-      ));
-      throw Exception(
-          'This account isn\'t linked to ${Branding.current.appName}. '
-          'Sign in from the app your school gave you a code for.');
+    final currentAppSchool = StudentRosterRepository.resolveSchoolId(Branding.current.effectiveSchoolId ?? '');
+    final userSchool = (user.schoolId != null && user.schoolId!.isNotEmpty)
+        ? StudentRosterRepository.resolveSchoolId(user.schoolId!)
+        : null;
+
+    // If user has an explicit school linked, only block if it definitely points to a DIFFERENT school
+    if (userSchool != null && currentAppSchool.isNotEmpty && userSchool != currentAppSchool) {
+      final school = await SchoolRepository.instance.getByIdOnce(userSchool);
+      if (school != null && school.code.toUpperCase() != Branding.current.voucherPrefix.toUpperCase()) {
+        await _supabase.auth.signOut();
+        unawaited(AuditService.instance.log(
+          institutionId: user.schoolId, actorId: user.id, actorRole: user.roleLabel,
+          action: 'login_blocked_wrong_brand', severity: AuditSeverity.warning,
+        ));
+        throw Exception(
+            'This account isn\'t linked to ${Branding.current.appName}. '
+            'Sign in from the app your school gave you a code for.');
+      }
     }
   }
 
@@ -372,8 +378,14 @@ class AuthService {
     _lastKnownUser = null;
     final uid = _supabase.auth.currentUser?.id;
     if (uid != null) unawaited(AppUserCacheService.instance.clear(uid));
-    await _google.signOut();
-    await _supabase.auth.signOut();
+    try {
+      await _google.signOut();
+    } catch (_) {}
+    try {
+      await _supabase.auth.signOut();
+    } catch (e) {
+      debugPrint('Supabase signOut error: $e');
+    }
   }
 
   /// Re-authenticates with the current password, then sets the new one.
