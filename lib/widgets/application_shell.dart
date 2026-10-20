@@ -594,8 +594,13 @@ class _GlobalTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDark;
+    ThemeProvider? themeProvider;
+    try {
+      themeProvider = Provider.of<ThemeProvider>(context);
+    } catch (_) {
+      themeProvider = null;
+    }
+    final isDark = themeProvider?.isDark ?? (Theme.of(context).brightness == Brightness.dark);
     final uid = user?.id ?? '';
     final isGuest = user == null || user!.isGuest || uid.isEmpty;
     final screenW = MediaQuery.of(context).size.width;
@@ -784,7 +789,7 @@ class _GlobalTopBar extends StatelessWidget {
               size: 20,
             ),
             tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-            onPressed: () => themeProvider.toggle(),
+            onPressed: () => themeProvider?.toggle(),
           ),
 
           // Real Notifications Icon + Live Unread Count Badge
