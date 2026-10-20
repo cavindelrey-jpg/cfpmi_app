@@ -50,7 +50,7 @@ class _SchoolCalendarPageState extends State<SchoolCalendarPage> {
   List<SchoolCalendarEvent> _currentEvents = const [];
 
   bool get _canManage => widget.user.hasMinRole(UserRole.schoolAdmin);
-  String get _schoolId => widget.user.schoolId ?? '';
+  String get _schoolId => widget.user.effectiveSchoolId;
 
   void _openComposer({SchoolCalendarEvent? existing}) {
     showModalBottomSheet(

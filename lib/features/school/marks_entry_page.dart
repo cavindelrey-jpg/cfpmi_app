@@ -29,6 +29,9 @@ import '../../services/school_document_export_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
+import '../../models/student_record.dart';
+import '../../repositories/student_roster_repository.dart';
+import 'exam_composer/exam_metadata_page.dart';
 import 'marks_csv_import_page.dart';
 import 'student_roster_page.dart';
 import 'widgets/management_scaffold.dart';
@@ -93,7 +96,7 @@ class _MarksEntryPageState extends State<MarksEntryPage> {
   final Map<String, FocusNode> _focus = {};
   final Map<String, String> _saveErrors = {};
 
-  String get _schoolId => widget.staff.schoolId ?? '';
+  String get _schoolId => widget.staff.effectiveSchoolId;
   String get _year => _yearCtrl.text.trim().isEmpty ? DateTime.now().year.toString() : _yearCtrl.text.trim();
 
   @override
@@ -409,7 +412,7 @@ class _MarksEntryPageState extends State<MarksEntryPage> {
           autofocus: true,
           decoration: const InputDecoration(
             labelText: 'Student Full Name',
-            hintText: 'e.g. Marie Claire',
+            hintText: 'e.g. Nafa Ismail',
             border: OutlineInputBorder(),
           ),
         ),
@@ -424,14 +427,25 @@ class _MarksEntryPageState extends State<MarksEntryPage> {
     );
     if (ok == true && nameCtrl.text.trim().isNotEmpty) {
       final name = nameCtrl.text.trim();
+      final classLevel = _class ?? (_classes.isNotEmpty ? _classes.first : 'Form 1');
       final newId = 'std_${DateTime.now().millisecondsSinceEpoch}_${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}';
-      final newStudent = RosterStudent(id: newId, name: name, classLevel: _class ?? '');
-      setState(() {
-        _roster = [..._roster, newStudent]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-        _ctrls[newId] = TextEditingController();
-        _focus[newId] = FocusNode();
-      });
-      if (mounted) showToast(context, 'Added $name to ${_class ?? 'class'} roster.');
+
+      final record = StudentRecord(
+        id: newId,
+        schoolId: _schoolId,
+        name: name,
+        classLevel: classLevel,
+        createdAt: DateTime.now(),
+      );
+
+      final res = await StudentRosterRepository.instance.addStudent(record);
+      if (res is Failure) {
+        if (mounted) showToast(context, 'Could not save student: ${(res as Failure).message}', isError: true);
+        return;
+      }
+
+      await _load();
+      if (mounted) showToast(context, 'Added $name to $classLevel roster.');
     }
   }
 
@@ -466,6 +480,13 @@ class _MarksEntryPageState extends State<MarksEntryPage> {
         title: 'Enter Marks',
         sidebarItems: const [ManagementNavItem(icon: Icons.assessment_outlined, label: 'Marks', selected: true)],
         actions: [
+          IconButton(
+            tooltip: 'Set Exam',
+            icon: const Icon(Icons.note_add_rounded),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ExamMetadataPage(user: widget.staff),
+            )),
+          ),
           IconButton(
             tooltip: 'Add Student',
             icon: const Icon(Icons.person_add_rounded),

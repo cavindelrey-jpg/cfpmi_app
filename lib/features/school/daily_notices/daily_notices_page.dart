@@ -33,7 +33,7 @@ class _DailyNoticesPageState extends State<DailyNoticesPage> {
       widget.user.canManageSchool;
 
   Future<void> _triggerProgrammeNow() async {
-    final schoolId = widget.user.schoolId ?? '';
+    final schoolId = widget.user.effectiveSchoolId;
     final classLevel = widget.user.classLevel ??
         (widget.user.classMasterOfClass ??
             (widget.user.teachingAssignments.isNotEmpty
@@ -61,7 +61,7 @@ class _DailyNoticesPageState extends State<DailyNoticesPage> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final schoolId = widget.user.schoolId ?? '';
+    final schoolId = widget.user.effectiveSchoolId;
     final userClass = widget.user.classLevel ?? '';
 
     return ApplicationShell(

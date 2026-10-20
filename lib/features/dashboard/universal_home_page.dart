@@ -654,7 +654,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                       eyebrowColor: ac.grn,
                       title: 'Great discipline today! 🔥',
                       subtitle:
-                          'You\'ve secured your $streakCount-day learning streak. Explore past papers or take an Academia Quiz to earn more XP.',
+                          'You\'ve secured your $streakCount-day learning streak. Explore past papers or take a practice quiz to earn more XP.',
                       primaryLabel: 'Explore Library',
                       primaryIcon: Icons.menu_book_rounded,
                       onPrimary: () {
@@ -1164,7 +1164,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
               Expanded(
                 child: _academicHubCard(
                   context,
-                  title: 'Academia Library',
+                  title: '${Branding.current.appName} Library',
                   subtitle: 'Textbooks, revision & notes',
                   icon: Icons.local_library_rounded,
                   iconColor: ac.primary,
@@ -1192,7 +1192,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
               Expanded(
                 child: _academicHubCard(
                   context,
-                  title: 'Academia Quizzes',
+                  title: 'Practice Quizzes',
                   subtitle: 'Timed MCQ drills & instant XP',
                   icon: Icons.quiz_rounded,
                   iconColor: ac.gold,
@@ -1204,7 +1204,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
               Expanded(
                 child: _academicHubCard(
                   context,
-                  title: 'Academia Courses',
+                  title: '${Branding.current.appName} Courses',
                   subtitle: 'Curated skill masterclasses',
                   icon: Icons.school_rounded,
                   iconColor: ac.pur,

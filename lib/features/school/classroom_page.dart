@@ -32,7 +32,7 @@ class ClassroomPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final schoolId = user.schoolId ?? '';
+    final schoolId = user.effectiveSchoolId;
 
     return ApplicationShell(
       user: user,
@@ -170,74 +170,144 @@ class ClassroomPage extends StatelessWidget {
     String schoolId,
   ) {
     if (_canTeach) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF081630), Color(0xFF142B58)],
-          ),
-          borderRadius: BorderRadius.circular(Rad.md),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE5A93C).withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(12),
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 620;
+          return Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF081630), Color(0xFF142B58)],
               ),
-              child: const Icon(
-                Icons.cast_for_education_rounded,
-                color: Color(0xFFE5A93C),
-                size: 26,
-              ),
+              borderRadius: BorderRadius.circular(Rad.md),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Interactive Classroom Presenter',
-                    style: GoogleFonts.inter(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
+            child: isCompact
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE5A93C).withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.cast_for_education_rounded,
+                              color: Color(0xFFE5A93C),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Interactive Classroom Presenter',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Start a live presentation, sync slides with student devices, and release lesson resources in real time.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          color: const Color(0xFFC0D2F0),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ClassroomTeacherPage(user: user),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE5A93C),
+                            foregroundColor: const Color(0xFF081630),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                          icon: const Icon(Icons.slideshow_rounded, size: 18),
+                          label: const Text('Manage Sessions'),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5A93C).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.cast_for_education_rounded,
+                          color: Color(0xFFE5A93C),
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Interactive Classroom Presenter',
+                              style: GoogleFonts.inter(
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Start a live presentation, sync slides with student devices, and release lesson resources in real time.',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5,
+                                color: const Color(0xFFC0D2F0),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ClassroomTeacherPage(user: user),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE5A93C),
+                          foregroundColor: const Color(0xFF081630),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        icon: const Icon(Icons.slideshow_rounded, size: 18),
+                        label: const Text('Manage Sessions'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Start a live presentation, sync slides with student devices, and release lesson resources in real time.',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      color: const Color(0xFFC0D2F0),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ClassroomTeacherPage(user: user),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE5A93C),
-                foregroundColor: const Color(0xFF081630),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-              icon: const Icon(Icons.slideshow_rounded, size: 18),
-              label: const Text('Manage Sessions'),
-            ),
-          ],
-        ),
+          );
+        },
       );
     }
 
@@ -252,84 +322,165 @@ class ClassroomPage extends StatelessWidget {
         final session = snap.data;
         final isLive = session != null && session.status == ClassroomStatus.live;
 
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isLive
-                ? const Color(0xFF081630)
-                : ac.surf,
-            borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(
-              color: isLive ? const Color(0xFFE5A93C) : ac.bdr,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isLive
-                      ? const Color(0xFFEF4444).withValues(alpha: 0.2)
-                      : ac.surf2,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isLive ? Icons.sensors_rounded : Icons.sensors_off_rounded,
-                  color: isLive ? const Color(0xFFEF4444) : ac.muted,
-                  size: 24,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 620;
+            return Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: isLive
+                    ? const Color(0xFF081630)
+                    : ac.surf,
+                borderRadius: BorderRadius.circular(Rad.md),
+                border: Border.all(
+                  color: isLive ? const Color(0xFFE5A93C) : ac.bdr,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isLive
-                          ? 'LIVE NOW: ${session.subject} — ${session.topic}'
-                          : 'No live classroom presentation active right now',
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: isLive ? Colors.white : ac.txt,
-                      ),
+              child: isCompact
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isLive
+                                    ? const Color(0xFFEF4444).withValues(alpha: 0.2)
+                                    : ac.surf2,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                isLive ? Icons.sensors_rounded : Icons.sensors_off_rounded,
+                                color: isLive ? const Color(0xFFEF4444) : ac.muted,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                isLive
+                                    ? 'LIVE NOW: ${session.subject} — ${session.topic}'
+                                    : 'No live classroom presentation active',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: isLive ? Colors.white : ac.txt,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          isLive
+                              ? 'Presented by ${session.teacherName} • Join to follow slides and take personal notes.'
+                              : 'When a teacher starts a live session for ${user.classLevel}, you can follow the presentation and access released files here.',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            color: isLive ? const Color(0xFFC0D2F0) : ac.txt2,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => StudentClassroomPage(user: user),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  isLive ? const Color(0xFFE5A93C) : ac.primary,
+                              foregroundColor:
+                                  isLive ? const Color(0xFF081630) : Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            icon: Icon(
+                              isLive ? Icons.login_rounded : Icons.visibility_outlined,
+                              size: 18,
+                            ),
+                            label: Text(isLive ? 'Join Live Class' : 'Open Live Room'),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isLive
+                                ? const Color(0xFFEF4444).withValues(alpha: 0.2)
+                                : ac.surf2,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            isLive ? Icons.sensors_rounded : Icons.sensors_off_rounded,
+                            color: isLive ? const Color(0xFFEF4444) : ac.muted,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isLive
+                                    ? 'LIVE NOW: ${session.subject} — ${session.topic}'
+                                    : 'No live classroom presentation active right now',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: isLive ? Colors.white : ac.txt,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isLive
+                                    ? 'Presented by ${session.teacherName} • Join to follow slides and take personal notes.'
+                                    : 'When a teacher starts a live session for ${user.classLevel}, you can follow the presentation and access released files here.',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5,
+                                  color: isLive ? const Color(0xFFC0D2F0) : ac.txt2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => StudentClassroomPage(user: user),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                isLive ? const Color(0xFFE5A93C) : ac.primary,
+                            foregroundColor:
+                                isLive ? const Color(0xFF081630) : Colors.white,
+                          ),
+                          icon: Icon(
+                            isLive ? Icons.login_rounded : Icons.visibility_outlined,
+                            size: 18,
+                          ),
+                          label: Text(isLive ? 'Join Live Class' : 'Open Live Room'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isLive
-                          ? 'Presented by ${session.teacherName} • Join to follow slides and take personal notes.'
-                          : 'When a teacher starts a live session for ${user.classLevel}, you can follow the presentation and access released files here.',
-                      style: GoogleFonts.inter(
-                        fontSize: 12.5,
-                        color: isLive ? const Color(0xFFC0D2F0) : ac.txt2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => StudentClassroomPage(user: user),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isLive ? const Color(0xFFE5A93C) : ac.primary,
-                  foregroundColor:
-                      isLive ? const Color(0xFF081630) : Colors.white,
-                ),
-                icon: Icon(
-                  isLive ? Icons.login_rounded : Icons.visibility_outlined,
-                  size: 18,
-                ),
-                label: Text(isLive ? 'Join Live Class' : 'Open Live Room'),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

@@ -29,6 +29,8 @@ import '../../theme/app_colors.dart';
 import '../../pages/notifications_page.dart';
 import '../announcements/announcements_page.dart';
 import 'daily_notices/daily_notices_page.dart';
+import 'disciplinary_records_page.dart';
+import 'student_roster_page.dart';
 import 'exam_composer/exam_list_page.dart';
 import 'homework_page.dart';
 import 'marks_page.dart';
@@ -46,7 +48,7 @@ class SchoolConnectPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final schoolId = user.schoolId ?? '';
+    final schoolId = user.effectiveSchoolId;
 
     final canViewInbox =
         user.hasMinRole(UserRole.lecturer) || user.canManageSchool;
@@ -267,6 +269,45 @@ class SchoolConnectPage extends StatelessWidget {
                             children: [
                               Text('Exam Composer', style: AppText.title.copyWith(fontSize: 13, color: ac.txt)),
                               Text('Question Bank', style: AppText.caption.copyWith(color: ac.muted, fontSize: 10)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Material(
+                color: ac.surf,
+                borderRadius: BorderRadius.circular(Rad.md),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(Rad.md),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => DisciplinaryRecordsPage(user: user),
+                  )),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(Rad.md),
+                      border: Border.all(color: ac.bdr2),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: ac.redBg, borderRadius: BorderRadius.circular(8)),
+                          child: Icon(Icons.gavel_rounded, color: ac.red, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Discipline', style: AppText.title.copyWith(fontSize: 13, color: ac.txt)),
+                              Text('Conduct Logs', style: AppText.caption.copyWith(color: ac.muted, fontSize: 10)),
                             ],
                           ),
                         ),

@@ -52,7 +52,7 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => QuestionBankPickerSheet(
-        schoolId: widget.user.schoolId ?? '',
+        schoolId: widget.user.effectiveSchoolId,
         defaultSubject: _exam.subject,
         defaultClassLevel: _exam.classLevel,
         alreadyAddedIds: _exam.questions.map((q) => q.id).toSet(),
@@ -67,7 +67,7 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
   }
 
   void _addFromCollections() async {
-    final schoolId = widget.user.schoolId ?? '';
+    final schoolId = widget.user.effectiveSchoolId;
     final collections = await ExamRepository.instance
         .watchCollections(schoolId: schoolId, teacherId: widget.user.id)
         .first;
@@ -137,7 +137,7 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
       builder: (_) => QuestionEditorDialog(
         defaultSubject: _exam.subject,
         defaultClassLevel: _exam.classLevel,
-        schoolId: widget.user.schoolId ?? '',
+        schoolId: widget.user.effectiveSchoolId,
       ),
     );
     if (q != null) {
@@ -157,7 +157,7 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
         initialQuestion: current,
         defaultSubject: _exam.subject,
         defaultClassLevel: _exam.classLevel,
-        schoolId: widget.user.schoolId ?? '',
+        schoolId: widget.user.effectiveSchoolId,
       ),
     );
     if (updated != null) {

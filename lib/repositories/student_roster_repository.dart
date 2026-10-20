@@ -11,6 +11,23 @@ class StudentRosterRepository {
   StudentRosterRepository._();
   static final StudentRosterRepository instance = StudentRosterRepository._();
 
+  static const Map<String, String> _knownSchoolIds = {
+    'cfpmi': '446007a8-4389-40eb-bfa7-5452541b5a1f',
+    'cf': '446007a8-4389-40eb-bfa7-5452541b5a1f',
+    'ladybird': 'e57702a0-91b1-4dd3-8d31-29bb928d3114',
+    'lb': 'e57702a0-91b1-4dd3-8d31-29bb928d3114',
+    'green_hill': '93f2afa1-aaa1-4d15-86e8-41a15b1f94c2',
+    'gh': '93f2afa1-aaa1-4d15-86e8-41a15b1f94c2',
+  };
+
+  static String resolveSchoolId(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return _knownSchoolIds['cfpmi']!;
+    }
+    return _knownSchoolIds[trimmed.toLowerCase()] ?? trimmed;
+  }
+
   SupabaseClient? get _db {
     try {
       return Supabase.instance.client;
@@ -22,15 +39,22 @@ class StudentRosterRepository {
   SupabaseQueryBuilder? get _table => _db?.from('school_students');
 
   Future<Result<List<StudentRecord>>> getStudents(String schoolId, {String? classLevel}) async {
-    if (schoolId.isEmpty) return const Success([]);
-    final cacheKey = 'roster_${schoolId}_${classLevel ?? 'all'}';
+    final resolvedSchoolId = resolveSchoolId(schoolId);
+    final cacheKey = 'roster_${resolvedSchoolId}_${classLevel ?? 'all'}';
+    final fallbackKey = 'roster_${schoolId}_${classLevel ?? 'all'}';
 
     try {
-      // 1. Check local cache first to ensure imported records are never lost
-      final cached = await OfflineCache.instance.get<List<StudentRecord>>(
+      // 1. Check local cache first to ensure imported/added records are never lost
+      var cached = await OfflineCache.instance.get<List<StudentRecord>>(
         cacheKey,
         (json) => OfflineCache.listFromJson(json, (j) => StudentRecord.fromMap(j)),
       );
+      if (cached == null || cached.isEmpty) {
+        cached = await OfflineCache.instance.get<List<StudentRecord>>(
+          fallbackKey,
+          (json) => OfflineCache.listFromJson(json, (j) => StudentRecord.fromMap(j)),
+        );
+      }
 
       final list = await OfflineCache.instance.fetch<List<StudentRecord>>(
         cacheKey,
@@ -38,13 +62,12 @@ class StudentRosterRepository {
           final tableQuery = _table;
           if (tableQuery != null) {
             try {
-              var query = tableQuery.select().eq('school_id', schoolId);
+              var query = tableQuery.select().eq('school_id', resolvedSchoolId);
               if (classLevel != null && classLevel.isNotEmpty) {
                 query = query.eq('class_level', classLevel);
               }
               final rows = await query.order('student_name', ascending: true);
               final remoteStudents = (rows as List).map((r) => StudentRecord.fromMap(r as Map<String, dynamic>)).toList();
-              // Merge with local cache so imported records are never lost
               final mergedMap = {for (final s in (cached ?? <StudentRecord>[])) s.id: s};
               for (final s in remoteStudents) {
                 mergedMap[s.id] = s;
@@ -54,11 +77,6 @@ class StudentRosterRepository {
             } catch (_) {}
           }
 
-          // If local cache has data, use it directly instead of falling back to user accounts
-          if (cached != null && cached.isNotEmpty) {
-            return cached;
-          }
-
           // Fallback: check users table for enrolled student accounts
           final db = _db;
           if (db != null) {
@@ -66,19 +84,51 @@ class StudentRosterRepository {
               var uQuery = db
                   .from('users')
                   .select('id, name, class_level, phone')
-                  .eq('institution_id', schoolId)
+                  .eq('institution_id', resolvedSchoolId)
                   .eq('role', 'student');
               if (classLevel != null && classLevel.isNotEmpty) {
                 uQuery = uQuery.eq('class_level', classLevel);
               }
               final uRows = await uQuery.order('name', ascending: true);
-              return (uRows as List).map((r) => StudentRecord(
+              final userStudents = (uRows as List).map((r) => StudentRecord(
                 id: r['id'] as String,
-                schoolId: schoolId,
+                schoolId: resolvedSchoolId,
                 name: (r['name'] as String?) ?? 'Student',
                 classLevel: (r['class_level'] as String?) ?? (classLevel ?? ''),
                 parentContact: r['phone'] as String?,
               )).toList();
+
+              final mergedMap = {for (final s in (cached ?? <StudentRecord>[])) s.id: s};
+              for (final s in userStudents) {
+                mergedMap[s.id] = s;
+              }
+              return mergedMap.values.toList()
+                ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+            } catch (_) {}
+
+            // Check student_accounts table
+            try {
+              var sQuery = db
+                  .from('student_accounts')
+                  .select('account_id, student_name, class_level')
+                  .eq('institution_id', resolvedSchoolId);
+              if (classLevel != null && classLevel.isNotEmpty) {
+                sQuery = sQuery.eq('class_level', classLevel);
+              }
+              final sRows = await sQuery.order('student_name', ascending: true);
+              final seatStudents = (sRows as List).map((r) => StudentRecord(
+                id: r['account_id']?.toString() ?? '',
+                schoolId: resolvedSchoolId,
+                name: (r['student_name'] as String?) ?? 'Student',
+                classLevel: (r['class_level'] as String?) ?? (classLevel ?? ''),
+              )).toList();
+
+              final mergedMap = {for (final s in (cached ?? <StudentRecord>[])) s.id: s};
+              for (final s in seatStudents) {
+                mergedMap[s.id] = s;
+              }
+              return mergedMap.values.toList()
+                ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
             } catch (_) {}
           }
 
@@ -94,13 +144,13 @@ class StudentRosterRepository {
   }
 
   Stream<List<StudentRecord>> watchStudents(String schoolId, {String? classLevel}) {
-    if (schoolId.isEmpty) return Stream.value(const []);
+    final resolvedSchoolId = resolveSchoolId(schoolId);
     final tableQuery = _table;
     if (tableQuery != null) {
       try {
         var stream = tableQuery
             .stream(primaryKey: ['id'])
-            .eq('school_id', schoolId)
+            .eq('school_id', resolvedSchoolId)
             .realtimeTolerant();
 
         return stream.map((rows) {
@@ -118,12 +168,30 @@ class StudentRosterRepository {
   }
 
   Future<Result<void>> addStudent(StudentRecord student) async {
-    await _saveLocalFallback(student);
-    final tableQuery = _table;
-    if (tableQuery != null) {
+    final resolvedSchoolId = resolveSchoolId(student.schoolId);
+    final normalized = student.copyWith(schoolId: resolvedSchoolId);
+    await _saveLocalFallback(normalized);
+    if (student.schoolId != resolvedSchoolId) {
+      await _saveLocalFallback(student);
+    }
+
+    final db = _db;
+    if (db != null) {
       try {
-        await tableQuery.insert(student.toMap());
+        await db.from('student_accounts').insert({
+          'institution_id': resolvedSchoolId,
+          'student_name': student.name,
+          'class_level': student.classLevel,
+          'status': 'unassigned',
+        });
       } catch (_) {}
+
+      final tableQuery = _table;
+      if (tableQuery != null) {
+        try {
+          await tableQuery.insert(normalized.toMap());
+        } catch (_) {}
+      }
     }
     return const Success(null);
   }
@@ -185,39 +253,43 @@ class StudentRosterRepository {
   }
 
   Future<void> _saveAllLocalFallback(String schoolId, List<StudentRecord> students) async {
-    // 1. Group by class
-    final byClass = <String, List<StudentRecord>>{};
-    for (final s in students) {
-      byClass.putIfAbsent(s.classLevel, () => []).add(s);
-    }
-    // 2. For each class, read existing cached list, merge by id, and put back
-    for (final entry in byClass.entries) {
-      final cls = entry.key;
-      final key = 'roster_${schoolId}_$cls';
-      final existing = await OfflineCache.instance.get<List<StudentRecord>>(
-        key,
+    final idsToSave = {schoolId, resolveSchoolId(schoolId)};
+    for (final sid in idsToSave) {
+      if (sid.isEmpty) continue;
+      // 1. Group by class
+      final byClass = <String, List<StudentRecord>>{};
+      for (final s in students) {
+        byClass.putIfAbsent(s.classLevel, () => []).add(s);
+      }
+      // 2. For each class, read existing cached list, merge by id, and put back
+      for (final entry in byClass.entries) {
+        final cls = entry.key;
+        final key = 'roster_${sid}_$cls';
+        final existing = await OfflineCache.instance.get<List<StudentRecord>>(
+          key,
+          (json) => OfflineCache.listFromJson(json, (j) => StudentRecord.fromMap(j)),
+        ) ?? [];
+        final map = {for (final s in existing) s.id: s};
+        for (final s in entry.value) {
+          map[s.id] = s;
+        }
+        final merged = map.values.toList()
+          ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        await OfflineCache.instance.put(key, OfflineCache.listToJson(merged, (s) => s.toMap()));
+      }
+      // 3. Also update 'roster_${sid}_all'
+      final allKey = 'roster_${sid}_all';
+      final existingAll = await OfflineCache.instance.get<List<StudentRecord>>(
+        allKey,
         (json) => OfflineCache.listFromJson(json, (j) => StudentRecord.fromMap(j)),
       ) ?? [];
-      final map = {for (final s in existing) s.id: s};
-      for (final s in entry.value) {
-        map[s.id] = s;
+      final allMap = {for (final s in existingAll) s.id: s};
+      for (final s in students) {
+        allMap[s.id] = s;
       }
-      final merged = map.values.toList()
+      final mergedAll = allMap.values.toList()
         ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-      await OfflineCache.instance.put(key, OfflineCache.listToJson(merged, (s) => s.toMap()));
+      await OfflineCache.instance.put(allKey, OfflineCache.listToJson(mergedAll, (s) => s.toMap()));
     }
-    // 3. Also update 'roster_${schoolId}_all'
-    final allKey = 'roster_${schoolId}_all';
-    final existingAll = await OfflineCache.instance.get<List<StudentRecord>>(
-      allKey,
-      (json) => OfflineCache.listFromJson(json, (j) => StudentRecord.fromMap(j)),
-    ) ?? [];
-    final allMap = {for (final s in existingAll) s.id: s};
-    for (final s in students) {
-      allMap[s.id] = s;
-    }
-    final mergedAll = allMap.values.toList()
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    await OfflineCache.instance.put(allKey, OfflineCache.listToJson(mergedAll, (s) => s.toMap()));
   }
 }

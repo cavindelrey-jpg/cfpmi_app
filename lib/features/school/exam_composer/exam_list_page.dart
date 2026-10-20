@@ -31,7 +31,7 @@ class _ExamListPageState extends State<ExamListPage> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final schoolId = widget.user.schoolId ?? '';
+    final schoolId = widget.user.effectiveSchoolId;
     final canManageTemplates = widget.user.isAdmin || widget.user.canManageSchool;
 
     return Scaffold(

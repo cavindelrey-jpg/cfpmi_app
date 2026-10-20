@@ -89,7 +89,7 @@ class StudentInfoCard extends StatelessWidget {
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
             child: StreamBuilder<String?>(
-              stream: SchoolClassInfoRepository.instance.watchClassMasterName(user.schoolId ?? '', user.classLevel),
+              stream: SchoolClassInfoRepository.instance.watchClassMasterName(user.effectiveSchoolId, user.classLevel),
               builder: (context, snap) {
                 final name = snap.data ?? '';
                 return _field(ac, 'Class Master', name.isEmpty ? 'Not set' : name);

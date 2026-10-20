@@ -31,7 +31,7 @@ class AttendancePage extends StatefulWidget {
 
 class _AttendancePageState extends State<AttendancePage> {
   AppColors get ac => AppColors.of(context);
-  String get _schoolId => widget.user.schoolId ?? '';
+  String get _schoolId => widget.user.effectiveSchoolId;
 
   final _repo = AttendanceRepository.instance;
   final _roster = StudentRosterRepository.instance;

@@ -40,12 +40,12 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
     super.initState();
     _exam = widget.examination;
     _currentTemplate = _exam.selectedTemplate ??
-        ExamRepository.instance.getDefaultTemplate(widget.user.schoolId ?? '');
+        ExamRepository.instance.getDefaultTemplate(widget.user.effectiveSchoolId);
     _loadTemplates();
   }
 
   Future<void> _loadTemplates() async {
-    final schoolId = widget.user.schoolId ?? '';
+    final schoolId = widget.user.effectiveSchoolId;
     final templates = await ExamRepository.instance.watchSchoolTemplates(schoolId).first;
     if (templates.isNotEmpty && mounted) {
       setState(() {
@@ -62,7 +62,7 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
   }
 
   void _chooseTemplate() async {
-    final schoolId = widget.user.schoolId ?? '';
+    final schoolId = widget.user.effectiveSchoolId;
     final templates = await ExamRepository.instance.watchSchoolTemplates(schoolId).first;
     if (!mounted) return;
     final ac = AppColors.of(context);
@@ -105,7 +105,7 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
   /// letterhead text, headers, and exam layout.
   void _customizeLetterheadAndFormatting() {
     final ac = AppColors.of(context);
-    final tmpl = _currentTemplate ?? ExamRepository.instance.getDefaultTemplate(widget.user.schoolId ?? '');
+    final tmpl = _currentTemplate ?? ExamRepository.instance.getDefaultTemplate(widget.user.effectiveSchoolId);
 
     final schoolNameCtrl = TextEditingController(text: tmpl.schoolName);
     final countryHeaderCtrl = TextEditingController(text: tmpl.countryHeader);

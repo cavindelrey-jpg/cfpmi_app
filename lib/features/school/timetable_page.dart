@@ -27,7 +27,7 @@ class TimetablePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final schoolId = user.schoolId ?? '';
+    final schoolId = user.effectiveSchoolId;
     final classLevel = user.classLevel;
 
     return ApplicationShell(
@@ -298,7 +298,7 @@ class _StaffTimetableViewState extends State<_StaffTimetableView> {
   static const _mine = '__mine__';
   late String _view = _mine;
   late final Stream<List<SchoolTimetableSlot>> _stream =
-      SchoolTimetableRepository.instance.watchForSchool(widget.page.user.schoolId ?? '');
+      SchoolTimetableRepository.instance.watchForSchool(widget.page.user.effectiveSchoolId);
 
   String _n(String s) => s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 

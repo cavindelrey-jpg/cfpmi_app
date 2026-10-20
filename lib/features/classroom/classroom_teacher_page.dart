@@ -3,6 +3,8 @@
 // opens the control panel: slide navigation + the resource RELEASE controls.
 // The control panel is private to the teacher; the TV shows ClassroomDisplayPage.
 
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -386,6 +388,19 @@ class ClassroomControlPage extends StatelessWidget {
     }
   }
 
+  Future<Uint8List?> _readPlatformBytes(PlatformFile f) async {
+    if (f.bytes != null && f.bytes!.isNotEmpty) return f.bytes;
+    if (f.path != null && f.path!.isNotEmpty) {
+      try {
+        final file = File(f.path!);
+        if (await file.exists()) {
+          return await file.readAsBytes();
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
   Future<void> _uploadSlideImages(BuildContext context, ClassroomSession s) async {
     final res = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: true, withData: true);
     if (res == null || res.files.isEmpty) return;
@@ -394,7 +409,7 @@ class ClassroomControlPage extends StatelessWidget {
     final urls = <String>[...s.slideUrls];
     var failed = 0;
     for (final f in files) {
-      final bytes = f.bytes;
+      final bytes = await _readPlatformBytes(f);
       if (bytes == null) {
         failed++;
         continue;
@@ -415,13 +430,27 @@ class ClassroomControlPage extends StatelessWidget {
         type: FileType.custom, allowedExtensions: ['pptx', 'ppt', 'pdf'], withData: true);
     if (res == null || res.files.isEmpty) return;
     final f = res.files.first;
-    final bytes = f.bytes;
-    if (bytes == null) return;
-    _toast(context, 'Uploading ${f.name}…');
+    final bytes = await _readPlatformBytes(f);
+    if (bytes == null) {
+      _toast(context, 'Could not read presentation file: ${f.name}');
+      return;
+    }
+    _toast(context, 'Uploading presentation ${f.name}…');
     final up = await ClassroomUploadService.instance.uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);
     if (up is Success<String>) {
       await ClassroomRepository.instance.setOriginalFile(sessionId, up.value);
-      _toast(context, 'Presentation attached. Tip: upload slide images too for synced slides.');
+      final ext = f.name.contains('.') ? f.name.split('.').last.toLowerCase() : 'pptx';
+      await ClassroomRepository.instance.addResource(ClassroomResource(
+        id: '',
+        sessionId: s.id,
+        schoolId: s.schoolId,
+        title: f.name,
+        kind: ext == 'pdf' ? 'pdf' : 'pptx',
+        url: up.value,
+        visibility: ResourceVisibility.released,
+        position: 0,
+      ));
+      _toast(context, 'Presentation attached & published to classroom.');
     } else {
       _toast(context, (up as Failure<String>).friendlyMessage);
     }
@@ -478,8 +507,11 @@ class ClassroomControlPage extends StatelessWidget {
                           final r = await FilePicker.platform.pickFiles(withData: true);
                           if (r == null || r.files.isEmpty) return;
                           final f = r.files.first;
-                          final bytes = f.bytes;
-                          if (bytes == null) return;
+                          final bytes = await _readPlatformBytes(f);
+                          if (bytes == null) {
+                            _toast(context, 'Could not read file: ${f.name}');
+                            return;
+                          }
                           setD(() => uploading = true);
                           final up = await ClassroomUploadService.instance
                               .uploadBytes(bytes: bytes, filename: f.name, schoolId: s.schoolId);

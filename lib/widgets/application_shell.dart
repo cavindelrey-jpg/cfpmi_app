@@ -178,8 +178,60 @@ class _ApplicationShellState extends State<ApplicationShell> {
   AppUser get _user =>
       widget.user ?? AuthService.instance.lastKnownUser ?? AppUser.guest();
 
-  String get _pageTitle =>
-      widget.currentTitle ?? widget.title ?? 'Academia';
+  String get _pageTitle {
+    if (widget.currentTitle != null && widget.currentTitle!.isNotEmpty) {
+      return widget.currentTitle!;
+    }
+    if (widget.title != null && widget.title!.isNotEmpty) {
+      return widget.title!;
+    }
+    switch (widget.currentDestination) {
+      case AppNavDestination.home:
+        return 'Home';
+      case AppNavDestination.academicCourses:
+        return 'Academic Courses';
+      case AppNavDestination.academicLibrary:
+        return 'Academia Library';
+      case AppNavDestination.pastQuestions:
+        return 'Academia Past Questions';
+      case AppNavDestination.testsAndQuizzes:
+        return 'Tests and Quizzes';
+      case AppNavDestination.marks:
+        return 'Marks and Report Cards';
+      case AppNavDestination.classroom:
+        return 'Live Classroom';
+      case AppNavDestination.messages:
+        return 'Messages';
+      case AppNavDestination.homework:
+        return 'Homework';
+      case AppNavDestination.timetable:
+        return 'Timetable';
+      case AppNavDestination.attendance:
+        return 'Attendance';
+      case AppNavDestination.fees:
+        return 'Fees & Ledger';
+      case AppNavDestination.announcements:
+        return 'Daily Notices';
+      case AppNavDestination.magazine:
+        return 'Magazine';
+      case AppNavDestination.clubs:
+        return 'Student Clubs';
+      case AppNavDestination.dictionary:
+        return 'Dictionary';
+      case AppNavDestination.bookmarks:
+        return 'Bookmarks';
+      case AppNavDestination.studyPlan:
+        return 'Study Plan';
+      case AppNavDestination.schoolConnect:
+        return 'School Connect';
+      case AppNavDestination.settings:
+        return 'Settings';
+      case AppNavDestination.help:
+        return 'Help & Support';
+      case AppNavDestination.none:
+        return 'Home';
+    }
+  }
 
   Widget? get _effectiveContextualPanel =>
       widget.contextualPanel ?? widget.rightPanel;
@@ -341,11 +393,16 @@ class _ApplicationShellState extends State<ApplicationShell> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 1. Permanent Left Rail Reserved Space (72px)
-                      // Prevents central workspace jump/reflow during smooth hover expansion.
-                      const SizedBox(width: _collapsedRailWidth),
+                      // 1. Permanent Left Rail Reserved Space
+                      // Permanent left boundary: uses expanded navigation rail width (244px on desktop)
+                      // so when the rail expands on hover, it never covers the workspace or right sidebar,
+                      // and when collapsed, the empty margin is intentional.
+                      if (isDesktop)
+                        const SizedBox(width: _expandedRailWidth)
+                      else
+                        const SizedBox(width: _collapsedRailWidth),
 
-                      // 2. Central Workspace
+                      // 2. Central Workspace (constrained width)
                       Expanded(
                         child: Container(
                           color: ac.bg,
@@ -358,7 +415,23 @@ class _ApplicationShellState extends State<ApplicationShell> {
                                   actions: widget.headerActions,
                                   bottom: widget.bottomHeader,
                                 ),
-                              Expanded(child: widget.child),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.topLeft,
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth: isDesktop
+                                          ? (width >= 1600
+                                              ? (width * 0.38).clamp(600.0, 920.0)
+                                              : (width >= 1200
+                                                  ? (width * 0.44).clamp(560.0, 860.0)
+                                                  : 840.0))
+                                          : double.infinity,
+                                    ),
+                                    child: widget.child,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -671,58 +744,6 @@ class _GlobalTopBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Academia Brand Badge (clickable to Home)
-              InkWell(
-                onTap: onNavigateHome,
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isUltraNarrow ? 2 : 6,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFE5A93C), Color(0xFFD48817)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: const Icon(
-                          Icons.school_rounded,
-                          size: 17,
-                          color: Color(0xFF081630),
-                        ),
-                      ),
-                      if (!isCompact) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          'Academia',
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFFE5A93C),
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        Container(
-                          height: 18,
-                          width: 1,
-                          margin: const EdgeInsets.symmetric(horizontal: 12),
-                          color: const Color(0xFF203666),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-
               // Optional Back Button for nested pages
               if (showBackButton) ...[
                 IconButton(
@@ -740,36 +761,21 @@ class _GlobalTopBar extends StatelessWidget {
                   tooltip: 'Back',
                   onPressed: onBack,
                 ),
-                const SizedBox(width: 2),
+                const SizedBox(width: 4),
               ],
 
-              // Current Page Title & optional Subtitle
+              // Current Page Title only (no Academia branding, no logo, no app name, no subtitle)
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      pageTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: isUltraNarrow ? 14 : (isCompact ? 15.5 : 17.5),
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    if (subtitle != null && subtitle!.isNotEmpty && !isNarrow)
-                      Text(
-                        subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: const Color(0xFF8CA3CF),
-                        ),
-                      ),
-                  ],
+                child: Text(
+                  pageTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: isUltraNarrow ? 14 : (isCompact ? 16 : 18),
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
 
@@ -1257,17 +1263,17 @@ class _GlobalSidebarContentState extends State<_GlobalSidebarContent> {
                 vertical: 4,
               ),
               children: [
-                if (!collapsed) _sectionHeader('ACADEMIA'),
+                if (!collapsed) _sectionHeader(Branding.current.appName.toUpperCase()),
                 _item(AppNavDestination.home, Icons.home_rounded, 'Home'),
                 _item(
                   AppNavDestination.academicCourses,
                   Icons.menu_book_rounded,
-                  'Academic Courses',
+                  'Courses',
                 ),
                 _item(
                   AppNavDestination.academicLibrary,
                   Icons.folder_copy_rounded,
-                  'Academic Library',
+                  'Library',
                 ),
                 _item(
                   AppNavDestination.pastQuestions,
@@ -1282,7 +1288,7 @@ class _GlobalSidebarContentState extends State<_GlobalSidebarContent> {
                 _item(
                   AppNavDestination.magazine,
                   Icons.newspaper_rounded,
-                  'Academic Magazine',
+                  'Magazine',
                 ),
                 _item(
                   AppNavDestination.clubs,

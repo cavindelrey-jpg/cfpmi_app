@@ -21,6 +21,7 @@ import '../models/school_calendar_event.dart';
 import '../models/student_record.dart';
 import '../models/app_user.dart';
 import '../models/school_mark.dart';
+import '../config/branding.dart';
 
 class SchoolDocumentExportService {
   SchoolDocumentExportService._();
@@ -31,6 +32,13 @@ class SchoolDocumentExportService {
   // ─────────────────────────────────────────────────────────────────────────────
 
   Future<Uint8List?> _loadLogoBytes() async {
+    final assetPath = Branding.current.logoAssetPath;
+    if (assetPath.isNotEmpty) {
+      try {
+        final byteData = await rootBundle.load(assetPath);
+        return byteData.buffer.asUint8List();
+      } catch (_) {}
+    }
     try {
       final byteData = await rootBundle.load('assets/branding/ladybird_logo.jpg');
       return byteData.buffer.asUint8List();
@@ -1071,6 +1079,285 @@ class SchoolDocumentExportService {
     final tempDir = await _getTempDir();
     final file = File('${tempDir.path}/marks_${_clean(classLevel)}_${_clean(subject)}.docx');
     await file.writeAsBytes(encoded, flush: true);
+    return file;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 6. STUDENT ID CARD PDF (CR80 Standard ISO 85.6mm x 54mm)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  Future<File> exportStudentIdCardPdf({
+    required String schoolName,
+    required StudentRecord student,
+    String? academicYear,
+    Uint8List? studentPhotoBytes,
+  }) async {
+    final pdf = pw.Document();
+    final logoBytes = await _loadLogoBytes();
+    final logoImage = logoBytes != null ? pw.MemoryImage(logoBytes) : null;
+    final photoImage = studentPhotoBytes != null ? pw.MemoryImage(studentPhotoBytes) : null;
+    final year = academicYear ?? '2025/2026';
+
+    const cardFormat = PdfPageFormat(85.6 * PdfPageFormat.mm, 54.0 * PdfPageFormat.mm, marginAll: 3 * PdfPageFormat.mm);
+
+    // Front Side
+    pdf.addPage(
+      pw.Page(
+        pageFormat: cardFormat,
+        build: (pw.Context context) {
+          return pw.Container(
+            decoration: pw.BoxDecoration(
+              borderRadius: pw.BorderRadius.circular(6),
+              border: pw.Border.all(color: PdfColors.blue900, width: 1.5),
+            ),
+            child: pw.Column(
+              children: [
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  color: PdfColors.blue900,
+                  child: pw.Row(
+                    children: [
+                      if (logoImage != null) pw.Image(logoImage, width: 16, height: 16),
+                      pw.SizedBox(width: 4),
+                      pw.Expanded(
+                        child: pw.Text(
+                          schoolName.toUpperCase(),
+                          maxLines: 1,
+                          style: pw.TextStyle(color: PdfColors.white, fontSize: 6.5, fontWeight: pw.FontWeight.bold),
+                        ),
+                      ),
+                      pw.Text('STUDENT ID', style: const pw.TextStyle(color: PdfColors.amber, fontSize: 6.5)),
+                    ],
+                  ),
+                ),
+                pw.Expanded(
+                  child: pw.Padding(
+                    padding: const pw.EdgeInsets.all(5),
+                    child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Container(
+                          width: 42,
+                          height: 52,
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.grey200,
+                            border: pw.Border.all(color: PdfColors.grey400),
+                            borderRadius: pw.BorderRadius.circular(4),
+                          ),
+                          child: photoImage != null
+                              ? pw.Image(photoImage, fit: pw.BoxFit.cover)
+                              : pw.Center(
+                                  child: pw.Text(
+                                    student.name.isNotEmpty ? student.name.substring(0, 1).toUpperCase() : 'S',
+                                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+                                  ),
+                                ),
+                        ),
+                        pw.SizedBox(width: 8),
+                        pw.Expanded(
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            mainAxisAlignment: pw.MainAxisAlignment.center,
+                            children: [
+                              pw.Text(
+                                student.name.toUpperCase(),
+                                maxLines: 1,
+                                style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                              ),
+                              pw.SizedBox(height: 2),
+                              pw.Text('Class: ${student.classLevel}', style: const pw.TextStyle(fontSize: 7)),
+                              pw.Text('ID: ${student.matricule ?? student.id}', style: const pw.TextStyle(fontSize: 7)),
+                              pw.Text('Academic Year: $year', style: const pw.TextStyle(fontSize: 6.5)),
+                              if (student.parentContact != null)
+                                pw.Text('Emergency: ${student.parentContact}', style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    final bytes = await pdf.save();
+    final tempDir = await _getTempDir();
+    final file = File('${tempDir.path}/id_card_${_clean(student.name)}.pdf');
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 7. CERTIFICATE OF ACHIEVEMENT / COMPLETION PDF
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  Future<File> exportCertificatePdf({
+    required String schoolName,
+    required String studentName,
+    required String classLevel,
+    required String certificateTitle,
+    String? reason,
+    String? academicYear,
+  }) async {
+    final pdf = pw.Document();
+    final logoBytes = await _loadLogoBytes();
+    final logoImage = logoBytes != null ? pw.MemoryImage(logoBytes) : null;
+    final year = academicYear ?? '2025/2026';
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return pw.Container(
+            padding: const pw.EdgeInsets.all(24),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.amber800, width: 4),
+              borderRadius: pw.BorderRadius.circular(12),
+            ),
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                if (logoImage != null) pw.Image(logoImage, width: 50, height: 50),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  schoolName.toUpperCase(),
+                  style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  certificateTitle.toUpperCase(),
+                  style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.amber900),
+                ),
+                pw.SizedBox(height: 12),
+                pw.Text('THIS CERTIFICATE IS PROUDLY CONFERRED UPON', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  studentName.toUpperCase(),
+                  style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Of Class $classLevel — Academic Session $year',
+                  style: pw.TextStyle(fontSize: 13, fontStyle: pw.FontStyle.italic, color: PdfColors.grey800),
+                ),
+                if (reason != null && reason.isNotEmpty) ...[
+                  pw.SizedBox(height: 8),
+                  pw.Text(reason, textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 11)),
+                ],
+                pw.SizedBox(height: 32),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                  children: [
+                    pw.Column(
+                      children: [
+                        pw.Container(width: 140, height: 1, color: PdfColors.grey600),
+                        pw.SizedBox(height: 4),
+                        pw.Text('Class Master', style: const pw.TextStyle(fontSize: 9)),
+                      ],
+                    ),
+                    pw.Column(
+                      children: [
+                        pw.Container(width: 140, height: 1, color: PdfColors.grey600),
+                        pw.SizedBox(height: 4),
+                        pw.Text('Principal / Director', style: const pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    final bytes = await pdf.save();
+    final tempDir = await _getTempDir();
+    final file = File('${tempDir.path}/certificate_${_clean(studentName)}.pdf');
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 8. HONOUR ROLL BROADSHEET PDF
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  Future<File> exportHonourRollPdf({
+    required String schoolName,
+    required String classLevel,
+    required String term,
+    required List<Map<String, dynamic>> students,
+  }) async {
+    final pdf = pw.Document();
+    final logoBytes = await _loadLogoBytes();
+    final logoImage = logoBytes != null ? pw.MemoryImage(logoBytes) : null;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(28),
+        build: (pw.Context context) {
+          return [
+            pw.Row(
+              children: [
+                if (logoImage != null) pw.Image(logoImage, width: 44, height: 44),
+                pw.SizedBox(width: 12),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(schoolName.toUpperCase(), style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                      pw.Text('OFFICIAL ACADEMIC HONOUR ROLL — $classLevel ($term)', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.amber900)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.Divider(thickness: 1.5, color: PdfColors.blue900),
+            pw.SizedBox(height: 12),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+              columnWidths: {
+                0: const pw.FlexColumnWidth(0.8),
+                1: const pw.FlexColumnWidth(2.5),
+                2: const pw.FlexColumnWidth(1.2),
+                3: const pw.FlexColumnWidth(1.8),
+              },
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.blue900),
+                  children: ['Rank', 'Student Name', 'Average /20', 'Distinction'].map((h) => pw.Padding(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Text(h, style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 9.5)),
+                  )).toList(),
+                ),
+                for (int i = 0; i < students.length; i++)
+                  pw.TableRow(
+                    decoration: pw.BoxDecoration(color: i.isEven ? PdfColors.grey100 : PdfColors.white),
+                    children: [
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('#${i + 1}', style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(students[i]['name']?.toString() ?? '', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(students[i]['average']?.toString() ?? '', style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(students[i]['honors']?.toString() ?? 'Honours', style: pw.TextStyle(color: PdfColors.amber900, fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                    ],
+                  ),
+              ],
+            ),
+          ];
+        },
+      ),
+    );
+
+    final bytes = await pdf.save();
+    final tempDir = await _getTempDir();
+    final file = File('${tempDir.path}/honour_roll_${_clean(classLevel)}.pdf');
+    await file.writeAsBytes(bytes, flush: true);
     return file;
   }
 

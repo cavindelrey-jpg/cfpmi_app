@@ -161,7 +161,7 @@ class _CreateHomeworkTabState extends State<_CreateHomeworkTab> {
     setState(() => _saving = true);
     final homework = Homework(
       id: '',
-      schoolId: widget.user.schoolId ?? '',
+      schoolId: widget.user.effectiveSchoolId,
       classLevel: classLevel,
       subject: subject,
       teacherId: widget.user.id,
@@ -385,7 +385,7 @@ class _StudentHomeworkView extends StatelessWidget {
       currentTitle: 'Homework',
       currentDestination: AppNavDestination.homework,
       child: StreamBuilder<List<Homework>>(
-        stream: HomeworkRepository.instance.watchForClass(user.schoolId ?? '', user.classLevel),
+        stream: HomeworkRepository.instance.watchForClass(user.effectiveSchoolId, user.classLevel),
         builder: (context, snap) {
           final items = snap.data ?? const [];
           if (snap.connectionState == ConnectionState.waiting) {

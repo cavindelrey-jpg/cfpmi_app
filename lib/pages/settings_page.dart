@@ -14,6 +14,8 @@ import '../services/auth_service.dart';
 import 'profile_edit_page.dart';
 import 'change_password_page.dart';
 import 'notification_preferences_page.dart';
+import 'privacy_policy_page.dart';
+import 'delete_account_page.dart';
 import 'help_support_page.dart';
 import 'about_academia_page.dart';
 import '../features/onboarding/school_admin_page.dart';
@@ -76,6 +78,12 @@ class SettingsPage extends StatelessWidget {
           _tile(context, Icons.info_outline_rounded, 'About', 'Version 2.0.0',
               () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => const AboutAcademiaPage()))),
+          _tile(context, Icons.privacy_tip_outlined, 'Privacy Policy', 'Data protection and institutional rights',
+              () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => PrivacyPolicyPage(user: user)))),
+          _tile(context, Icons.delete_outline_rounded, 'Delete Account', 'Permanently delete your profile and personal data',
+              () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => DeleteAccountPage(user: user))), color: ac.red),
 
           const SizedBox(height: 24),
           _tile(context, Icons.logout_rounded, 'Sign Out', null,

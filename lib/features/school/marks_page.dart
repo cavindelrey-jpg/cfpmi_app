@@ -12,6 +12,7 @@ import '../../models/school_mark.dart';
 import '../../repositories/school_marks_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import 'exam_composer/exam_metadata_page.dart';
 import 'marks_entry_page.dart';
 import 'marks_csv_import_page.dart';
 import 'widgets/school_shared_widgets.dart';
@@ -99,6 +100,17 @@ class _MarksPageState extends State<MarksPage> {
                   Text('Record marks or import class results spreadsheet', style: GoogleFonts.inter(fontSize: 11, color: ac.txt2)),
                 ]),
               ),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => ExamMetadataPage(user: u))),
+                icon: const Icon(Icons.note_add_rounded, size: 14),
+                label: const Text('Set Exam'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(width: 6),
               ElevatedButton.icon(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => MarksEntryPage(staff: u))).then((_) => _refresh()),

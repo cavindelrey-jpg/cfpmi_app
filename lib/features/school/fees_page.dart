@@ -13,12 +13,15 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/result.dart';
 import '../../models/app_user.dart';
 import '../../models/fee_ledger_entry.dart';
+import '../../models/school_expense.dart';
 import '../../models/student_record.dart';
+import '../../repositories/expense_repository.dart';
 import '../../repositories/fee_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_skeleton.dart';
 import '../../widgets/application_shell.dart';
+import '../../widgets/widgets.dart';
 
 class FeesPage extends StatefulWidget {
   final AppUser user;
@@ -30,7 +33,7 @@ class FeesPage extends StatefulWidget {
 
 class _FeesPageState extends State<FeesPage> {
   AppColors get ac => AppColors.of(context);
-  String get _schoolId => widget.user.schoolId ?? '';
+  String get _schoolId => widget.user.effectiveSchoolId;
 
   final _repo = FeeRepository.instance;
   final _roster = StudentRosterRepository.instance;
@@ -39,6 +42,8 @@ class _FeesPageState extends State<FeesPage> {
   String? _class;
   List<StudentRecord> _students = [];
   Map<String, StudentFeeBalance> _balances = {};
+  List<SchoolExpense> _expenses = [];
+  int _selectedTab = 0; // 0 = Tuition & Fees, 1 = Operating Expenses
   bool _loading = true;
 
   bool get _canManage =>
@@ -76,11 +81,20 @@ class _FeesPageState extends State<FeesPage> {
   }
 
   Future<void> _load() async {
+    setState(() => _loading = true);
+    final expenseRes = await ExpenseRepository.instance.getExpenses(_schoolId);
+    final expenses = expenseRes is Success<List<SchoolExpense>>
+        ? expenseRes.value
+        : <SchoolExpense>[];
+
     if (_class == null) {
-      setState(() => _loading = false);
+      if (!mounted) return;
+      setState(() {
+        _expenses = expenses;
+        _loading = false;
+      });
       return;
     }
-    setState(() => _loading = true);
     final rosterRes = await _roster.getStudents(_schoolId, classLevel: _class);
     final ledgerRes = await _repo.getForClass(_schoolId, _class!);
     final students = rosterRes is Success<List<StudentRecord>>
@@ -95,8 +109,229 @@ class _FeesPageState extends State<FeesPage> {
       _balances = {
         for (final b in FeeRepository.balancesFrom(entries)) b.studentId: b,
       };
+      _expenses = expenses;
       _loading = false;
     });
+  }
+
+  Future<void> _promptSetFees() async {
+    final titleCtrl = TextEditingController(text: 'Tuition Fee');
+    final amountCtrl = TextEditingController(text: '50000');
+    final yearCtrl = TextEditingController(text: '2025/2026');
+    String term = 'Term 1';
+    String targetClass = _class ?? (_classes.isNotEmpty ? _classes.first : 'Form 1');
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text('Set Fees & Tuition Charges',
+              style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: targetClass,
+                  decoration: const InputDecoration(labelText: 'Target Class', border: OutlineInputBorder()),
+                  items: [
+                    for (final c in _classes) DropdownMenuItem(value: c, child: Text(c)),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setD(() => targetClass = v);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: yearCtrl,
+                  decoration: const InputDecoration(labelText: 'Academic Year', hintText: '2025/2026', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: term,
+                  decoration: const InputDecoration(labelText: 'Term / Scope', border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(value: 'Term 1', child: Text('Term 1')),
+                    DropdownMenuItem(value: 'Term 2', child: Text('Term 2')),
+                    DropdownMenuItem(value: 'Term 3', child: Text('Term 3')),
+                    DropdownMenuItem(value: 'Annual', child: Text('Annual / Whole Year')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setD(() => term = v);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(labelText: 'Fee Title *', hintText: 'e.g. Tuition Fee, Exam Fee', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Amount (XAF) *', hintText: 'e.g. 50000', border: OutlineInputBorder()),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final amt = double.tryParse(amountCtrl.text.trim()) ?? 0;
+                if (titleCtrl.text.trim().isEmpty || amt <= 0) return;
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Apply Fee to Class'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      final title = titleCtrl.text.trim();
+      final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+      final year = yearCtrl.text.trim().isNotEmpty ? yearCtrl.text.trim() : '2025/2026';
+
+      final rosterRes = await _roster.getStudents(_schoolId, classLevel: targetClass);
+      final students = rosterRes is Success<List<StudentRecord>> ? rosterRes.value : <StudentRecord>[];
+
+      if (students.isEmpty) {
+        final entry = FeeLedgerEntry(
+          id: 'fee_${DateTime.now().millisecondsSinceEpoch}',
+          schoolId: _schoolId,
+          studentId: 'class_baseline_${targetClass.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}',
+          studentName: 'Class Baseline ($targetClass)',
+          classLevel: targetClass,
+          academicYear: year,
+          term: term,
+          type: FeeEntryType.charge,
+          amount: amount,
+          entryDate: DateTime.now(),
+          reference: 'FEE-SET-$term-$year',
+          note: title,
+          recordedBy: widget.user.name,
+        );
+        await _repo.addEntry(entry);
+      } else {
+        int count = 0;
+        for (final s in students) {
+          final entry = FeeLedgerEntry(
+            id: 'fee_${DateTime.now().millisecondsSinceEpoch}_${count++}',
+            schoolId: _schoolId,
+            studentId: s.id,
+            studentName: s.name,
+            classLevel: targetClass,
+            academicYear: year,
+            term: term,
+            type: FeeEntryType.charge,
+            amount: amount,
+            entryDate: DateTime.now(),
+            reference: 'FEE-CONFIG-$term-$year',
+            note: title,
+            recordedBy: widget.user.name,
+          );
+          await _repo.addEntry(entry);
+        }
+      }
+
+      if (mounted) showToast(context, 'Set fee "$title" ($amount XAF) for $targetClass.');
+      await _load();
+    }
+  }
+
+  Future<void> _promptAddExpense() async {
+    final titleCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final receiptCtrl = TextEditingController();
+    final notesCtrl = TextEditingController();
+    ExpenseCategory category = ExpenseCategory.supplies;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text('Record Operating Expense',
+              style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<ExpenseCategory>(
+                  value: category,
+                  decoration: const InputDecoration(labelText: 'Expense Category *', border: OutlineInputBorder()),
+                  items: [
+                    for (final c in ExpenseCategory.values)
+                      DropdownMenuItem(value: c, child: Text(c.label)),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setD(() => category = v);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(labelText: 'Description / Item *', hintText: 'e.g. Science Lab Reagents', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Amount (XAF) *', hintText: 'e.g. 75000', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: receiptCtrl,
+                  decoration: const InputDecoration(labelText: 'Receipt / Invoice Ref', hintText: 'e.g. REC-88219', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: notesCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Notes', border: OutlineInputBorder()),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final amt = double.tryParse(amountCtrl.text.trim()) ?? 0;
+                if (titleCtrl.text.trim().isEmpty || amt <= 0) return;
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Save Expense'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      final title = titleCtrl.text.trim();
+      final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+      final expense = SchoolExpense(
+        id: 'exp_${DateTime.now().millisecondsSinceEpoch}',
+        schoolId: _schoolId,
+        category: category,
+        title: title,
+        amount: amount,
+        date: DateTime.now(),
+        receiptRef: receiptCtrl.text.trim().isNotEmpty ? receiptCtrl.text.trim() : null,
+        recordedBy: widget.user.name,
+        notes: notesCtrl.text.trim().isNotEmpty ? notesCtrl.text.trim() : null,
+      );
+
+      final res = await ExpenseRepository.instance.addExpense(expense);
+      if (res is Success) {
+        if (mounted) showToast(context, 'Saved expense: $title ($amount XAF)');
+        await _load();
+      } else {
+        if (mounted) showToast(context, 'Could not save expense: ${(res as Failure).message}', isError: true);
+      }
+    }
   }
 
   String _money(double v) => v
@@ -117,56 +352,232 @@ class _FeesPageState extends State<FeesPage> {
 
     return ApplicationShell(
       user: widget.user,
-      currentTitle: 'Fees & Ledger (Record Only)',
-      subtitle: 'Manage student tuition charges and recorded bank payments',
+      currentTitle: 'Fees & Expenses',
+      subtitle: 'Manage student tuition charges and school operational expenses',
       currentDestination: AppNavDestination.fees,
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: DropdownButtonFormField<String>(
-              initialValue: _class,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Class',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                for (final c in _classes)
-                  DropdownMenuItem(value: c, child: Text(c)),
-              ],
-              onChanged: (v) {
-                setState(() => _class = v);
-                _load();
-              },
-            ),
-          ),
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: ac.bluBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
             child: Row(
               children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: ac.blu),
-                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    'Records only — no payments go through the app. Enter charges and '
-                    'payments from the bank statement / slip.',
-                    style: GoogleFonts.inter(fontSize: 11.5, color: ac.txt2),
+                  child: SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 0,
+                        label: Text('Tuition & Fees'),
+                        icon: Icon(Icons.receipt_long_rounded, size: 16),
+                      ),
+                      ButtonSegment(
+                        value: 1,
+                        label: Text('Operating Expenses'),
+                        icon: Icon(Icons.account_balance_wallet_outlined, size: 16),
+                      ),
+                    ],
+                    selected: {_selectedTab},
+                    onSelectionChanged: (s) => setState(() => _selectedTab = s.first),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
-          Expanded(child: _list()),
+          if (_selectedTab == 0) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _class,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Class',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        for (final c in _classes) DropdownMenuItem(value: c, child: Text(c)),
+                      ],
+                      onChanged: (v) {
+                        setState(() => _class = v);
+                        _load();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: _promptSetFees,
+                    icon: const Icon(Icons.settings_outlined, size: 16),
+                    label: const Text('Set Fees'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ac.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: ac.bluBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 16, color: ac.blu),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Records only — no payments go through the app. Enter charges and '
+                      'payments from the bank statement / slip.',
+                      style: GoogleFonts.inter(fontSize: 11.5, color: ac.txt2),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(child: _list()),
+          ] else ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Operational Expenses (Excl. Payroll)',
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: ac.txt),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _promptAddExpense,
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: const Text('Record Expense'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ac.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(child: _expensesList()),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _expensesList() {
+    if (_loading) return const SkeletonList();
+    if (_expenses.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.account_balance_wallet_outlined, size: 48, color: ac.muted),
+              const SizedBox(height: 12),
+              Text('No operating expenses recorded yet',
+                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: ac.txt)),
+              const SizedBox(height: 4),
+              Text('Record general utility, supply, laboratory, and maintenance expenses.',
+                  style: GoogleFonts.inter(fontSize: 12.5, color: ac.txt2)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final totalSpent = _expenses.fold<double>(0.0, (acc, e) => acc + e.amount);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: ac.surf,
+            borderRadius: BorderRadius.circular(Rad.md),
+            border: Border.all(color: ac.bdr),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Total Operating Expenditure',
+                      style: GoogleFonts.inter(fontSize: 12, color: ac.txt2, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 4),
+                  Text('${_money(totalSpent)} XAF',
+                      style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: ac.primary)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: ac.surf2, borderRadius: BorderRadius.circular(8)),
+                child: Text('${_expenses.length} Entries',
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: ac.txt)),
+              ),
+            ],
+          ),
+        ),
+        for (final exp in _expenses)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: ac.surf,
+              borderRadius: BorderRadius.circular(Rad.md),
+              border: Border.all(color: ac.bdr),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: ac.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.receipt_rounded, size: 20, color: ac.primary),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(exp.title,
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: ac.txt)),
+                      const SizedBox(height: 2),
+                      Text('${exp.category.label}${exp.receiptRef != null ? " • Ref: ${exp.receiptRef}" : ""}',
+                          style: GoogleFonts.inter(fontSize: 11.5, color: ac.txt2)),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('${_money(exp.amount)} XAF',
+                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: ac.txt)),
+                    Text(
+                      '${exp.date.day}/${exp.date.month}/${exp.date.year}',
+                      style: GoogleFonts.inter(fontSize: 11, color: ac.muted),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 

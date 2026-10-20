@@ -287,6 +287,12 @@ class AppUser {
   /// Timetable, Marks) must gate on this, not on merely being signed in.
   bool get isSchoolMember => schoolId != null && schoolId!.isNotEmpty && schoolRole != null;
 
+  /// The active tenant school ID for this user, falling back to current app brand (e.g. 'cfpmi').
+  String get effectiveSchoolId =>
+      (schoolId != null && schoolId!.isNotEmpty)
+          ? schoolId!
+          : (Branding.current.schoolId ?? '');
+
   bool get isSchoolClassMaster => schoolRole == SchoolRole.classMaster || (classMasterOfClass ?? '').isNotEmpty;
 
   /// Marks/attendance-record permission for one (subject, classLevel) —
