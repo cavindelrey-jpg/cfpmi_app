@@ -10,9 +10,9 @@
 // Firestore batches used to.
 
 import 'dart:async';
-
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/public_course.dart';
 import '../core/core.dart';
@@ -460,13 +460,23 @@ class PublicCourseRepository {
     }
   }
 
-  Future<Result<String>> uploadCover({required String courseId, required File imageFile}) async {
+  Future<Result<String>> uploadCoverBytes({required String courseId, required Uint8List bytes}) async {
     try {
       final path = 'course_covers/$courseId.jpg';
-      await _db.storage.from(_bucket).upload(path, imageFile, fileOptions: const FileOptions(upsert: true))
+      await _db.storage.from(_bucket).uploadBinary(
+          path, bytes, fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'))
           .timeout(const Duration(seconds: 60), onTimeout: () => throw Exception(
               'Image upload is taking too long. Check your connection and try again.'));
       return Success(_db.storage.from(_bucket).getPublicUrl(path));
+    } catch (e) {
+      return Failure('Failed to upload cover image', e);
+    }
+  }
+
+  Future<Result<String>> uploadCover({required String courseId, required File imageFile}) async {
+    try {
+      final bytes = await imageFile.readAsBytes();
+      return uploadCoverBytes(courseId: courseId, bytes: bytes);
     } catch (e) {
       return Failure('Failed to upload cover image', e);
     }

@@ -12,8 +12,8 @@
 //   RPCs, same pattern as every other engagement counter in this rewrite.
 
 import 'dart:async';
-
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
 import '../core/result.dart';
@@ -608,16 +608,43 @@ class ClubRepository {
 
   // ── Banner + thumbnail images ─────────────────────────────
 
+  Future<Result<String>> uploadBannerBytes({
+    required String clubId,
+    required Uint8List bytes,
+  }) async {
+    try {
+      final path = 'club_banners/$clubId.jpg';
+      await _db.storage.from(_bucket).uploadBinary(
+          path, bytes, fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'));
+      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+    } catch (e) {
+      return Failure('Failed to upload group banner', e);
+    }
+  }
+
   Future<Result<String>> uploadBanner({
     required String clubId,
     required File imageFile,
   }) async {
     try {
-      final path = 'club_banners/$clubId.jpg';
-      await _db.storage.from(_bucket).upload(path, imageFile, fileOptions: const FileOptions(upsert: true));
-      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+      final bytes = await imageFile.readAsBytes();
+      return uploadBannerBytes(clubId: clubId, bytes: bytes);
     } catch (e) {
       return Failure('Failed to upload group banner', e);
+    }
+  }
+
+  Future<Result<String>> uploadThumbnailBytes({
+    required String clubId,
+    required Uint8List bytes,
+  }) async {
+    try {
+      final path = 'club_thumbnails/$clubId.jpg';
+      await _db.storage.from(_bucket).uploadBinary(
+          path, bytes, fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'));
+      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+    } catch (e) {
+      return Failure('Failed to upload group thumbnail', e);
     }
   }
 
@@ -628,9 +655,8 @@ class ClubRepository {
     required File imageFile,
   }) async {
     try {
-      final path = 'club_thumbnails/$clubId.jpg';
-      await _db.storage.from(_bucket).upload(path, imageFile, fileOptions: const FileOptions(upsert: true));
-      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+      final bytes = await imageFile.readAsBytes();
+      return uploadThumbnailBytes(clubId: clubId, bytes: bytes);
     } catch (e) {
       return Failure('Failed to upload group thumbnail', e);
     }

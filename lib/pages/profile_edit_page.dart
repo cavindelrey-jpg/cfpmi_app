@@ -5,6 +5,7 @@
 // paints instantly next time.
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -35,6 +36,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   late List<String> _favoriteSubjects;
   String? _photoUrl;
   File? _localPickedFile;
+  Uint8List? _localPickedBytes;
   bool _saving = false;
   bool _uploadingPhoto = false;
 
@@ -65,28 +67,37 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery, maxWidth: 800, imageQuality: 85);
     if (picked == null) return;
-    setState(() => _localPickedFile = File(picked.path));
-    await _uploadPhoto();
+    final bytes = await picked.readAsBytes();
+    setState(() {
+      _localPickedBytes = bytes;
+      if (!kIsWeb) {
+        _localPickedFile = File(picked.path);
+      }
+    });
+    await _uploadPhoto(bytes);
   }
 
-  Future<void> _uploadPhoto() async {
-    if (_localPickedFile == null) return;
+  Future<void> _uploadPhoto(Uint8List bytes) async {
     setState(() => _uploadingPhoto = true);
     try {
       final uid = widget.user.id;
       final path = 'avatars/$uid.jpg';
       final db = Supabase.instance.client;
-      await db.storage.from('app-content').upload(
-          path, _localPickedFile!, fileOptions: const FileOptions(upsert: true));
+      await db.storage.from('app-content').uploadBinary(
+          path, bytes, fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'));
       final url = db.storage.from('app-content').getPublicUrl(path);
 
-      // Mirror to local cache so the avatar paints instantly next launch.
-      final dir = await getApplicationDocumentsDirectory();
-      final cacheFile = File('${dir.path}/academia_cache/avatar_$uid.jpg');
-      await cacheFile.parent.create(recursive: true);
-      await _localPickedFile!.copy(cacheFile.path);
+      // Mirror to local cache so the avatar paints instantly next launch (mobile/desktop).
+      if (!kIsWeb) {
+        try {
+          final dir = await getApplicationDocumentsDirectory();
+          final cacheFile = File('${dir.path}/academia_cache/avatar_$uid.jpg');
+          await cacheFile.parent.create(recursive: true);
+          await cacheFile.writeAsBytes(bytes);
+        } catch (_) {}
+      }
 
-      setState(() => _photoUrl = url);
+      if (mounted) setState(() => _photoUrl = url);
     } catch (e) {
       if (mounted) showToast(context, 'Photo upload failed. Try again.', isError: true);
     } finally {
@@ -146,13 +157,15 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             child: GestureDetector(
               onTap: _uploadingPhoto ? null : _pickPhoto,
               child: Stack(children: [
-                _photoUrl != null && _photoUrl!.isNotEmpty
-                    ? CircleAvatar(radius: 48, backgroundImage: NetworkImage(_photoUrl!))
-                    : CircleAvatar(
-                        radius: 48, backgroundColor: ac.primaryBg,
-                        child: Text(widget.user.initials, style: GoogleFonts.sora(
-                            fontSize: 30, fontWeight: FontWeight.w700, color: ac.primary)),
-                      ),
+                _localPickedBytes != null
+                    ? CircleAvatar(radius: 48, backgroundImage: MemoryImage(_localPickedBytes!))
+                    : (_photoUrl != null && _photoUrl!.isNotEmpty
+                        ? CircleAvatar(radius: 48, backgroundImage: NetworkImage(_photoUrl!))
+                        : CircleAvatar(
+                            radius: 48, backgroundColor: ac.primaryBg,
+                            child: Text(widget.user.initials, style: GoogleFonts.sora(
+                                fontSize: 30, fontWeight: FontWeight.w700, color: ac.primary)),
+                          )),
                 Positioned(
                   bottom: 0, right: 0,
                   child: Container(

@@ -13,6 +13,7 @@
 // uploaded, auto-derived from category rather than picked by anyone.
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -55,7 +56,9 @@ class _CreateClubPageState extends State<CreateClubPage> {
   String _category = 'General';
   bool _requiresApproval = false;
   File? _bannerFile;
+  Uint8List? _bannerBytes;
   File? _thumbnailFile;
+  Uint8List? _thumbnailBytes;
   bool _saving = false;
   String? _error;
 
@@ -70,12 +73,24 @@ class _CreateClubPageState extends State<CreateClubPage> {
 
   Future<void> _pickBanner() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null) setState(() => _bannerFile = File(picked.path));
+    if (picked != null) {
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _bannerBytes = bytes;
+        if (!kIsWeb) _bannerFile = File(picked.path);
+      });
+    }
   }
 
   Future<void> _pickThumbnail() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null) setState(() => _thumbnailFile = File(picked.path));
+    if (picked != null) {
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _thumbnailBytes = bytes;
+        if (!kIsWeb) _thumbnailFile = File(picked.path);
+      });
+    }
   }
 
   void _onCategoryChanged(String? v) {
@@ -121,12 +136,18 @@ class _CreateClubPageState extends State<CreateClubPage> {
     // one failing shouldn't block the other or the club's creation,
     // which has already succeeded by this point.
     String? bannerUrl;
-    if (_bannerFile != null) {
+    if (_bannerBytes != null) {
+      final upload = await repo.uploadBannerBytes(clubId: newId, bytes: _bannerBytes!);
+      if (upload is Success<String>) bannerUrl = upload.value;
+    } else if (_bannerFile != null) {
       final upload = await repo.uploadBanner(clubId: newId, imageFile: _bannerFile!);
       if (upload is Success<String>) bannerUrl = upload.value;
     }
     String? thumbnailUrl;
-    if (_thumbnailFile != null) {
+    if (_thumbnailBytes != null) {
+      final upload = await repo.uploadThumbnailBytes(clubId: newId, bytes: _thumbnailBytes!);
+      if (upload is Success<String>) thumbnailUrl = upload.value;
+    } else if (_thumbnailFile != null) {
       final upload = await repo.uploadThumbnail(clubId: newId, imageFile: _thumbnailFile!);
       if (upload is Success<String>) thumbnailUrl = upload.value;
     }
@@ -184,11 +205,13 @@ class _CreateClubPageState extends State<CreateClubPage> {
                 height: 120, width: double.infinity,
                 decoration: BoxDecoration(
                   color: ac.navy, borderRadius: BorderRadius.circular(Rad.md),
-                  image: _bannerFile != null
-                      ? DecorationImage(image: FileImage(_bannerFile!), fit: BoxFit.cover)
-                      : null,
+                  image: _bannerBytes != null
+                      ? DecorationImage(image: MemoryImage(_bannerBytes!), fit: BoxFit.cover)
+                      : (_bannerFile != null
+                          ? DecorationImage(image: FileImage(_bannerFile!), fit: BoxFit.cover)
+                          : null),
                 ),
-                child: _bannerFile == null
+                child: (_bannerBytes == null && _bannerFile == null)
                     ? const Center(child: Icon(Icons.add_photo_alternate_outlined,
                         color: Colors.white70, size: 28))
                     : Align(
@@ -227,11 +250,13 @@ class _CreateClubPageState extends State<CreateClubPage> {
                       decoration: BoxDecoration(
                         color: ac.surf3, shape: BoxShape.circle,
                         border: Border.all(color: ac.bdr),
-                        image: _thumbnailFile != null
-                            ? DecorationImage(image: FileImage(_thumbnailFile!), fit: BoxFit.cover)
-                            : null,
+                        image: _thumbnailBytes != null
+                            ? DecorationImage(image: MemoryImage(_thumbnailBytes!), fit: BoxFit.cover)
+                            : (_thumbnailFile != null
+                                ? DecorationImage(image: FileImage(_thumbnailFile!), fit: BoxFit.cover)
+                                : null),
                       ),
-                      child: _thumbnailFile == null
+                      child: (_thumbnailBytes == null && _thumbnailFile == null)
                           ? Icon(Icons.add_a_photo_outlined, color: ac.muted, size: 26)
                           : Align(
                               alignment: Alignment.bottomRight,

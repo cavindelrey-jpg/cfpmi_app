@@ -6,6 +6,7 @@
 // the optional Video Lesson URL) is authored in lesson_composer_page.dart.
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -65,6 +66,7 @@ class _CourseComposerPageState extends State<CourseComposerPage> {
   bool _loadingLessons = false;
 
   File? _pickedCover;
+  Uint8List? _pickedCoverBytes;
   bool _saving = false;
   String? _error;
 
@@ -156,7 +158,13 @@ class _CourseComposerPageState extends State<CourseComposerPage> {
   Future<void> _pickCover() async {
     HapticFeedback.selectionClick();
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null) setState(() => _pickedCover = File(picked.path));
+    if (picked != null) {
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _pickedCoverBytes = bytes;
+        if (!kIsWeb) _pickedCover = File(picked.path);
+      });
+    }
   }
 
   Future<void> _save({required bool publish}) async {
@@ -223,7 +231,14 @@ class _CourseComposerPageState extends State<CourseComposerPage> {
       );
     }
 
-    if (_pickedCover != null) {
+    if (_pickedCoverBytes != null) {
+      final upload = await repo.uploadCoverBytes(courseId: _workingCourse.id, bytes: _pickedCoverBytes!);
+      if (upload is Success<String>) {
+        _workingCourse.coverImageUrl = upload.value;
+        _pickedCoverBytes = null;
+        _pickedCover = null;
+      }
+    } else if (_pickedCover != null) {
       final upload = await repo.uploadCover(courseId: _workingCourse.id, imageFile: _pickedCover!);
       if (upload is Success<String>) {
         _workingCourse.coverImageUrl = upload.value;
@@ -316,13 +331,15 @@ class _CourseComposerPageState extends State<CourseComposerPage> {
                 height: 140, width: double.infinity,
                 decoration: BoxDecoration(
                   color: ac.navy, borderRadius: BorderRadius.circular(Rad.md),
-                  image: _pickedCover != null
-                      ? DecorationImage(image: FileImage(_pickedCover!), fit: BoxFit.cover)
-                      : (widget.existing?.coverImageUrl != null
-                          ? DecorationImage(image: NetworkImage(widget.existing!.coverImageUrl!), fit: BoxFit.cover)
-                          : null),
+                  image: _pickedCoverBytes != null
+                      ? DecorationImage(image: MemoryImage(_pickedCoverBytes!), fit: BoxFit.cover)
+                      : (_pickedCover != null
+                          ? DecorationImage(image: FileImage(_pickedCover!), fit: BoxFit.cover)
+                          : (widget.existing?.coverImageUrl != null
+                              ? DecorationImage(image: NetworkImage(widget.existing!.coverImageUrl!), fit: BoxFit.cover)
+                              : null)),
                 ),
-                child: (_pickedCover == null && widget.existing?.coverImageUrl == null)
+                child: (_pickedCoverBytes == null && _pickedCover == null && widget.existing?.coverImageUrl == null)
                     ? const Center(child: Icon(Icons.add_photo_alternate_outlined, color: Colors.white70, size: 32))
                     : null,
               ),

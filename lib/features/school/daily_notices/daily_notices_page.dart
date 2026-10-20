@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../models/app_user.dart';
 import '../../../models/daily_notice.dart';
 import '../../../repositories/daily_notice_repository.dart';
+import '../../../repositories/school_class_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
 import 'compose_daily_notice_page.dart';
@@ -34,11 +35,28 @@ class _DailyNoticesPageState extends State<DailyNoticesPage> {
 
   Future<void> _triggerProgrammeNow() async {
     final schoolId = widget.user.effectiveSchoolId;
-    final classLevel = widget.user.classLevel ??
-        (widget.user.classMasterOfClass ??
+    String classLevel = widget.user.classLevel.isNotEmpty
+        ? widget.user.classLevel
+        : (widget.user.classMasterOfClass ??
             (widget.user.teachingAssignments.isNotEmpty
                 ? widget.user.teachingAssignments.first.classLevel
-                : 'Form 5'));
+                : ''));
+
+    if (classLevel.isEmpty) {
+      final classes = await SchoolClassRepository.instance.getClasses(schoolId);
+      if (classes.isNotEmpty) {
+        classLevel = classes.first.name;
+      }
+    }
+
+    if (classLevel.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No active classes found for this school.')),
+        );
+      }
+      return;
+    }
 
     final notice = await DailyNoticeRepository.instance.generateTomorrowsProgramme(
       schoolId: schoolId,

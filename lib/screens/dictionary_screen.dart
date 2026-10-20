@@ -63,7 +63,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ac = Theme.of(context).extension<AppColors>()!;
+    final ac = AppColors.of(context);
     final all = DictionaryService.instance.allEntries;
 
     return ApplicationShell(
@@ -315,7 +315,7 @@ class DictionaryEntryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ac = Theme.of(context).extension<AppColors>()!;
+    final ac = AppColors.of(context);
 
     return ApplicationShell(
       user: user,
