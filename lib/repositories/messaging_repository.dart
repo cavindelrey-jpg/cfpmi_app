@@ -35,17 +35,11 @@ class MessagingRepository {
   static final MessagingRepository instance = MessagingRepository._();
 
   static const String _bucket = 'app-content';
-  SupabaseClient? get _db {
-    try {
-      return Supabase.instance.client;
-    } catch (_) {
-      return null;
-    }
-  }
+  final SupabaseClient _db = Supabase.instance.client;
 
-  SupabaseQueryBuilder? get _requests => _db?.from('friend_requests');
-  SupabaseQueryBuilder? get _friendships => _db?.from('friendships');
-  SupabaseQueryBuilder? get _conversations => _db?.from('conversations');
+  SupabaseQueryBuilder get _requests => _db.from('friend_requests');
+  SupabaseQueryBuilder get _friendships => _db.from('friendships');
+  SupabaseQueryBuilder get _conversations => _db.from('conversations');
 
   /// Sorted pair so a friendship has exactly one canonical row id
   /// regardless of who sent the original request.
@@ -216,27 +210,24 @@ class MessagingRepository {
         MessageCacheService.instance.getConversations(userId).then((cached) {
           if (cached.isNotEmpty && !controller.isClosed) controller.add(cached);
         });
-        final convTable = _conversations;
-        if (convTable != null) {
-          liveSub = convTable
-              .stream(primaryKey: ['id'])
-              .order('last_message_at', ascending: false)
-              .realtimeTolerant()
-              .listen(
-                (rows) {
-                  if (controller.isClosed) return;
-                  final live = rows
-                      .where((r) => (r['participant_ids'] as List?)?.contains(userId) ?? false)
-                      .map(Conversation.fromSupabase)
-                      .toList();
-                  controller.add(live);
-                  unawaited(MessageCacheService.instance.putConversations(userId, live));
-                },
-                onError: (Object e, StackTrace st) {
-                  if (!controller.isClosed) controller.addError(e, st);
-                },
-              );
-        }
+        liveSub = _conversations
+            .stream(primaryKey: ['id'])
+            .order('last_message_at', ascending: false)
+            .realtimeTolerant()
+            .listen(
+              (rows) {
+                if (controller.isClosed) return;
+                final live = rows
+                    .where((r) => (r['participant_ids'] as List?)?.contains(userId) ?? false)
+                    .map(Conversation.fromSupabase)
+                    .toList();
+                controller.add(live);
+                unawaited(MessageCacheService.instance.putConversations(userId, live));
+              },
+              onError: (Object e, StackTrace st) {
+                if (!controller.isClosed) controller.addError(e, st);
+              },
+            );
       },
       onCancel: () async {
         await liveSub?.cancel();

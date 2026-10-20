@@ -19,6 +19,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/result.dart';
 import '../models/academic_content.dart';
@@ -592,7 +593,19 @@ class _GlobalTopBar extends StatelessWidget {
     required this.onNavigateHome,
   });
 
+  bool get _isSupabaseReady {
+    try {
+      Supabase.instance;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Stream<int> _safeWatchNotificationCount(String uid) {
+    if (!_isSupabaseReady || uid.isEmpty) {
+      return Stream.value(0);
+    }
     try {
       return NotificationRepository.instance.watchUnreadCount(uid);
     } catch (_) {
@@ -601,6 +614,9 @@ class _GlobalTopBar extends StatelessWidget {
   }
 
   Stream<List<Conversation>> _safeWatchConversations(String uid) {
+    if (!_isSupabaseReady || uid.isEmpty) {
+      return Stream.value(const <Conversation>[]);
+    }
     try {
       return MessagingRepository.instance.watchConversations(uid);
     } catch (_) {
