@@ -9,8 +9,11 @@ import '../../models/public_course.dart' show CurriculumIcon;
 import '../../repositories/public_course_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart';
+import 'courses_home_page.dart';
 import 'hierarchy_browse_scaffold.dart';
+import 'level_subjects_page.dart';
 import 'topic_courses_page.dart';
 import 'curriculum_icon_editor.dart';
 
@@ -53,6 +56,29 @@ class _SubjectTopicsPageState extends State<SubjectTopicsPage> {
   Widget build(BuildContext context) {
     final topics = _counts.keys.toList()..sort();
     return HierarchyBrowseScaffold<String>(
+      user: widget.user,
+      navDestination: AppNavDestination.academicCourses,
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Courses',
+          icon: Icons.menu_book_rounded,
+          onTap: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => CoursesHomePage(user: widget.user),
+            ),
+          ),
+        ),
+        ShellBreadcrumb(
+          label: widget.level,
+          onTap: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) =>
+                  LevelSubjectsPage(level: widget.level, user: widget.user),
+            ),
+          ),
+        ),
+        ShellBreadcrumb(label: widget.subject),
+      ],
       title: widget.subject,
       subtitle: '${_counts.values.fold<int>(0, (a, b) => a + b)} courses',
       searchHint: 'Search topics…',

@@ -74,6 +74,7 @@ import '../../theme/category_colors.dart';
 import '../../theme/club_visuals.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
+import '../../widgets/application_shell.dart';
 import 'article_reader_page.dart';
 import 'article_composer_page.dart';
 import 'author_profile_page.dart';
@@ -210,18 +211,60 @@ class _MagazineFeedPageState extends State<MagazineFeedPage> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      body: AppBackground(child: SafeArea(
-        child: Column(children: [
-          _header(context),
-          const SizedBox(height: 8),
-          _tabRow(),
-          const SizedBox(height: 16),
-          Expanded(
-            child: StreamBuilder<List<MagazineArticle>>(
-              stream: _streamForTab(),
-              builder: (context, snap) {
+    return ApplicationShell(
+      user: widget.user,
+      currentTitle: 'Academia Magazine',
+      subtitle: 'Write. Share. Inspire.',
+      currentDestination: AppNavDestination.magazine,
+      headerActions: [
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => MagazineSearchPage(user: widget.user),
+            ),
+          ),
+          icon: const Icon(Icons.search_rounded, size: 16),
+          label: const Text('Search Articles'),
+          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+        ),
+        const SizedBox(width: 8),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const TopWritersPage()),
+          ),
+          icon: const Icon(Icons.leaderboard_outlined, size: 16),
+          label: const Text('Top Writers'),
+          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+        ),
+        if (_canCompose) ...[
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ArticleComposerPage(user: widget.user!),
+              ),
+            ),
+            icon: const Icon(Icons.edit_note_rounded, size: 18),
+            label: const Text('Write Article'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF081630),
+              foregroundColor: Colors.white,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ],
+      child: AppBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              _tabRow(),
+              const SizedBox(height: 16),
+              Expanded(
+                child: StreamBuilder<List<MagazineArticle>>(
+                  stream: _streamForTab(),
+                  builder: (context, snap) {
                 if (_tab == _FeedTab.local && !_hasSchool) {
                   return _localFeedEmptyState();
                 }

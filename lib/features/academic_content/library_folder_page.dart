@@ -14,20 +14,33 @@ import '../../repositories/academic_content_repository.dart';
 import '../../services/analytics_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import '../courses_marketplace/hierarchy_browse_scaffold.dart';
 import 'content_details_page.dart';
 import 'content_upload_page.dart';
+import 'content_viewer_page.dart';
 import 'bulk_past_paper_upload_page.dart';
 import 'library_folder_picker_page.dart';
+import 'library_home_page.dart';
 import 'folder_thumbnail_editor.dart';
 
 class LibraryFolderPage extends StatefulWidget {
   final String folderId;
   final String folderName;
   final AppUser user;
-  const LibraryFolderPage({super.key, required this.folderId, required this.folderName, required this.user});
+  final AppNavDestination? navDestination;
+  final List<ShellBreadcrumb>? parentBreadcrumbs;
+
+  const LibraryFolderPage({
+    super.key,
+    required this.folderId,
+    required this.folderName,
+    required this.user,
+    this.navDestination,
+    this.parentBreadcrumbs,
+  });
 
   @override
   State<LibraryFolderPage> createState() => _LibraryFolderPageState();
@@ -114,9 +127,55 @@ class _LibraryFolderPageState extends State<LibraryFolderPage> {
     }
   }
 
+  AppNavDestination get _effectiveDestination {
+    if (widget.navDestination != null) return widget.navDestination!;
+    if (widget.folderName.toLowerCase().contains('past')) {
+      return AppNavDestination.pastQuestions;
+    }
+    return AppNavDestination.academicLibrary;
+  }
+
+  List<ShellBreadcrumb> _buildBreadcrumbs(BuildContext context) {
+    final dest = _effectiveDestination;
+    if (widget.parentBreadcrumbs != null &&
+        widget.parentBreadcrumbs!.isNotEmpty) {
+      return [
+        ...widget.parentBreadcrumbs!,
+        ShellBreadcrumb(
+          label: widget.folderName,
+          icon: Icons.folder_open_rounded,
+        ),
+      ];
+    }
+    return [
+      ShellBreadcrumb(
+        label: 'Academic Library',
+        icon: Icons.folder_copy_rounded,
+        onTap: () => Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => LibraryHomePage(
+              user: widget.user,
+              navDestination: AppNavDestination.academicLibrary,
+            ),
+          ),
+        ),
+      ),
+      ShellBreadcrumb(
+        label: widget.folderName,
+        icon: dest == AppNavDestination.pastQuestions
+            ? Icons.description_rounded
+            : Icons.folder_open_rounded,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+    final dest = _effectiveDestination;
+    final isPast = dest == AppNavDestination.pastQuestions;
+    final crumbs = _buildBreadcrumbs(context);
+
     return StreamBuilder<List<LibraryFolder>>(
       stream: _foldersStream,
       builder: (context, folderSnap) {
@@ -128,16 +187,14 @@ class _LibraryFolderPageState extends State<LibraryFolderPage> {
             if ((folderSnap.hasError || itemSnap.hasError) && folders.isEmpty && items.isEmpty) {
               CrashService.instance.recordError(folderSnap.error ?? itemSnap.error, null,
                   context: 'LibraryFolderPage(${widget.folderId})');
-              return Scaffold(
-                backgroundColor: ac.bg,
-                appBar: AppBar(
-                  backgroundColor: ac.bg,
-                  elevation: 0,
-                  iconTheme: IconThemeData(color: ac.txt),
-                  title: Text(widget.folderName, style: AppText.title.copyWith(fontSize: 16, color: ac.txt)),
-                ),
-                body: AppBackground(
-                  child: ErrorView(message: "Couldn't load this folder — ${folderSnap.error ?? itemSnap.error}"),
+              return ApplicationShell(
+                user: widget.user,
+                currentTitle: widget.folderName,
+                currentDestination: dest,
+                breadcrumbs: crumbs,
+                child: ErrorView(
+                  message:
+                      "Couldn't load this folder — ${folderSnap.error ?? itemSnap.error}",
                 ),
               );
             }
@@ -152,6 +209,14 @@ class _LibraryFolderPageState extends State<LibraryFolderPage> {
               });
 
             return HierarchyBrowseScaffold<_Entry>(
+              user: widget.user,
+              navDestination: dest,
+              breadcrumbs: crumbs,
+              contextualPanel: LibraryContextualPanel(
+                user: widget.user,
+                isPastQuestions: isPast,
+                currentFolderName: widget.folderName,
+              ),
               title: widget.folderName,
               subtitle: '${folders.length} folder${folders.length == 1 ? '' : 's'} · '
                   '${items.length} file${items.length == 1 ? '' : 's'}',
@@ -246,12 +311,45 @@ class _LibraryFolderPageState extends State<LibraryFolderPage> {
   void _open(BuildContext context, _Entry e) {
     HapticFeedback.selectionClick();
     if (e.isFolder) {
-      Navigator.of(context).push(MaterialPageRoute(
+      final currentCrumbs = _buildBreadcrumbs(context);
+      final clickableHistory = [
+        ...currentCrumbs.sublist(0, currentCrumbs.length - 1),
+        ShellBreadcrumb(
+          label: widget.folderName,
+          icon: Icons.folder_open_rounded,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+      ];
+      Navigator.of(context).push(
+        MaterialPageRoute(
           builder: (_) => LibraryFolderPage(
-              folderId: e.folder!.id, folderName: e.folder!.name, user: widget.user)));
+            folderId: e.folder!.id,
+            folderName: e.folder!.name,
+            user: widget.user,
+            navDestination: _effectiveDestination,
+            parentBreadcrumbs: clickableHistory,
+          ),
+        ),
+      );
     } else {
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ContentDetailsPage(contentId: e.content!.id, user: widget.user)));
+      final item = e.content!;
+      if ((item.fileUrl ?? '').isNotEmpty) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ContentViewerPage(
+              content: item,
+              user: widget.user,
+            ),
+          ),
+        );
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) =>
+                ContentDetailsPage(contentId: item.id, user: widget.user),
+          ),
+        );
+      }
     }
   }
 

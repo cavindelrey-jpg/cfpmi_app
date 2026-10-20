@@ -33,7 +33,35 @@ class TimetablePage extends StatelessWidget {
     return ApplicationShell(
       user: user,
       currentTitle: 'Timetable',
+      subtitle: 'Official class timetable and personal study schedule',
       currentDestination: AppNavDestination.timetable,
+      headerActions: [
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => PersonalStudyPage(user: user)),
+          ),
+          icon: const Icon(Icons.event_note_rounded, size: 16),
+          label: const Text('Personal Study Plan'),
+          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+        ),
+        if (user.canManageAnyTimetable) ...[
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => TimetableManagerPage(user: user),
+              ),
+            ),
+            icon: const Icon(Icons.edit_calendar_rounded, size: 16),
+            label: const Text('Manage Timetable'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF081630),
+              foregroundColor: Colors.white,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ],
       child: (schoolId.isNotEmpty && !user.isStudent && !user.isParent)
           ? _StaffTimetableView(page: this)
           : (schoolId.isEmpty || classLevel.isEmpty)

@@ -26,6 +26,7 @@ import 'author_profile_page.dart';
 import 'article_composer_page.dart';
 
 import '../../widgets/app_background.dart';
+import '../../widgets/application_shell.dart';
 class ArticleReaderPage extends StatefulWidget {
   final MagazineArticle article;
   final AppUser? currentUser;
@@ -125,27 +126,38 @@ class _ArticleReaderPageState extends State<ArticleReaderPage> with SingleTicker
   Widget build(BuildContext context) {
     final a = widget.article;
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg, elevation: 0,
-        iconTheme: IconThemeData(color: ac.txt),
-        actions: [
+    return ApplicationShell(
+      user: widget.currentUser,
+      currentTitle: a.title,
+      subtitle: 'By ${a.authorName} • ${a.category}',
+      currentDestination: AppNavDestination.magazine,
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Magazine',
+          icon: Icons.article_outlined,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+        ShellBreadcrumb(label: a.title),
+      ],
+      headerActions: [
+        IconButton(
+          tooltip: 'Copy article text',
+          icon: Icon(Icons.copy_all_rounded, color: ac.txt, size: 20),
+          onPressed: _copyArticleText,
+        ),
+        if (_isOwnArticle)
           IconButton(
-            tooltip: 'Copy article text',
-            icon: Icon(Icons.copy_all_rounded, color: ac.txt),
-            onPressed: _copyArticleText,
-          ),
-          if (_isOwnArticle)
-            IconButton(
-              tooltip: 'Edit article',
-              icon: Icon(Icons.edit_outlined, color: ac.txt),
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ArticleComposerPage(user: widget.currentUser!, existing: a))),
+            tooltip: 'Edit article',
+            icon: Icon(Icons.edit_outlined, color: ac.txt, size: 20),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    ArticleComposerPage(user: widget.currentUser!, existing: a),
+              ),
             ),
-        ],
-      ),
-      body: AppBackground(child: FadeTransition(
+          ),
+      ],
+      child: AppBackground(child: FadeTransition(
         opacity: _entryFade,
         child: SlideTransition(
           position: _entryRise,

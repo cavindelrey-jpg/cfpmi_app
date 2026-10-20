@@ -9,8 +9,9 @@ import '../repositories/public_course_repository.dart';
 import '../services/analytics_service.dart';
 import '../widgets/widgets.dart';
 import '../widgets/app_background.dart';
+import '../widgets/application_shell.dart';
 import '../features/clubs/clubs_page.dart';
-import '../features/academic_content/content_details_page.dart';
+import '../features/academic_content/content_viewer_page.dart';
 import '../features/courses_marketplace/course_lessons_page.dart';
 import 'profile_page.dart';
 
@@ -88,34 +89,62 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.surf,
-        title: TextField(
-          controller: _ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Search...', border: InputBorder.none),
-          onSubmitted: _performSearch,
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: const [Tab(text: 'Library'), Tab(text: 'Groups'), Tab(text: 'People'), Tab(text: 'Courses')],
-        ),
+    return ApplicationShell(
+      user: widget.user,
+      currentTitle: 'Global Search',
+      subtitle: 'Search across library books, past papers, courses, study groups, and people',
+      currentDestination: AppNavDestination.none,
+      bottomHeader: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: 'Search books, past papers, courses, groups, or people...',
+              prefixIcon: Icon(Icons.search_rounded, color: ac.muted, size: 20),
+              suffixIcon: IconButton(
+                icon: Icon(Icons.arrow_forward_rounded, color: ac.primary, size: 20),
+                onPressed: () => _performSearch(_ctrl.text),
+              ),
+              filled: true,
+              fillColor: ac.surf2,
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: ac.bdr),
+              ),
+            ),
+            onSubmitted: _performSearch,
+          ),
+          const SizedBox(height: 6),
+          TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            labelColor: ac.primary,
+            unselectedLabelColor: ac.txt2,
+            indicatorColor: ac.primary,
+            tabs: const [
+              Tab(text: 'Library & Papers'),
+              Tab(text: 'Study Groups'),
+              Tab(text: 'People'),
+              Tab(text: 'Courses'),
+            ],
+          ),
+        ],
       ),
-      body: AppBackground(
+      child: AppBackground(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : TabBarView(
-          controller: _tabController,
-          children: [
-            _buildLibraryList(ac),
-            _buildClubList(),
-            _buildUserList(),
-            _buildCourseList(),
-          ],
-        ),
+                controller: _tabController,
+                children: [
+                  _buildLibraryList(ac),
+                  _buildClubList(),
+                  _buildUserList(),
+                  _buildCourseList(),
+                ],
+              ),
       ),
     );
   }
@@ -130,7 +159,15 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
         title: Text(_content[i].title),
         subtitle: Text(_content[i].subject),
         leading: Icon(Icons.description, color: ac.primary),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ContentDetailsPage(user: widget.user, contentId: _content[i].id))),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ContentViewerPage(
+              user: widget.user,
+              content: _content[i],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -157,10 +194,21 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       itemCount: _users.length,
       itemBuilder: (context, i) {
         final u = _users[i];
+        final name = (u['name'] as String?)?.trim() ?? '';
+        final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
         return ListTile(
-          leading: UserAvatar(initials: u['name'][0], photoUrl: u['photo_url'], radius: 18),
-          title: Text(u['name']),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfilePage(user: AppUser.fromSupabase(u)))),
+          leading: UserAvatar(
+            initials: initials,
+            photoUrl: u['photo_url'] as String?,
+            radius: 18,
+          ),
+          title: Text(name.isNotEmpty ? name : 'Student'),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProfilePage(user: AppUser.fromSupabase(u)),
+            ),
+          ),
         );
       },
     );

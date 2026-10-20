@@ -14,6 +14,7 @@ import '../../repositories/daily_learning_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
+import '../../widgets/application_shell.dart';
 import 'daily_learning_lesson_page.dart';
 
 class DailyLearningCoursePage extends StatelessWidget {
@@ -25,15 +26,17 @@ class DailyLearningCoursePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final isGuest = user.isGuest;
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg,
-        elevation: 0,
-        title: Text(course.title, style: AppText.h2.copyWith(color: ac.txt)),
-        iconTheme: IconThemeData(color: ac.txt),
-      ),
-      body: false
+    return ApplicationShell(
+      user: user,
+      currentDestination: AppNavDestination.academicCourses,
+      title: course.title,
+      breadcrumbs: [
+        const ShellBreadcrumb(label: 'Courses'),
+        ShellBreadcrumb(label: 'Daily Challenge', onTap: () => Navigator.of(context).pop()),
+        ShellBreadcrumb(label: course.title),
+      ],
+      rightPanel: CoursesContextualPanel(user: user),
+      child: isGuest
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
@@ -41,7 +44,7 @@ class DailyLearningCoursePage extends StatelessWidget {
                   Icon(Icons.lock_outline_rounded, size: 48, color: ac.muted),
                   const SizedBox(height: 16),
                   Text('Sign in to start ${course.title}',
-                      style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt)),
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt)),
                 ]),
               ),
             )
@@ -152,7 +155,7 @@ class _LessonNode extends StatelessWidget {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Lesson ${index + 1}', style: GoogleFonts.inter(fontSize: 10.5, color: ac.muted)),
-                  Text(lesson.title, style: GoogleFonts.sora(
+                  Text(lesson.title, style: GoogleFonts.inter(
                       fontSize: 13.5, fontWeight: FontWeight.w700,
                       color: isUnlocked ? ac.txt : ac.muted)),
                 ]),

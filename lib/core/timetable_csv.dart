@@ -258,7 +258,7 @@ String? normalizeTime(String raw) {
 String generateTimetableCsvTemplate() {
   final rows = <List<String>>[
     kTimetableCsvColumns,
-    ['Form 2', 'Monday', '08:00', '09:00', 'Mathematics', 'Mr. Fon', 'Room 12'],
+    ['Form 2', 'Monday', '08:00', '09:00', 'Mathematics', 'Mr. Nkwenti', 'Room 12'],
     ['Form 2', 'Monday', '09:00', '10:00', 'English Language', 'Mrs. Bih', 'Room 12'],
     ['Form 2', 'Monday', '10:30', '11:30', 'Physics', 'Dr. Taku', 'Lab 2'],
     ['Form 2', 'Tuesday', '08:00', '09:00', 'Chemistry', 'Dr. Taku', 'Lab 1'],

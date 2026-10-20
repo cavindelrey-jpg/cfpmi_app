@@ -11,6 +11,7 @@ import '../../repositories/personal_study_repository.dart';
 import '../../core/result.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 
@@ -40,35 +41,33 @@ class _PersonalStudyPageState extends State<PersonalStudyPage> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg,
-        elevation: 0,
-        iconTheme: IconThemeData(color: ac.txt),
-        title: Text('Personal Timetable', style: AppText.title),
-        actions: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: ElevatedButton.icon(
-                key: const Key('add_session_appbar_btn'),
-                onPressed: () => _openCreateSheet(context),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add Session', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ac.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
+    return ApplicationShell(
+      user: widget.user,
+      currentTitle: 'Personal Study Plan',
+      subtitle: 'Plan your weekly study sessions, revision blocks, and practice goals',
+      currentDestination: AppNavDestination.studyPlan,
+      headerActions: [
+        ElevatedButton.icon(
+          key: const Key('add_session_appbar_btn'),
+          onPressed: () => _openCreateSheet(context),
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: const Text(
+            'Add Session',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: ac.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
-        ],
-      ),
-      body: AppBackground(
+        ),
+      ],
+      child: AppBackground(
         child: StreamBuilder<List<PersonalStudySlot>>(
           stream: PersonalStudyRepository.instance.watchAll(widget.user.id),
           builder: (context, snap) {

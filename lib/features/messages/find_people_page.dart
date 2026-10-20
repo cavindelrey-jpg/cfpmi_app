@@ -21,6 +21,7 @@ import '../../core/result.dart';
 import '../../services/analytics_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import 'chat_conversation_page.dart';
@@ -76,14 +77,21 @@ class _FindPeoplePageState extends State<FindPeoplePage> {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final filter = _query.trim().toLowerCase();
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg, elevation: 0,
-        iconTheme: IconThemeData(color: ac.txt),
-        title: Text('New Message', style: AppText.title),
-      ),
-      body: AppBackground(child: Column(children: [
+    return ApplicationShell(
+      user: widget.user,
+      currentTitle: 'Find People & Start Chat',
+      subtitle: 'Connect with classmates, study partners, and lecturers',
+      currentDestination: AppNavDestination.messages,
+      contextualPanel: MessagesContextualPanel(user: widget.user),
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Messages',
+          icon: Icons.chat_bubble_outline_rounded,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+        const ShellBreadcrumb(label: 'Find People'),
+      ],
+      child: AppBackground(child: Column(children: [
         Padding(
           padding: const EdgeInsets.all(16),
           child: TextField(

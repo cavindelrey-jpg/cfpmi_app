@@ -1,11 +1,14 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/app_user.dart';
 import '../services/dictionary_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/application_shell.dart';
 
 class DictionaryScreen extends StatefulWidget {
-  const DictionaryScreen({super.key});
+  final AppUser? user;
+  const DictionaryScreen({super.key, this.user});
 
   @override
   State<DictionaryScreen> createState() => _DictionaryScreenState();
@@ -44,9 +47,13 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   
   void _openEntry(DictionaryEntry entry) {
     DictionaryService.instance.markAsViewed(entry.id);
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => DictionaryEntryScreen(entry: entry)));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DictionaryEntryScreen(entry: entry, user: widget.user),
+      ),
+    );
   }
-  
+
   void _openRandom() {
     final all = DictionaryService.instance.allEntries;
     if (all.isEmpty) return;
@@ -58,23 +65,21 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   Widget build(BuildContext context) {
     final ac = Theme.of(context).extension<AppColors>()!;
     final all = DictionaryService.instance.allEntries;
-    
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg,
-        elevation: 0,
-        title: Text('Academia Dictionary', style: GoogleFonts.lora(color: ac.txt, fontWeight: FontWeight.w600, fontSize: 18)),
-        iconTheme: IconThemeData(color: ac.txt),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.casino_outlined, color: ac.primary),
-            tooltip: 'Random Concept',
-            onPressed: _openRandom,
-          ),
-        ],
-      ),
-      body: all.isEmpty
+
+    return ApplicationShell(
+      user: widget.user,
+      currentTitle: 'Academia Dictionary',
+      subtitle: 'Academic concepts, definitions, synonyms, and related disciplines',
+      currentDestination: AppNavDestination.dictionary,
+      headerActions: [
+        OutlinedButton.icon(
+          onPressed: _openRandom,
+          icon: const Icon(Icons.casino_outlined, size: 16),
+          label: const Text('Random Concept'),
+          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+        ),
+      ],
+      child: all.isEmpty
           ? Center(
               child: DictionaryService.instance.loadFailed
                   ? Padding(
@@ -287,7 +292,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
 class DictionaryEntryScreen extends StatelessWidget {
   final DictionaryEntry entry;
-  const DictionaryEntryScreen({super.key, required this.entry});
+  final AppUser? user;
+  const DictionaryEntryScreen({super.key, required this.entry, this.user});
 
   Widget _linkChip(BuildContext context, String id, AppColors ac, Color color) {
     final linked = DictionaryService.instance.getEntryById(id);
@@ -298,7 +304,11 @@ class DictionaryEntryScreen extends StatelessWidget {
       label: Text(linked.word, style: TextStyle(color: color, fontSize: 13)),
       onPressed: () {
         DictionaryService.instance.markAsViewed(linked.id);
-        Navigator.of(context).push(MaterialPageRoute(builder: (_) => DictionaryEntryScreen(entry: linked)));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => DictionaryEntryScreen(entry: linked, user: user),
+          ),
+        );
       },
     );
   }
@@ -306,15 +316,21 @@ class DictionaryEntryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = Theme.of(context).extension<AppColors>()!;
-    
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg,
-        elevation: 0,
-        iconTheme: IconThemeData(color: ac.txt),
-      ),
-      body: SingleChildScrollView(
+
+    return ApplicationShell(
+      user: user,
+      currentTitle: entry.word,
+      subtitle: '${entry.discipline} • ${entry.partOfSpeech}',
+      currentDestination: AppNavDestination.dictionary,
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Dictionary',
+          icon: Icons.translate_rounded,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+        ShellBreadcrumb(label: entry.word),
+      ],
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

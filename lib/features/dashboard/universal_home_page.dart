@@ -116,7 +116,8 @@ class UniversalHomePage extends StatefulWidget {
 }
 
 class _UniversalHomePageState extends State<UniversalHomePage> {
-  bool get _isGuest => widget.user == null;
+  bool get _isGuest =>
+      widget.user == null || widget.user!.isGuest || widget.user!.id.isEmpty;
   AppUser? get _u => widget.user;
   AppUser get _userOrGuest => _u ?? AppUser.guest();
 
@@ -267,6 +268,8 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
     if (!context.mounted) return;
     Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => ContentViewerPage(
+              content: data.content,
+              user: _userOrGuest,
               fileUrl: data.content.fileUrl ?? '',
               localFilePath: localPath,
               title: data.content.title,
@@ -453,765 +456,37 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         backgroundColor: ac.surf,
         onRefresh: _handleRefresh,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
           children: [
-            _mockupFeaturedHero(context),
+            _greetingHeader(context),
+            const SizedBox(height: 16),
+            _commandCenterHero(context),
+            const SizedBox(height: 18),
+            _progressAndGoalsStrip(context),
+            const SizedBox(height: 22),
+            _sectionHeader('Academic Hubs'),
+            const SizedBox(height: 10),
+            _academicHubsGrid(context),
+            const SizedBox(height: 16),
+            _secondaryToolsRow(context),
+            const SizedBox(height: 22),
+            _sectionHeader(
+              'Recommended Learning Materials',
+              onViewAll: () => _open(context, LibraryHomePage(user: _userOrGuest)),
+              viewAllLabel: 'Open Library',
+            ),
+            const SizedBox(height: 10),
+            _recommendedRow(context),
+            const SizedBox(height: 22),
+            _scheduleAndTasksRow(context),
+            const SizedBox(height: 16),
+            _campusAndCommunityRow(context),
             const SizedBox(height: 20),
-            _mockupQuickAccess(context),
+            _academicProfileSummaryCard(context),
             const SizedBox(height: 24),
-            _mockupRecommendedArticles(context),
-            const SizedBox(height: 24),
-            _mockupRecentActivityAndResume(context),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _mockupFeaturedHero(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 210),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(Rad.md),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF07142E), Color(0xFF132D5E)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        boxShadow: Shad.md,
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4B400),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'FEATURED',
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF0B1F4D),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: Text(
-                    'Advanced Geomorphology:\nUnderstanding Coastal Dynamics',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      height: 1.25,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 460),
-                  child: Text(
-                    'Explore coastal processes, landforms and their role in shaping our planet.',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      color: const Color(0xFFCBD5E1),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => _open(context, CoursesHomePage(user: _u)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF4B400),
-                    foregroundColor: const Color(0xFF0B1F4D),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                    minimumSize: const Size(140, 38),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    elevation: 0,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Continue Learning',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF0B1F4D),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.arrow_forward_rounded, size: 15, color: Color(0xFF0B1F4D)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            right: 24,
-            bottom: 16,
-            child: Row(
-              children: [
-                _heroDot(false),
-                _heroDot(false),
-                _heroDot(false),
-                _heroDot(true),
-                _heroDot(false),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _heroDot(bool active) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 3),
-      width: active ? 16 : 6,
-      height: 6,
-      decoration: BoxDecoration(
-        color: active ? const Color(0xFFF4B400) : Colors.white30,
-        borderRadius: BorderRadius.circular(3),
-      ),
-    );
-  }
-
-  Widget _mockupQuickAccess(BuildContext context) {
-    final items = [
-      (
-        'My Courses',
-        'Access your courses',
-        Icons.menu_book_rounded,
-        const Color(0xFF0D9488),
-        const Color(0xFFCCFBF1),
-        () => _open(context, CoursesHomePage(user: _u)),
-      ),
-      (
-        'My Marks',
-        'View your results',
-        Icons.assignment_turned_in_rounded,
-        const Color(0xFFD97706),
-        const Color(0xFFFEF3C7),
-        () => _open(context, MarksPage(user: _userOrGuest)),
-      ),
-      (
-        'Past Papers',
-        'GCE, A-level & exams',
-        Icons.description_rounded,
-        const Color(0xFF2563EB),
-        const Color(0xFFDBEAFE),
-        () => _openLibraryFolderByName(context, _userOrGuest, 'Past Papers'),
-      ),
-      (
-        'Campus Library',
-        'Timetable & notices',
-        Icons.school_rounded,
-        const Color(0xFF9333EA),
-        const Color(0xFFF3E8FF),
-        () => _open(context, LibraryHomePage(user: _userOrGuest)),
-      ),
-      (
-        'My Records',
-        'Attendance & fees',
-        Icons.badge_rounded,
-        const Color(0xFF059669),
-        const Color(0xFFD1FAE5),
-        () => _open(context, AttendancePage(user: _userOrGuest)),
-      ),
-      (
-        'Live Class',
-        'Join the lesson',
-        Icons.podcasts_rounded,
-        const Color(0xFFDB2777),
-        const Color(0xFFFCE7F3),
-        () => _open(context, ClassroomPage(user: _userOrGuest)),
-      ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Quick Access',
-              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt),
-            ),
-            InkWell(
-              onTap: () => _open(context, CoursesHomePage(user: _u)),
-              child: Row(
-                children: [
-                  Text(
-                    'View All',
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ac.primary),
-                  ),
-                  const SizedBox(width: 2),
-                  Icon(Icons.arrow_forward_rounded, size: 14, color: ac.primary),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 600;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isNarrow ? 2 : (constraints.maxWidth < 850 ? 3 : 6),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.15,
-              ),
-              itemCount: items.length,
-              itemBuilder: (context, i) {
-                final (title, subtitle, icon, iconColor, iconBg, onTap) = items[i];
-                return Container(
-                  decoration: BoxDecoration(
-                    color: ac.surf,
-                    borderRadius: BorderRadius.circular(Rad.md),
-                    border: Border.all(color: ac.bdr),
-                    boxShadow: Shad.sm,
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(Rad.md),
-                      onTap: onTap,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: iconBg,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(icon, color: iconColor, size: 22),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                                color: ac.txt,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                color: ac.txt2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _mockupRecommendedArticles(BuildContext context) {
-    final articles = [
-      ('Biology', const Color(0xFF0284C7), 'The Role of Genetics in Modern Medicine', '2 min read'),
-      ('Geography', const Color(0xFF16A34A), 'Climate Change and Its Global Impact', '4 min read'),
-      ('Psychology', const Color(0xFF7C3AED), 'The Science of Memory', '3 min read'),
-      ('History', const Color(0xFFEA580C), 'The African Renaissance', '5 min read'),
-      ('Mathematics', const Color(0xFF0D9488), 'Solving Quadratic Equations', '3 min read'),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.menu_book_rounded, size: 18, color: ac.txt),
-                const SizedBox(width: 8),
-                Text(
-                  'Recommended Articles',
-                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt),
-                ),
-              ],
-            ),
-            InkWell(
-              onTap: () => _open(context, LibraryHomePage(user: _userOrGuest)),
-              child: Row(
-                children: [
-                  Text(
-                    'View All',
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ac.primary),
-                  ),
-                  const SizedBox(width: 2),
-                  Icon(Icons.arrow_forward_rounded, size: 14, color: ac.primary),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 170,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: articles.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, i) {
-              final (tag, tagColor, title, readTime) = articles[i];
-              return Container(
-                width: 190,
-                decoration: BoxDecoration(
-                  color: ac.surf,
-                  borderRadius: BorderRadius.circular(Rad.md),
-                  border: Border.all(color: ac.bdr),
-                  boxShadow: Shad.sm,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(Rad.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 70,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [tagColor.withOpacity(0.85), tagColor],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: Center(
-                          child: Icon(Icons.auto_stories_rounded, color: Colors.white.withOpacity(0.7), size: 32),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: tagColor.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                tag,
-                                style: GoogleFonts.inter(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: tagColor,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: ac.txt,
-                                height: 1.25,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  readTime,
-                                  style: GoogleFonts.inter(fontSize: 9.5, color: ac.txt2),
-                                ),
-                                Icon(Icons.bookmark_border_rounded, size: 14, color: ac.muted),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _mockupRecentActivityAndResume(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isStacked = constraints.maxWidth < 650;
-        final recentActivityCard = Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: ac.surf,
-            borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr),
-            boxShadow: Shad.sm,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.access_time_rounded, size: 17, color: ac.txt),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Recent Activity',
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: ac.txt),
-                      ),
-                    ],
-                  ),
-                  InkWell(
-                    onTap: () => _open(context, LibraryHomePage(user: _userOrGuest)),
-                    child: Row(
-                      children: [
-                        Text(
-                          'View All',
-                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: ac.primary),
-                        ),
-                        Icon(Icons.arrow_forward_rounded, size: 13, color: ac.primary),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _activityRow(
-                Icons.check_circle_rounded,
-                const Color(0xFF16A34A),
-                'You completed a quiz: Cell Biology',
-                '2 hours ago',
-              ),
-              const SizedBox(height: 10),
-              _activityRow(
-                Icons.edit_document,
-                const Color(0xFF0284C7),
-                'You started the lesson: Organic Chemistry - Introduction',
-                '4 hours ago',
-              ),
-              const SizedBox(height: 10),
-              _activityRow(
-                Icons.download_rounded,
-                const Color(0xFF7C3AED),
-                'You downloaded: GCE Physics Past Paper (2021)',
-                'Yesterday',
-              ),
-            ],
-          ),
-        );
-
-        final resumeCard = Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: ac.surf,
-            borderRadius: BorderRadius.circular(Rad.md),
-            border: Border.all(color: ac.bdr),
-            boxShadow: Shad.sm,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.bookmark_rounded, size: 17, color: ac.txt),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Last Where You Left Off',
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: ac.txt),
-                      ),
-                    ],
-                  ),
-                  InkWell(
-                    onTap: () => _open(context, CoursesHomePage(user: _u)),
-                    child: Row(
-                      children: [
-                        Text(
-                          'View All',
-                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: ac.primary),
-                        ),
-                        Icon(Icons.arrow_forward_rounded, size: 13, color: ac.primary),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      width: 76,
-                      height: 76,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF0284C7), Color(0xFF0F172A)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.terrain_rounded, color: Colors.white60, size: 36),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Advanced Geomorphology: Understanding Coastal Dynamics',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700, color: ac.txt),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Lesson 3 • 45% complete',
-                          style: GoogleFonts.inter(fontSize: 11, color: ac.txt2),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: () => _open(context, CoursesHomePage(user: _u)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF4B400),
-                            foregroundColor: const Color(0xFF0B1F4D),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            minimumSize: const Size(120, 32),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            'Continue Reading →',
-                            style: GoogleFonts.inter(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF0B1F4D),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-
-        if (isStacked) {
-          return Column(
-            children: [
-              recentActivityCard,
-              const SizedBox(height: 16),
-              resumeCard,
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: recentActivityCard),
-            const SizedBox(width: 16),
-            Expanded(child: resumeCard),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _activityRow(IconData icon, Color iconColor, String title, String time) {
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor, size: 16),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ac.txt),
-              ),
-              Text(
-                time,
-                style: GoogleFonts.inter(fontSize: 10, color: ac.txt2),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Top Bar ────────────────────────────────────────────────────────
-  Widget _topBar(BuildContext context) {
-    final schoolLabel = (!_isGuest && _u!.isSchoolMember && _u!.schoolName.isNotEmpty)
-        ? _u!.schoolName
-        : (_u?.classLevel.isNotEmpty == true ? _u!.classLevel : null);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-      child: Row(
-        children: [
-          Builder(
-            builder: (ctx) => IconButton(
-              icon: Icon(Icons.menu_rounded, color: ac.txt, size: 24),
-              onPressed: () => Scaffold.of(ctx).openDrawer(),
-              tooltip: 'Navigation Menu',
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  Branding.current.appName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.sora(fontSize: 17, fontWeight: FontWeight.w800, color: ac.primary),
-                ),
-                if (schoolLabel != null)
-                  Text(
-                    schoolLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: ac.txt2),
-                  ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.search_rounded, color: ac.txt2, size: 22),
-            tooltip: 'Search',
-            onPressed: () => _open(context, SearchPage(user: _userOrGuest)),
-          ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: Icon(Icons.chat_bubble_outline_rounded, color: ac.txt2, size: 20),
-                tooltip: 'Messages',
-                onPressed: () => _open(context, MessagesHomePage(user: _userOrGuest)),
-              ),
-              if (!_isGuest) _messagesTopUnreadBadge(),
-            ],
-          ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: Icon(Icons.notifications_outlined, color: ac.txt2, size: 22),
-                tooltip: 'Notifications',
-                onPressed: () => _open(context, NotificationsPage(user: _userOrGuest)),
-              ),
-              if (!_isGuest)
-                Positioned(
-                  top: 9,
-                  right: 9,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: ac.grn, shape: BoxShape.circle),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 4),
-          UserAvatar(
-            initials: _isGuest || _userOrGuest.name.isEmpty ? '?' : _userOrGuest.name[0].toUpperCase(),
-            radius: 17,
-            photoUrl: _u?.photoUrl,
-            onTap: () => _open(context, ProfilePage(user: _userOrGuest)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _messagesTopUnreadBadge() {
-    final uid = _u?.id ?? '';
-    if (uid.isEmpty) return const SizedBox.shrink();
-    return StreamBuilder<List<Conversation>>(
-      stream: _conversationsStream ?? const Stream.empty(),
-      builder: (context, snap) {
-        final total = (snap.data ?? const <Conversation>[])
-            .fold<int>(0, (sum, c) => sum + (c.unreadCount[uid] ?? 0));
-        if (total <= 0) return const SizedBox.shrink();
-        return Positioned(
-          top: 6,
-          right: 6,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
-            constraints: const BoxConstraints(minWidth: 15),
-            decoration: BoxDecoration(color: ac.red, borderRadius: BorderRadius.circular(8)),
-            child: Text(
-              total > 9 ? '9+' : '$total',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(fontSize: 8.5, fontWeight: FontWeight.w700, color: Colors.white),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -1234,7 +509,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                   '$_timeGreeting, $firstName 👋',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.sora(
+                  style: GoogleFonts.inter(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: ac.txt,
@@ -1524,7 +799,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.sora(
+                  style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
@@ -1593,7 +868,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                               const SizedBox(width: 6),
                               Text(
                                 primaryLabel,
-                                style: GoogleFonts.sora(
+                                style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: ac.navy,
@@ -1618,7 +893,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                             child: Text(
                               secondaryLabel,
-                              style: GoogleFonts.sora(
+                              style: GoogleFonts.inter(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white.withValues(alpha: 0.9),
@@ -1662,7 +937,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                     const SizedBox(width: 6),
                     Text(
                       'Academic Momentum',
-                      style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w800, color: ac.txt),
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: ac.txt),
                     ),
                   ],
                 ),
@@ -1790,7 +1065,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                           child: Center(
                             child: Text(
                               '${marksData.average.round()}%',
-                              style: GoogleFonts.sora(
+                              style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: ac.primary,
@@ -1805,7 +1080,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                             children: [
                               Text(
                                 'Term Average · ${marksData.subjects.length} recorded subject${marksData.subjects.length == 1 ? '' : 's'}',
-                                style: GoogleFonts.sora(
+                                style: GoogleFonts.inter(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w700,
                                   color: ac.txt,
@@ -1863,7 +1138,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w800, color: ac.txt),
+              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: ac.txt),
             ),
             const SizedBox(height: 2),
             Text(
@@ -1992,7 +1267,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w700, color: ac.txt),
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: ac.txt),
               ),
               const SizedBox(height: 3),
               Text(
@@ -2027,7 +1302,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         ('Exam Composer', Icons.assignment_outlined, ac.primary,
             () => _open(context, ExamListPage(user: _u!))),
       ('Dictionary', Icons.spellcheck_rounded, ac.primary,
-          () => _open(context, const DictionaryScreen())),
+          () => _open(context, DictionaryScreen(user: _userOrGuest))),
       ('Study Groups', Icons.groups_rounded, ac.grn,
           () => _open(context, ClubsPage(user: _userOrGuest))),
       ('Daily Challenges', Icons.local_fire_department_rounded, ac.org,
@@ -2135,7 +1410,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                   children: [
                     Text(
                       'Study Timetable',
-                      style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.primary),
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.primary),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -2189,7 +1464,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                               s.subject,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.sora(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.txt),
+                              style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.txt),
                             ),
                           ],
                         ),
@@ -2242,7 +1517,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                   children: [
                     Text(
                       'Plan Study Routine',
-                      style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.primary),
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.primary),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -2289,7 +1564,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                       children: [
                         Text(
                           'Plan Study Routine',
-                          style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.primary),
+                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.primary),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -2331,7 +1606,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                           s.activity,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.sora(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.txt),
+                          style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.txt),
                         ),
                       ],
                     ),
@@ -2376,7 +1651,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                   children: [
                     Text(
                       'Daily Practice (+50 XP)',
-                      style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.gold),
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.gold),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -2429,7 +1704,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                                 h.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.sora(
+                                style: GoogleFonts.inter(
                                     fontSize: 11, fontWeight: FontWeight.w700, color: ac.txt),
                               ),
                               Text(
@@ -2495,7 +1770,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                       children: [
                         Text(
                           'Homework Clear! (+50 XP)',
-                          style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.txt),
+                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.txt),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -2535,7 +1810,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                       data.content.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.txt),
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.txt),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -2602,7 +1877,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.sora(fontSize: 12.5, fontWeight: FontWeight.w800, color: ac.txt),
+                  style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w800, color: ac.txt),
                 ),
               ),
               InkWell(
@@ -2696,7 +1971,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                       children: [
                         Text(
                           'School Bulletin',
-                          style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.pur),
+                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.pur),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -2747,7 +2022,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                 top.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.txt, height: 1.3),
+                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.txt, height: 1.3),
               ),
             ],
           ),
@@ -2781,7 +2056,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                   children: [
                     Text(
                       'Study Circles',
-                      style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.grn),
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.grn),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -2828,7 +2103,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                       children: [
                         Text(
                           'Join Study Circles',
-                          style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700, color: ac.grn),
+                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: ac.grn),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -2852,7 +2127,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
               first.clubName.isNotEmpty ? '${first.clubName}: ${first.event.title}' : first.event.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.sora(fontSize: 10.5, fontWeight: FontWeight.w700, color: ac.txt, height: 1.3),
+              style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w700, color: ac.txt, height: 1.3),
             ),
             const SizedBox(height: 4),
             Text(
@@ -2874,7 +2149,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         children: [
           Text(
             title,
-            style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt),
+            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt),
           ),
           if (onViewAll != null)
             Material(
@@ -2960,7 +2235,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         borderRadius: BorderRadius.circular(Rad.md),
         onTap: () {
           HapticFeedback.selectionClick();
-          _open(context, ContentDetailsPage(contentId: item.id, user: _userOrGuest));
+          _open(context, ContentViewerPage(content: item, user: _userOrGuest));
         },
         child: Container(
           width: 156,
@@ -3011,7 +2286,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                       item.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.sora(fontSize: 11.5, fontWeight: FontWeight.w700, height: 1.25),
+                      style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, height: 1.25),
                     ),
                     const SizedBox(height: 6),
                     Row(
@@ -3072,7 +2347,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                     _isGuest ? 'Guest Learner' : _userOrGuest.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w800, color: ac.txt),
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: ac.txt),
                   ),
                   Text(
                     _isGuest
@@ -3104,7 +2379,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                     children: [
                       Text(
                         'Profile',
-                        style: GoogleFonts.sora(
+                        style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: ac.primary,

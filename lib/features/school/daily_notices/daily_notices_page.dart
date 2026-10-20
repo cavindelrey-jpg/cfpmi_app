@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../models/app_user.dart';
 import '../../../models/daily_notice.dart';
 import '../../../repositories/daily_notice_repository.dart';
@@ -298,7 +299,10 @@ class _NoticeCard extends StatelessWidget {
             const SizedBox(height: 12),
             InkWell(
               onTap: () {
-                // open attachment
+                final uri = Uri.tryParse(notice.attachmentUrl!);
+                if (uri != null) {
+                  launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
               },
               borderRadius: BorderRadius.circular(8),
               child: Container(

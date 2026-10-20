@@ -13,6 +13,7 @@ import '../../models/academic_content.dart';
 import '../../repositories/academic_content_repository.dart';
 import '../../core/result.dart';
 import '../../widgets/widgets.dart' show showToast, ShimmerCard, EmptyState;
+import '../../widgets/application_shell.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import 'content_edit_page.dart';
@@ -43,25 +44,27 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
       stream: AcademicContentRepository.instance.watchOne(widget.contentId),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            appBar: AppBar(elevation: 0),
-            body: AppBackground(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-                children: const [
-                  ShimmerCard(height: 190),
-                  SizedBox(height: 16),
-                  ShimmerCard(height: 280),
-                ],
-              ),
+          return ApplicationShell(
+            user: widget.user,
+            currentTitle: 'Document Details',
+            currentDestination: AppNavDestination.academicLibrary,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+              children: const [
+                ShimmerCard(height: 190),
+                SizedBox(height: 16),
+                ShimmerCard(height: 280),
+              ],
             ),
           );
         }
         final item = snap.data;
         if (item == null) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Not Found')),
-            body: const EmptyState(
+          return ApplicationShell(
+            user: widget.user,
+            currentTitle: 'Not Found',
+            currentDestination: AppNavDestination.academicLibrary,
+            child: const EmptyState(
               icon: Icons.find_in_page_outlined,
               title: 'Content no longer exists',
               subtitle: 'This item may have been moved or removed by its author.',
@@ -69,12 +72,6 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
           );
         }
 
-        // Track view once per page open. Deferred to a post-frame callback
-        // rather than fired directly here -- this whole block runs inside
-        // StreamBuilder's builder, which build() invokes, and the
-        // framework can call build() during layout; committing a database
-        // write as a direct side effect of that is what the guard alone
-        // doesn't prevent (only re-firing does).
         if (!_viewTracked) {
           _viewTracked = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -85,114 +82,105 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
 
         final canEdit = widget.user.canUploadContent ||
             item.uploadedBy == widget.user.id;
-
         final ac = AppColors.of(context);
-        return Scaffold(
-          backgroundColor: ac.bg,
-          appBar: AppBar(
-            backgroundColor: ac.bg,
-            elevation: 0,
-            iconTheme: IconThemeData(color: ac.txt),
-            title: Text(item.contentType.label, style: AppText.title),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.copy_rounded, color: ac.txt2, size: 20),
-                tooltip: 'Copy title & description',
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  final buf = StringBuffer(item.title);
-                  if (item.description.trim().isNotEmpty) {
-                    buf.write('\n\n${item.description.trim()}');
-                  }
-                  if ((item.fileUrl ?? '').isNotEmpty) {
-                    buf.write('\n\n${item.fileUrl}');
-                  }
-                  Clipboard.setData(ClipboardData(text: buf.toString()));
-                  showToast(context, 'Copied to clipboard.');
-                },
-              ),
-              StreamBuilder<bool>(
-                stream: AcademicContentRepository.instance.watchIsSaved(item.id, widget.user.id),
-                builder: (context, savedSnap) {
-                  final saved = savedSnap.data ?? false;
-                  return IconButton(
-                    icon: Icon(saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                        color: saved ? ac.gold : ac.txt2),
-                    tooltip: saved ? 'Saved' : 'Save for offline',
-                    onPressed: () async {
-                      HapticFeedback.lightImpact();
-                      final wasSaved = saved;
-                      await AcademicContentRepository.instance.toggleSave(item.id, widget.user.id);
-                      if (wasSaved) {
-                        // Un-saving also drops the locally-downloaded file
-                        // rather than leaving an orphaned copy on disk.
-                        await AcademicContentRepository.instance.removeOfflineFile(item.id);
-                      } else if ((item.fileUrl ?? '').isNotEmpty) {
-                        // Fire-and-forget: "Save for offline" should
-                        // actually put the file on the device, not just
-                        // bookmark it. Best-effort -- a failed download
-                        // here still leaves the bookmark saved, and the
-                        // content simply opens over the network like
-                        // before.
-                        showToast(context, 'Downloading for offline…');
-                        final res = await AcademicContentRepository.instance.downloadForOffline(item);
-                        if (!context.mounted) return;
-                        showToast(context,
-                            res is Failure<String> ? res.message : 'Saved — available offline in your Library.',
-                            isError: res is Failure<String>);
-                      }
-                    },
-                  );
-                },
-              ),
-              if (canEdit) ...[
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  tooltip: 'Edit',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          ContentEditPage(content: item, user: widget.user),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.delete_outline_rounded, color: ac.red),
-                  tooltip: 'Delete',
-                  onPressed: () => showDialog(
-                    context: context,
-                    builder: (_) => ContentDeleteDialog(
-                      content: item,
-                      onDeleted: () => Navigator.pop(context),
-                    ),
-                  ),
-                ),
-              ],
-            ],
+        final isPastPaper = item.contentType == ContentType.pastPaper;
+
+        return ApplicationShell(
+          user: widget.user,
+          currentTitle: item.title,
+          subtitle: item.contentType.label,
+          currentDestination: isPastPaper
+              ? AppNavDestination.pastQuestions
+              : AppNavDestination.academicLibrary,
+          contextualPanel: BookDetailsContextualPanel(
+            content: item,
+            user: widget.user,
           ),
-          // Improvement 2 (Sticky bottom action area): keep the primary action
-          // visible at the bottom while the user scrolls through details.
-          bottomNavigationBar: (item.fileUrl ?? '').isNotEmpty
-              ? Container(
-                  decoration: BoxDecoration(
-                    color: ac.surf,
-                    border: Border(top: BorderSide(color: ac.bdr.withValues(alpha: 0.7), width: 0.8)),
-                    boxShadow: Shad.sm,
+          headerActions: [
+            IconButton(
+              icon: Icon(Icons.copy_rounded, color: ac.txt2, size: 20),
+              tooltip: 'Copy title & description',
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                final buf = StringBuffer(item.title);
+                if (item.description.trim().isNotEmpty) {
+                  buf.write('\n\n${item.description.trim()}');
+                }
+                if ((item.fileUrl ?? '').isNotEmpty) {
+                  buf.write('\n\n${item.fileUrl}');
+                }
+                Clipboard.setData(ClipboardData(text: buf.toString()));
+                showToast(context, 'Copied to clipboard.');
+              },
+            ),
+            StreamBuilder<bool>(
+              stream: AcademicContentRepository.instance
+                  .watchIsSaved(item.id, widget.user.id),
+              builder: (context, savedSnap) {
+                final saved = savedSnap.data ?? false;
+                return IconButton(
+                  icon: Icon(
+                    saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                    color: saved ? ac.gold : ac.txt2,
                   ),
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-                      child: _DownloadButton(item: item, user: widget.user),
-                    ),
+                  tooltip: saved ? 'Saved' : 'Save for offline',
+                  onPressed: () async {
+                    HapticFeedback.lightImpact();
+                    final wasSaved = saved;
+                    await AcademicContentRepository.instance
+                        .toggleSave(item.id, widget.user.id);
+                    if (wasSaved) {
+                      await AcademicContentRepository.instance
+                          .removeOfflineFile(item.id);
+                    } else if ((item.fileUrl ?? '').isNotEmpty) {
+                      showToast(context, 'Downloading for offline…');
+                      final res = await AcademicContentRepository.instance
+                          .downloadForOffline(item);
+                      if (!context.mounted) return;
+                      showToast(
+                        context,
+                        res is Failure<String>
+                            ? res.message
+                            : 'Saved — available offline in your Library.',
+                        isError: res is Failure<String>,
+                      );
+                    }
+                  },
+                );
+              },
+            ),
+            if (canEdit) ...[
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ContentEditPage(content: item, user: widget.user),
                   ),
-                )
-              : null,
-          body: SelectionArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-              child: Column(
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline_rounded, color: ac.red),
+                tooltip: 'Delete',
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (_) => ContentDeleteDialog(
+                    content: item,
+                    onDeleted: () => Navigator.pop(context),
+                  ),
+                ),
+              ),
+            ],
+          ],
+          child: Column(
+            children: [
+              Expanded(
+                child: SelectionArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                    child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Thumbnail with frosted type badge overlay (Mistake 1 & 2)
@@ -344,10 +332,25 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
               ),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+        if ((item.fileUrl ?? '').isNotEmpty)
+          Container(
+            decoration: BoxDecoration(
+              color: ac.surf,
+              border: Border(
+                top: BorderSide(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+              ),
+              boxShadow: Shad.sm,
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+            child: _DownloadButton(item: item, user: widget.user),
+          ),
+      ],
+    ),
+  );
+},
+);
+}
 
   String _formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 }
@@ -480,6 +483,8 @@ class _DownloadButtonState extends State<_DownloadButton> {
       if (!mounted) return;
       await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => ContentViewerPage(
+          content: widget.item,
+          user: widget.user,
           fileUrl: widget.item.fileUrl!,
           localFilePath: localPath,
           title: widget.item.title,

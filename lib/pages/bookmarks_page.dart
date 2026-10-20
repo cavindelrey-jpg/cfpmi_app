@@ -15,6 +15,7 @@ import '../features/courses_marketplace/course_lessons_page.dart';
 import '../features/magazine/article_reader_page.dart';
 
 import '../widgets/app_background.dart';
+import '../widgets/application_shell.dart';
 import '../widgets/widgets.dart';
 
 class BookmarksPage extends StatefulWidget {
@@ -40,42 +41,41 @@ class _BookmarksPageState extends State<BookmarksPage> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg, elevation: 0,
-        title: Text('My Bookmarks', style: AppText.h2.copyWith(color: ac.txt)),
-        iconTheme: IconThemeData(color: ac.txt),
-        bottom: TabBar(
-          controller: _tc,
-          labelColor: ac.primary,
-          unselectedLabelColor: ac.txt2,
-          indicatorColor: ac.primary,
-          tabs: const [
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.school_outlined, size: 18),
-                  SizedBox(width: 6),
-                  Text('Courses'),
-                ],
-              ),
+    return ApplicationShell(
+      user: widget.user,
+      currentTitle: 'Bookmarks & Saved Items',
+      subtitle: 'Quick access to your bookmarked courses and articles',
+      currentDestination: AppNavDestination.bookmarks,
+      contextualPanel: LibraryContextualPanel(user: widget.user),
+      bottomHeader: TabBar(
+        controller: _tc,
+        labelColor: ac.primary,
+        unselectedLabelColor: ac.txt2,
+        indicatorColor: ac.primary,
+        tabs: const [
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.school_outlined, size: 18),
+                SizedBox(width: 6),
+                Text('Courses'),
+              ],
             ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.menu_book_outlined, size: 18),
-                  SizedBox(width: 6),
-                  Text('Magazine'),
-                ],
-              ),
+          ),
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.menu_book_outlined, size: 18),
+                SizedBox(width: 6),
+                Text('Magazine'),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-      body: AppBackground(child: TabBarView(controller: _tc, children: [
+      child: AppBackground(child: TabBarView(controller: _tc, children: [
         StreamBuilder<List<PublicCourse>>(
           stream: PublicCourseRepository.instance.watchBookmarkedCourses(widget.user.id),
           builder: (context, snap) {

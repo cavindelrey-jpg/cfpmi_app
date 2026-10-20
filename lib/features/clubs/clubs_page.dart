@@ -48,6 +48,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/club_visuals.dart';
 import '../../config/branding.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import '../../pages/notifications_page.dart';
@@ -125,31 +126,21 @@ class _ClubsPageState extends State<ClubsPage> {
       stream: _clubsStream,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-          return Scaffold(
-            backgroundColor: ac.bg,
-            appBar: widget.embedded
-                ? null
-                : AppBar(
-                    backgroundColor: ac.bg,
-                    elevation: 0,
-                    title: Text('Academic Groups', style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy)),
-                    iconTheme: IconThemeData(color: ac.navy),
-                  ),
-            body: const _ClubsSkeleton(),
+          return ApplicationShell(
+            user: widget.user,
+            currentTitle: 'Study Groups & Clubs',
+            subtitle: 'Join academic clubs, subject study groups, and campus communities',
+            currentDestination: AppNavDestination.clubs,
+            child: const _ClubsSkeleton(),
           );
         }
         if (snap.hasError && (!snap.hasData || snap.data!.isEmpty)) {
-          return Scaffold(
-            backgroundColor: ac.bg,
-            appBar: widget.embedded
-                ? null
-                : AppBar(
-                    backgroundColor: ac.bg,
-                    elevation: 0,
-                    title: Text('Academic Groups', style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy)),
-                    iconTheme: IconThemeData(color: ac.navy),
-                  ),
-            body: Center(child: ErrorView(message: snap.error.toString())),
+          return ApplicationShell(
+            user: widget.user,
+            currentTitle: 'Study Groups & Clubs',
+            subtitle: 'Join academic clubs, subject study groups, and campus communities',
+            currentDestination: AppNavDestination.clubs,
+            child: Center(child: ErrorView(message: snap.error.toString())),
           );
         }
 
@@ -182,54 +173,42 @@ class _ClubsPageState extends State<ClubsPage> {
                     : RecommendationRepository.instance.forClubs(pool: allClubs, favoriteSubjects: widget.user.favoriteSubjects, user: widget.user);
                 final recommendedClubs = candidates.where((c) => !c.isClassGroup && !joinedIds.contains(c.id) && !pendingIds.contains(c.id)).toList();
 
-                return Scaffold(
-                  backgroundColor: ac.bg,
-                  appBar: AppBar(
-                    backgroundColor: ac.bg,
-                    elevation: 0,
-                    toolbarHeight: widget.embedded ? 8 : kToolbarHeight,
-                    automaticallyImplyLeading: !widget.embedded,
-                    title: widget.embedded
-                        ? null
-                        : Text(
-                            'Academic Groups',
-                            style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.bold, color: ac.navy),
-                          ),
-                    iconTheme: IconThemeData(color: ac.navy),
-                    actions: widget.embedded
-                        ? const []
-                        : [
-                      IconButton(
-                        icon: Icon(Icons.notifications_outlined, color: ac.txt2),
-                        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => NotificationsPage(user: widget.user))),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 16),
-                        child: Center(
-                          child: UserAvatar(
-                            initials: widget.user.name.isEmpty ? '?' : widget.user.name[0].toUpperCase(),
-                            radius: 17,
-                            photoUrl: widget.user.photoUrl,
-                          ),
+                return ApplicationShell(
+                  user: widget.user,
+                  currentTitle: 'Study Groups & Clubs',
+                  subtitle: 'Join academic clubs, subject study groups, and campus communities',
+                  currentDestination: AppNavDestination.clubs,
+                  headerActions: [
+                    if (_canCreate)
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CreateClubPage(user: widget.user),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Create Group'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF081630),
+                          foregroundColor: Colors.white,
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
+                  ],
+                  bottomHeader: Column(
+                    children: [
+                      _searchBar(ac),
+                      if (categories.length > 1) ...[
+                        const SizedBox(height: 8),
+                        _categoryChips(categories, ac),
+                      ],
                     ],
-                    bottom: PreferredSize(
-                      preferredSize: Size.fromHeight(categories.length > 1 ? 104 : 58),
-                      child: Column(
-                        children: [
-                          _searchBar(ac),
-                          if (categories.length > 1) ...[
-                            const SizedBox(height: 8),
-                            _categoryChips(categories, ac),
-                          ],
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                    ),
                   ),
-                  body: AppBackground(
+                  child: AppBackground(
                     child: ListView(
                       padding: const EdgeInsets.only(top: 12, bottom: 100),
                       children: [
@@ -244,17 +223,6 @@ class _ClubsPageState extends State<ClubsPage> {
                       ],
                     ),
                   ),
-                  floatingActionButton: _canCreate
-                      ? FloatingActionButton.extended(
-                          backgroundColor: ac.navy,
-                          onPressed: () {
-                            HapticFeedback.mediumImpact();
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => CreateClubPage(user: widget.user)));
-                          },
-                          icon: Icon(Icons.add_rounded, color: ac.gold),
-                          label: Text('Create Group', style: AppText.button.copyWith(fontSize: 13)),
-                        )
-                      : null,
                 );
               },
             );
@@ -1025,9 +993,20 @@ class _ClubDetailPageState extends State<ClubDetailPage>
         ),
       );
     }
-    return Scaffold(
-      backgroundColor: ac.bg,
-      body: SafeArea(
+    return ApplicationShell(
+      user: widget.user,
+      currentTitle: widget.club.name,
+      subtitle: '${widget.club.category} • ${widget.club.memberCount} members',
+      currentDestination: AppNavDestination.clubs,
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Study Groups',
+          icon: Icons.groups_outlined,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+        ShellBreadcrumb(label: widget.club.name),
+      ],
+      child: SafeArea(
         bottom: false,
         child: Column(children: [
           StreamBuilder<ClubRole>(
@@ -1331,7 +1310,9 @@ class _Hero extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Leave this group?'),
-        content: Text('You can rejoin "${club.name}" any time${club.requiresApproval ? ", but you'll need approval again." : "."}'),
+        content: Text(club.requiresApproval
+            ? 'You can rejoin "${club.name}" any time, but you will need approval again.'
+            : 'You can rejoin "${club.name}" any time.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Leave', style: TextStyle(color: ac.red))),
@@ -1534,7 +1515,7 @@ class _ChatTab extends StatelessWidget {
                                 constraints: BoxConstraints(
                                     maxWidth: MediaQuery.of(context).size.width * .65),
                                 decoration: BoxDecoration(
-                                  color: m.deleted ? ac.surf3 : (isMe ? ac.primary : Colors.white),
+                                  color: m.deleted ? ac.surf3 : (isMe ? ac.primary : ac.surf),
                                   borderRadius: BorderRadius.circular(14),
                                   border: (isMe && !m.deleted) ? null : Border.all(color: ac.bdr),
                                 ),

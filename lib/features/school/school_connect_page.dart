@@ -48,10 +48,31 @@ class SchoolConnectPage extends StatelessWidget {
     final ac = AppColors.of(context);
     final schoolId = user.schoolId ?? '';
 
+    final canViewInbox =
+        user.hasMinRole(UserRole.lecturer) || user.canManageSchool;
+
     return ApplicationShell(
       user: user,
       currentTitle: 'School Connect',
+      subtitle: 'School services, student requests, calendar, and announcements',
       currentDestination: AppNavDestination.schoolConnect,
+      headerActions: [
+        if (canViewInbox && schoolId.isNotEmpty)
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => SchoolRequestsAdminPage(staff: user),
+              ),
+            ),
+            icon: const Icon(Icons.inbox_rounded, size: 16),
+            label: const Text('Requests Inbox'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF081630),
+              foregroundColor: Colors.white,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+      ],
       child: schoolId.isEmpty
           ? _missingSchoolState(ac)
           : ListView(

@@ -13,6 +13,7 @@ import '../models/app_user.dart';
 import '../services/notification_router.dart';
 
 import '../widgets/app_background.dart';
+import '../widgets/application_shell.dart';
 class NotificationsPage extends StatelessWidget {
   final AppUser user;
   const NotificationsPage({super.key, required this.user});
@@ -46,22 +47,19 @@ class NotificationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg, elevation: 0,
-        iconTheme: IconThemeData(color: ac.txt),
-        title: Text('Notifications', style: GoogleFonts.inter(
-            fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt)),
-        actions: [
-          TextButton(
-            onPressed: () => NotificationRepository.instance.markAllRead(user.id),
-            child: Text('Mark all read', style: GoogleFonts.inter(
-                fontSize: 12, fontWeight: FontWeight.w600, color: ac.primary)),
-          ),
-        ],
-      ),
-      body: AppBackground(child: StreamBuilder<List<AppNotification>>(
+    return ApplicationShell(
+      user: user,
+      currentTitle: 'Notifications',
+      subtitle: 'System updates, homework alerts, comments, and reminders',
+      currentDestination: AppNavDestination.none,
+      headerActions: [
+        TextButton(
+          onPressed: () => NotificationRepository.instance.markAllRead(user.id),
+          child: Text('Mark all read', style: GoogleFonts.inter(
+              fontSize: 12, fontWeight: FontWeight.w600, color: ac.primary)),
+        ),
+      ],
+      child: AppBackground(child: StreamBuilder<List<AppNotification>>(
         stream: NotificationRepository.instance.watchFeed(user.id),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {

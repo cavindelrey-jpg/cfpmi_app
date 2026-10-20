@@ -9,7 +9,11 @@ import '../../models/public_course.dart';
 import '../../repositories/public_course_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
+import 'courses_home_page.dart';
 import 'hierarchy_browse_scaffold.dart';
+import 'level_subjects_page.dart';
+import 'subject_topics_page.dart';
 import 'course_lessons_page.dart';
 
 class TopicCoursesPage extends StatefulWidget {
@@ -44,6 +48,41 @@ class _TopicCoursesPageState extends State<TopicCoursesPage> {
   @override
   Widget build(BuildContext context) {
     return HierarchyBrowseScaffold<PublicCourse>(
+      user: widget.user,
+      navDestination: AppNavDestination.academicCourses,
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Courses',
+          icon: Icons.menu_book_rounded,
+          onTap: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => CoursesHomePage(user: widget.user),
+            ),
+          ),
+        ),
+        ShellBreadcrumb(
+          label: widget.level,
+          onTap: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) =>
+                  LevelSubjectsPage(level: widget.level, user: widget.user),
+            ),
+          ),
+        ),
+        ShellBreadcrumb(
+          label: widget.subject,
+          onTap: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => SubjectTopicsPage(
+                level: widget.level,
+                subject: widget.subject,
+                user: widget.user,
+              ),
+            ),
+          ),
+        ),
+        ShellBreadcrumb(label: widget.topic),
+      ],
       title: widget.topic,
       subtitle: '${_courses.length} course${_courses.length == 1 ? '' : 's'}',
       searchHint: 'Search courses…',

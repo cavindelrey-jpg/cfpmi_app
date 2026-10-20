@@ -14,6 +14,7 @@ import '../../repositories/attendance_repository.dart';
 import '../../repositories/fee_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_skeleton.dart';
+import '../../widgets/application_shell.dart';
 
 class StudentRecordsPage extends StatelessWidget {
   final AppUser user;
@@ -24,21 +25,21 @@ class StudentRecordsPage extends StatelessWidget {
     final ac = AppColors.of(context);
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        backgroundColor: ac.bg,
-        appBar: AppBar(
-          title: const Text('My Records'),
-          bottom: TabBar(
-            labelColor: ac.primary,
-            unselectedLabelColor: ac.txt2,
-            indicatorColor: ac.primary,
-            tabs: const [
-              Tab(text: 'Attendance', icon: Icon(Icons.fact_check_outlined)),
-              Tab(text: 'Fees', icon: Icon(Icons.account_balance_wallet_outlined)),
-            ],
-          ),
+      child: ApplicationShell(
+        user: user,
+        currentTitle: 'My School Records',
+        subtitle: 'Personal attendance and tuition ledger',
+        currentDestination: AppNavDestination.schoolConnect,
+        bottomHeader: TabBar(
+          labelColor: ac.primary,
+          unselectedLabelColor: ac.txt2,
+          indicatorColor: ac.primary,
+          tabs: const [
+            Tab(text: 'Attendance', icon: Icon(Icons.fact_check_outlined)),
+            Tab(text: 'Fees', icon: Icon(Icons.account_balance_wallet_outlined)),
+          ],
         ),
-        body: TabBarView(
+        child: TabBarView(
           children: [
             _MyAttendance(user: user),
             _MyFees(user: user),

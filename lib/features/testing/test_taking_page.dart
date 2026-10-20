@@ -31,6 +31,7 @@ import '../../repositories/test_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
+import '../../widgets/application_shell.dart';
 import '../../core/result.dart';
 import 'test_result_page.dart';
 import '../../core/content_quality.dart';
@@ -176,27 +177,46 @@ class _TestTakingPageState extends State<TestTakingPage> {
   @override
   Widget build(BuildContext context) {
     final test = widget.test;
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(title: Text(displayQuizTitle(test), style: AppText.h2)),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+    return ApplicationShell(
+      user: widget.user,
+      currentDestination: AppNavDestination.testsAndQuizzes,
+      title: displayQuizTitle(test),
+      subtitle: '${test.subject} · ${test.questionCount} Questions · ${test.totalPossiblePoints} pts',
+      breadcrumbs: [
+        ShellBreadcrumb(label: 'Tests & Quizzes'),
+        ShellBreadcrumb(label: test.subject, onTap: () => Navigator.of(context).pop()),
+        ShellBreadcrumb(label: displayQuizTitle(test)),
+      ],
+      rightPanel: QuizzesContextualPanel(user: widget.user),
+      child: Column(
         children: [
-          for (var i = 0; i < test.questions.length; i++) ...[
-            _questionCard(i, test.questions[i]),
-            const SizedBox(height: 14),
-          ],
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: PrimaryBtn(
-            label: 'Submit Test',
-            loading: _submitting,
-            onTap: _submit,
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              children: [
+                for (var i = 0; i < test.questions.length; i++) ...[
+                  _questionCard(i, test.questions[i]),
+                  const SizedBox(height: 14),
+                ],
+              ],
+            ),
           ),
-        ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: ac.surf,
+              border: Border(top: BorderSide(color: ac.bdr)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: PrimaryBtn(
+                label: 'Submit Test',
+                loading: _submitting,
+                onTap: _submit,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

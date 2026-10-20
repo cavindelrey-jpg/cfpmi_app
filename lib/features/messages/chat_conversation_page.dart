@@ -67,12 +67,14 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/chat_media_widgets.dart';
 import '../../widgets/media_players.dart' show ArticleVideoPlayer;
-import '../courses_marketplace/course_lessons_page.dart';
-import '../testing/test_taking_page.dart';
-import '../magazine/article_reader_page.dart';
 import '../academic_content/content_details_page.dart';
+import '../academic_content/content_viewer_page.dart';
+import '../courses_marketplace/course_lessons_page.dart';
+import '../magazine/article_reader_page.dart';
+import '../testing/test_taking_page.dart';
 
 class ChatConversationPage extends StatefulWidget {
   final String conversationId;
@@ -257,34 +259,41 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final online = _conversation?.isRecentlyActive(widget.otherUserId) ?? false;
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg, elevation: 0,
-        iconTheme: IconThemeData(color: ac.txt),
-        titleSpacing: 0,
-        title: Row(children: [
-          UserAvatar(
-            initials: widget.otherUserName.isEmpty ? '?' : widget.otherUserName[0].toUpperCase(),
-            radius: 18, photoUrl: widget.otherUserPhoto,
-            showPresenceDot: true, online: online,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.otherUserName, style: AppText.title.copyWith(fontSize: 15),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-              if (_otherTyping)
-                Text('typing…', style: AppText.caption.copyWith(fontSize: 11, color: ac.primary))
-              else if (online)
-                Text('Active now', style: AppText.caption.copyWith(fontSize: 11, color: ac.grn)),
-            ]),
-          ),
-        ]),
-        actions: [
-        ],
+    final statusSubtitle = _otherTyping
+        ? 'typing…'
+        : (online ? 'Active now' : 'Direct conversation');
+
+    return ApplicationShell(
+      user: widget.currentUser,
+      currentTitle: widget.otherUserName,
+      subtitle: statusSubtitle,
+      currentDestination: AppNavDestination.messages,
+      contextualPanel: ChatConversationsSidebar(
+        me: widget.currentUser,
+        activeConversationId: widget.conversationId,
       ),
-      body: AppBackground(child: Column(children: [
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Messages',
+          icon: Icons.chat_bubble_outline_rounded,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+        ShellBreadcrumb(
+          label: widget.otherUserName,
+        ),
+      ],
+      headerActions: [
+        UserAvatar(
+          initials: widget.otherUserName.isEmpty
+              ? '?'
+              : widget.otherUserName[0].toUpperCase(),
+          radius: 15,
+          photoUrl: widget.otherUserPhoto,
+          showPresenceDot: true,
+          online: online,
+        ),
+      ],
+      child: AppBackground(child: Column(children: [
         Expanded(
           child: StreamBuilder<List<ChatMessage>>(
             stream: _messagesStream,
@@ -1044,12 +1053,26 @@ class _SharedContentCardState extends State<_SharedContentCard> {
           break;
         case SharedContentType.note:
         case SharedContentType.pastPaper:
-          // Both are AcademicContent items — ContentDetailsPage itself
-          // handles the not-found/no-longer-exists case (see its own
-          // StreamBuilder), same as opening one from the Library grid.
-          if (mounted) {
-            Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ContentDetailsPage(contentId: id, user: widget.currentUser)));
+          final item = await AcademicContentRepository.instance.watchOne(id).first;
+          if (!mounted) return;
+          if (item != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ContentViewerPage(
+                  content: item,
+                  user: widget.currentUser,
+                ),
+              ),
+            );
+          } else {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ContentDetailsPage(
+                  contentId: id,
+                  user: widget.currentUser,
+                ),
+              ),
+            );
           }
           break;
         case SharedContentType.clubPost:

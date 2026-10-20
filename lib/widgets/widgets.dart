@@ -13,6 +13,71 @@ import '../config/branding.dart';
 import 'chat_media_widgets.dart' show PresenceDot;
 
 // ════════════════════════════════════════════════════════════════════════════
+// CIRCULAR PROGRESS INDICATOR (Auto-scaling, fits container without overflow)
+// ════════════════════════════════════════════════════════════════════════════
+
+class AcademicCircularProgressRing extends StatelessWidget {
+  final double percent; // 0.0 to 1.0
+  final double size;
+  final double strokeWidth;
+  final Color? color;
+  final Color? backgroundColor;
+  final TextStyle? textStyle;
+  final Widget? center;
+
+  const AcademicCircularProgressRing({
+    super.key,
+    required this.percent,
+    this.size = 54,
+    this.strokeWidth = 4.5,
+    this.color,
+    this.backgroundColor,
+    this.textStyle,
+    this.center,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    final clamped = percent.clamp(0.0, 1.0);
+    final fg = color ?? const Color(0xFFE5A93C);
+    final bg = backgroundColor ?? ac.bdr2;
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CircularProgressIndicator(
+            value: clamped,
+            strokeWidth: strokeWidth,
+            backgroundColor: bg,
+            valueColor: AlwaysStoppedAnimation<Color>(fg),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Padding(
+              padding: EdgeInsets.all(strokeWidth + 2),
+              child: center ??
+                  Text(
+                    '${(clamped * 100).round()}%',
+                    style: textStyle ??
+                        AppText.title.copyWith(
+                          fontSize: size * 0.26,
+                          fontWeight: FontWeight.w800,
+                          color: ac.txt,
+                        ),
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // BUTTONS
 // ════════════════════════════════════════════════════════════════════════════
 

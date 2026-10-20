@@ -22,11 +22,18 @@ import 'package:video_player/video_player.dart';
 import '../../core/docx_parser.dart';
 import '../../core/epub_parser.dart';
 import '../../core/result.dart';
+import '../../models/academic_content.dart';
+import '../../models/app_user.dart';
 import '../../repositories/academic_content_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart' show showToast;
 import '../../widgets/web_embed/web_embed.dart';
+import 'content_delete_dialog.dart';
+import 'content_details_page.dart';
+import 'content_edit_page.dart';
+import 'library_home_page.dart';
 
 enum ViewableFileKind { image, pdf, video, docx, pptx, epub, txt }
 
@@ -53,7 +60,9 @@ ViewableFileKind? viewableKindFor(String url) {
   return null;
 }
 
-class ContentViewerPage extends StatelessWidget {
+class ContentViewerPage extends StatefulWidget {
+  final AcademicContent? content;
+  final AppUser? user;
   final String fileUrl;
   final String title;
   final ViewableFileKind kind;
@@ -65,89 +74,277 @@ class ContentViewerPage extends StatelessWidget {
   /// Path to a device-local copy from AcademicContentRepository's offline download
   final String? localFilePath;
 
-  const ContentViewerPage({
+  ContentViewerPage({
     super.key,
-    required this.fileUrl,
-    required this.title,
-    required this.kind,
-    this.contentId,
-    this.userId,
+    this.content,
+    this.user,
+    String? fileUrl,
+    String? title,
+    ViewableFileKind? kind,
+    String? contentId,
+    String? userId,
     this.localFilePath,
-  });
+  })  : fileUrl = fileUrl ?? content?.fileUrl ?? '',
+        title = title ?? content?.title ?? 'Document Viewer',
+        kind = kind ??
+            viewableKindFor(fileUrl ?? content?.fileUrl ?? '') ??
+            (content?.contentType == ContentType.video
+                ? ViewableFileKind.video
+                : ViewableFileKind.pdf),
+        contentId = contentId ?? content?.id,
+        userId = userId ?? user?.id;
+
+  @override
+  State<ContentViewerPage> createState() => _ContentViewerPageState();
+}
+
+class _ContentViewerPageState extends State<ContentViewerPage> {
+  String? _resolvedLocalPath;
+  bool _tracked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolvedLocalPath = widget.localFilePath;
+    _initDocumentSession();
+  }
+
+  Future<void> _initDocumentSession() async {
+    final cid = widget.contentId;
+    if (cid == null || cid.isEmpty) return;
+
+    if (!_tracked) {
+      _tracked = true;
+      unawaited(AcademicContentRepository.instance.incrementViews(cid));
+      unawaited(AcademicContentRepository.instance.incrementDownloads(cid));
+      final uid = widget.userId ?? widget.user?.id ?? '';
+      if (uid.isNotEmpty) {
+        unawaited(AcademicContentRepository.instance.recordView(cid, uid));
+      }
+    }
+
+    if (!kIsWeb && _resolvedLocalPath == null) {
+      try {
+        final p = await AcademicContentRepository.instance.offlineFilePath(cid);
+        if (mounted && p != null) {
+          setState(() => _resolvedLocalPath = p);
+        }
+      } catch (_) {}
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: kind == ViewableFileKind.video ? Colors.black : ac.bg,
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: AppText.title.copyWith(
-            color: kind == ViewableFileKind.video ? Colors.white : ac.txt,
+    final cid = widget.contentId;
+    final currentUser = widget.user ?? AppUser.guest();
+
+    if (widget.content != null) {
+      return _buildShellWithContent(context, ac, widget.content!, currentUser);
+    }
+
+    if (cid != null && cid.isNotEmpty) {
+      return StreamBuilder<AcademicContent?>(
+        stream: AcademicContentRepository.instance.watchOne(cid),
+        builder: (context, snap) {
+          return _buildShellWithContent(context, ac, snap.data, currentUser);
+        },
+      );
+    }
+
+    return _buildShellWithContent(context, ac, null, currentUser);
+  }
+
+  Widget _buildShellWithContent(
+    BuildContext context,
+    AppColors ac,
+    AcademicContent? item,
+    AppUser currentUser,
+  ) {
+    final fileUrl = widget.fileUrl.isNotEmpty
+        ? widget.fileUrl
+        : (item?.fileUrl ?? '');
+    final title = widget.title.isNotEmpty
+        ? widget.title
+        : (item?.title ?? 'Document Viewer');
+    final kind = widget.kind;
+    final contentId = widget.contentId ?? item?.id;
+    final userId = widget.userId ?? (currentUser.id.isNotEmpty ? currentUser.id : null);
+    final localPath = _resolvedLocalPath;
+    final isPastPaper = item?.contentType == ContentType.pastPaper;
+    final canEdit = item != null &&
+        !currentUser.isGuest &&
+        (currentUser.canUploadContent || item.uploadedBy == currentUser.id);
+
+    final viewerBody = (kIsWeb &&
+            (kind == ViewableFileKind.pdf || kind == ViewableFileKind.pptx))
+        ? _WebDocBody(fileUrl: fileUrl, kind: kind)
+        : SelectionArea(
+            child: switch (kind) {
+              ViewableFileKind.image =>
+                _ImageViewer(url: fileUrl, localFilePath: localPath),
+              ViewableFileKind.pdf => _PdfViewer(
+                  url: fileUrl,
+                  localFilePath: localPath,
+                  contentId: contentId,
+                  userId: userId,
+                ),
+              ViewableFileKind.video =>
+                _VideoViewer(url: fileUrl, localFilePath: localPath),
+              ViewableFileKind.docx => _DocxViewer(
+                  url: fileUrl,
+                  localFilePath: localPath,
+                  contentId: contentId,
+                ),
+              ViewableFileKind.pptx => _ExternalDocFallback(fileUrl: fileUrl),
+              ViewableFileKind.epub => _EpubViewer(
+                  url: fileUrl,
+                  localFilePath: localPath,
+                  contentId: contentId,
+                ),
+              ViewableFileKind.txt => _TextViewer(
+                  url: fileUrl,
+                  localFilePath: localPath,
+                  contentId: contentId,
+                ),
+            },
+          );
+
+    return ApplicationShell(
+      user: currentUser,
+      currentTitle: title,
+      subtitle: item != null
+          ? [
+              if (item.subject.isNotEmpty) item.subject,
+              if (item.level.isNotEmpty) item.level,
+              item.contentType.label,
+            ].join(' • ')
+          : null,
+      currentDestination: isPastPaper
+          ? AppNavDestination.pastQuestions
+          : AppNavDestination.academicLibrary,
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: isPastPaper ? 'Past Questions' : 'Academic Library',
+          icon: isPastPaper
+              ? Icons.description_rounded
+              : Icons.folder_copy_rounded,
+          onTap: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => LibraryHomePage(
+                user: currentUser,
+                navDestination: isPastPaper
+                    ? AppNavDestination.pastQuestions
+                    : AppNavDestination.academicLibrary,
+              ),
+            ),
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         ),
-        backgroundColor: kind == ViewableFileKind.video ? Colors.black : ac.bg,
-        iconTheme: IconThemeData(
-          color: kind == ViewableFileKind.video ? Colors.white : ac.txt,
-        ),
-        actions: [
-          if (fileUrl.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.open_in_new_rounded, size: 20),
-              tooltip: 'Open externally / in browser',
-              onPressed: () async {
-                final uri = Uri.tryParse(fileUrl);
-                if (uri != null) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              },
-            ),
-          if (!kIsWeb)
-            _ViewerSaveOfflineAction(
-              contentId: contentId,
-              fileUrl: fileUrl,
-              title: title,
-              localFilePath: localFilePath,
-            ),
+        if (item != null && item.subject.isNotEmpty)
+          ShellBreadcrumb(label: item.subject),
+        ShellBreadcrumb(label: title),
+      ],
+      headerActions: [
+        if (item != null && !currentUser.isGuest && currentUser.id.isNotEmpty)
+          StreamBuilder<bool>(
+            stream: AcademicContentRepository.instance
+                .watchIsSaved(item.id, currentUser.id),
+            builder: (context, savedSnap) {
+              final saved = savedSnap.data ?? false;
+              return IconButton(
+                icon: Icon(
+                  saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  color: saved ? ac.gold : ac.txt2,
+                  size: 20,
+                ),
+                tooltip: saved ? 'Saved in Library' : 'Save / Bookmark',
+                onPressed: () async {
+                  HapticFeedback.lightImpact();
+                  await AcademicContentRepository.instance
+                      .toggleSave(item.id, currentUser.id);
+                  if (!saved && (item.fileUrl ?? '').isNotEmpty && !kIsWeb) {
+                    unawaited(
+                      AcademicContentRepository.instance.downloadForOffline(item),
+                    );
+                  }
+                },
+              );
+            },
+          ),
+        if (item != null)
+          IconButton(
+            icon: Icon(Icons.info_outline_rounded, size: 20, color: ac.txt2),
+            tooltip: 'Document Details',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ContentDetailsPage(
+                    contentId: item.id,
+                    user: currentUser,
+                  ),
+                ),
+              );
+            },
+          ),
+        if (canEdit) ...[
+          IconButton(
+            icon: Icon(Icons.edit_outlined, size: 20, color: ac.txt2),
+            tooltip: 'Edit Metadata',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      ContentEditPage(content: item, user: currentUser),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline_rounded, size: 20, color: ac.red),
+            tooltip: 'Delete Document',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => ContentDeleteDialog(
+                  content: item,
+                  onDeleted: () => Navigator.of(context).maybePop(),
+                ),
+              );
+            },
+          ),
         ],
-      ),
-      // On the WEB, PDFs and Office slides/legacy docs render in an iframe
-      // while .docx, .epub, and .txt use our native Dart viewers with full
-      // text selection & copy support.
-      body: (kIsWeb && (kind == ViewableFileKind.pdf ||
-                        kind == ViewableFileKind.pptx))
-          ? _WebDocBody(fileUrl: fileUrl, kind: kind)
-          : SelectionArea(
-              child: switch (kind) {
-                ViewableFileKind.image => _ImageViewer(url: fileUrl, localFilePath: localFilePath),
-                ViewableFileKind.pdf => _PdfViewer(
-                    url: fileUrl,
-                    localFilePath: localFilePath,
-                    contentId: contentId,
-                    userId: userId,
-                  ),
-                ViewableFileKind.video => _VideoViewer(url: fileUrl, localFilePath: localFilePath),
-                ViewableFileKind.docx => _DocxViewer(
-                    url: fileUrl,
-                    localFilePath: localFilePath,
-                    contentId: contentId,
-                  ),
-                ViewableFileKind.pptx => _ExternalDocFallback(fileUrl: fileUrl),
-                ViewableFileKind.epub => _EpubViewer(
-                    url: fileUrl,
-                    localFilePath: localFilePath,
-                    contentId: contentId,
-                  ),
-                ViewableFileKind.txt => _TextViewer(
-                    url: fileUrl,
-                    localFilePath: localFilePath,
-                    contentId: contentId,
-                  ),
-              },
+        if (fileUrl.isNotEmpty)
+          IconButton(
+            icon: Icon(Icons.open_in_new_rounded, size: 20, color: ac.txt2),
+            tooltip: 'Open externally / in browser',
+            onPressed: () async {
+              final uri = Uri.tryParse(fileUrl);
+              if (uri != null) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+        if (!kIsWeb)
+          _ViewerSaveOfflineAction(
+            contentId: contentId,
+            fileUrl: fileUrl,
+            title: title,
+            localFilePath: localPath,
+          ),
+      ],
+      contextualPanel: item != null
+          ? BookDetailsContextualPanel(
+              content: item,
+              user: currentUser,
+            )
+          : LibraryContextualPanel(
+              user: currentUser,
+              isPastQuestions: isPastPaper,
             ),
+      child: Container(
+        color: kind == ViewableFileKind.video ? Colors.black : ac.bg,
+        child: viewerBody,
+      ),
     );
   }
 }

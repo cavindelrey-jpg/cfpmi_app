@@ -14,6 +14,7 @@ import '../../repositories/test_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
+import '../../widgets/application_shell.dart';
 import 'quiz_icon_editor.dart';
 import 'tests_list_page.dart';
 
@@ -91,10 +92,20 @@ class _TestsTopicPickerPageState extends State<TestsTopicPickerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(title: Text(widget.subject, style: AppText.h2)),
-      body: _loading
+    return ApplicationShell(
+      user: widget.user,
+      currentDestination: AppNavDestination.testsAndQuizzes,
+      title: widget.subject,
+      breadcrumbs: [
+        ShellBreadcrumb(label: 'Tests & Quizzes', onTap: () {
+          Navigator.of(context).pop();
+          Navigator.of(context).pop();
+        }),
+        ShellBreadcrumb(label: widget.category, onTap: () => Navigator.of(context).pop()),
+        ShellBreadcrumb(label: widget.subject),
+      ],
+      rightPanel: QuizzesContextualPanel(user: widget.user),
+      child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _counts.isEmpty
               ? EmptyState(

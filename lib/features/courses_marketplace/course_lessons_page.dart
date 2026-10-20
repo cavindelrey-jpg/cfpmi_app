@@ -15,7 +15,9 @@ import '../../repositories/public_course_repository.dart';
 import '../../services/course_offline_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart' show showToast;
+import 'courses_home_page.dart';
 import 'hierarchy_browse_scaffold.dart';
 import 'lesson_reader_page.dart';
 
@@ -230,6 +232,29 @@ class _CourseLessonsPageState extends State<CourseLessonsPage> {
                 : null;
 
             return HierarchyBrowseScaffold<CourseLesson>(
+              user: widget.currentUser,
+              navDestination: AppNavDestination.academicCourses,
+              breadcrumbs: [
+                ShellBreadcrumb(
+                  label: 'Courses',
+                  icon: Icons.menu_book_rounded,
+                  onTap: () => Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          CoursesHomePage(user: widget.currentUser),
+                    ),
+                  ),
+                ),
+                if (widget.course.level.isNotEmpty)
+                  ShellBreadcrumb(label: widget.course.level),
+                if (widget.course.subject.isNotEmpty)
+                  ShellBreadcrumb(label: widget.course.subject),
+                ShellBreadcrumb(label: widget.course.title),
+              ],
+              contextualPanel: CoursesContextualPanel(
+                user: widget.currentUser ?? AppUser.guest(),
+                activeCourse: widget.course,
+              ),
               title: widget.course.title,
               subtitle: '${lessons.length} lesson${lessons.length == 1 ? '' : 's'}',
               searchHint: 'Search lessons…',

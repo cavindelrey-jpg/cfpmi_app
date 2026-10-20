@@ -29,12 +29,15 @@ import '../../repositories/public_course_repository.dart';
 import '../../services/course_offline_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import '../../widgets/formula_embed_builder.dart';
 import '../../widgets/media_players.dart';
 import '../../widgets/premium_unlock_sheet.dart';
 import 'course_creator_profile_page.dart';
+import 'course_lessons_page.dart';
+import 'courses_home_page.dart';
 import 'lesson_composer_page.dart';
 
 class LessonReaderPage extends StatefulWidget {
@@ -114,148 +117,180 @@ class _LessonReaderPageState extends State<LessonReaderPage> with SingleTickerPr
     final canEdit = widget.currentUser != null &&
         !widget.currentUser!.isGuest &&
         (widget.currentUser!.id == widget.course.creatorId || widget.currentUser!.isSuperAdmin);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg, elevation: 0,
-        iconTheme: IconThemeData(color: ac.txt),
-        // The bar identifies the COURSE (context); the lesson title is the
-        // reading column's own heading below.
-        title: Text(widget.course.title,
-            style: AppText.subtitle.copyWith(fontSize: 14, color: ac.txt2),
-            maxLines: 1, overflow: TextOverflow.ellipsis),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.copy_rounded, size: 20, color: ac.txt2),
-            tooltip: 'Copy lesson text',
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              final text = _extractPlainText(lesson);
-              Clipboard.setData(ClipboardData(text: '${lesson.title}\n\n$text'));
-              showToast(context, 'Lesson text copied to clipboard.');
-            },
+    return ApplicationShell(
+      user: widget.currentUser,
+      currentTitle: lesson.title,
+      subtitle: widget.course.title,
+      currentDestination: AppNavDestination.academicCourses,
+      breadcrumbs: [
+        ShellBreadcrumb(
+          label: 'Courses',
+          icon: Icons.menu_book_rounded,
+          onTap: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => CoursesHomePage(user: widget.currentUser),
+            ),
           ),
-          if (canEdit)
-            IconButton(
-              icon: Icon(Icons.edit_outlined, size: 20, color: ac.txt2),
-              tooltip: 'Edit lesson',
-              onPressed: () async {
-                final allLessons = await CourseLessonRepository.instance.lessonsOnce(widget.course.id);
-                if (!context.mounted) return;
-                await Navigator.of(context).push(MaterialPageRoute(
+        ),
+        ShellBreadcrumb(
+          label: widget.course.title,
+          onTap: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => CourseLessonsPage(
+                course: widget.course,
+                currentUser: widget.currentUser,
+              ),
+            ),
+          ),
+        ),
+        ShellBreadcrumb(label: lesson.title),
+      ],
+      headerActions: [
+        IconButton(
+          icon: Icon(Icons.copy_rounded, size: 20, color: ac.txt2),
+          tooltip: 'Copy lesson text',
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            final text = _extractPlainText(lesson);
+            Clipboard.setData(ClipboardData(text: '${lesson.title}\n\n$text'));
+            showToast(context, 'Lesson text copied to clipboard.');
+          },
+        ),
+        if (canEdit)
+          IconButton(
+            icon: Icon(Icons.edit_outlined, size: 20, color: ac.txt2),
+            tooltip: 'Edit lesson',
+            onPressed: () async {
+              final allLessons = await CourseLessonRepository.instance
+                  .lessonsOnce(widget.course.id);
+              if (!context.mounted) return;
+              await Navigator.of(context).push(
+                MaterialPageRoute(
                   builder: (_) => LessonComposerPage(
                     user: widget.currentUser!,
                     courseId: widget.course.id,
                     existing: lesson,
                     existingSequence: allLessons,
                   ),
-                ));
-              },
-            ),
-        ],
+                ),
+              );
+            },
+          ),
+      ],
+      contextualPanel: CoursesContextualPanel(
+        user: widget.currentUser ?? AppUser.guest(),
+        activeCourse: widget.course,
+        activeLessonId: lesson.id,
       ),
-      // Sticky bottom action area (Improvement 2 / Mistake 15) — stays visible
-      // while the learner scrolls so they can mark complete or continue anytime.
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: ac.surf,
-          border: Border(top: BorderSide(color: ac.bdr.withValues(alpha: 0.7), width: 0.8)),
-          boxShadow: Shad.sm,
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-            child: StreamBuilder<Set<String>>(
-              stream: CourseOfflineService.instance.watchCompletedLessonIds(userId, widget.course.id),
-              builder: (context, cSnap) {
-                final completed = cSnap.data?.contains(lesson.id) ?? false;
-                return Row(
-                  children: [
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: completed ? ac.grn : ac.primary,
-                        side: BorderSide(color: completed ? ac.grn : ac.primary, width: 1.2),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      icon: Icon(
-                        completed ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
-                        size: 18,
-                        color: completed ? ac.grn : ac.primary,
-                      ),
-                      label: Text(
-                        completed ? 'Completed' : 'Complete',
-                        style: AppText.subtitle.copyWith(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: completed ? ac.grn : ac.primary,
-                        ),
-                      ),
-                      onPressed: () async {
-                        HapticFeedback.lightImpact();
-                        final nowDone = await CourseOfflineService.instance.toggleLessonCompleted(
-                          userId, widget.course.id, lesson.id,
-                        );
-                        if (context.mounted) {
-                          showToast(context, nowDone ? 'Lesson marked as completed!' : 'Lesson marked as incomplete.');
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: PrimaryBtn(
-                        label: completed ? 'Next Lesson' : 'Mark Complete & Continue',
-                        icon: Icons.arrow_forward_rounded,
-                        onTap: () async {
-                          if (!completed) {
-                            await CourseOfflineService.instance.toggleLessonCompleted(
-                              userId, widget.course.id, lesson.id,
-                            );
-                          }
-                          if (context.mounted) {
-                            _continue(context);
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
+      child: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 920),
+                child: _readerColumn(ac, lesson, hasVideo),
+              ),
             ),
           ),
-        ),
-      ),
-      // Reading workspace. Phone/tablet: a single comfortable reading column
-      // (never stretched). Desktop: the reading column beside a table-of-
-      // contents / lesson-context panel — the reading area stays dominant.
-      body: AppBackground(child: LayoutBuilder(
-        builder: (ctx, c) {
-          final reader = _readerColumn(ac, lesson, hasVideo);
-          if (c.maxWidth < 1080) {
-            return Center(child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 860),
-              child: reader,
-            ));
-          }
-          return Center(child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 760),
-                    child: reader,
-                  ),
+          // Sticky bottom action area — stays visible while the learner scrolls
+          Container(
+            decoration: BoxDecoration(
+              color: ac.surf,
+              border: Border(
+                top: BorderSide(color: ac.bdr.withValues(alpha: 0.7), width: 0.8),
+              ),
+              boxShadow: Shad.sm,
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 920),
+                child: StreamBuilder<Set<String>>(
+                  stream: CourseOfflineService.instance
+                      .watchCompletedLessonIds(userId, widget.course.id),
+                  builder: (context, cSnap) {
+                    final completed = cSnap.data?.contains(lesson.id) ?? false;
+                    return Row(
+                      children: [
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: completed ? ac.grn : ac.primary,
+                            side: BorderSide(
+                              color: completed ? ac.grn : ac.primary,
+                              width: 1.2,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 13,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          icon: Icon(
+                            completed
+                                ? Icons.check_circle_rounded
+                                : Icons.check_circle_outline_rounded,
+                            size: 18,
+                            color: completed ? ac.grn : ac.primary,
+                          ),
+                          label: Text(
+                            completed ? 'Completed' : 'Complete',
+                            style: AppText.subtitle.copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: completed ? ac.grn : ac.primary,
+                            ),
+                          ),
+                          onPressed: () async {
+                            HapticFeedback.lightImpact();
+                            final nowDone = await CourseOfflineService.instance
+                                .toggleLessonCompleted(
+                              userId,
+                              widget.course.id,
+                              lesson.id,
+                            );
+                            if (context.mounted) {
+                              showToast(
+                                context,
+                                nowDone
+                                    ? 'Lesson marked as completed!'
+                                    : 'Lesson marked as incomplete.',
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: PrimaryBtn(
+                            label: completed
+                                ? 'Next Lesson'
+                                : 'Mark Complete & Continue',
+                            icon: Icons.arrow_forward_rounded,
+                            onTap: () async {
+                              if (!completed) {
+                                await CourseOfflineService.instance
+                                    .toggleLessonCompleted(
+                                  userId,
+                                  widget.course.id,
+                                  lesson.id,
+                                );
+                              }
+                              if (context.mounted) {
+                                _continue(context);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
-              const SizedBox(width: 24),
-              SizedBox(width: 300, child: _contextPanel(ac, lesson)),
-            ]),
-          ));
-        },
-      )),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

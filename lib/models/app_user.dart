@@ -380,7 +380,12 @@ class AppUser {
   /// Never written to Firestore, never treated as a real account — id
   /// stays empty so any accidental write attempt is a visible no-op
   /// (AuthService methods already early-return on empty id).
-  factory AppUser.guest() => const AppUser(id: '', name: 'Guest');
+  factory AppUser.guest() => const AppUser(
+        id: '',
+        name: 'Guest',
+        role: UserRole.guest,
+        accountType: AccountType.guest,
+      );
 
   factory AppUser.fromFirestore(String id, Map<String, dynamic> d) => AppUser(
     id: id,

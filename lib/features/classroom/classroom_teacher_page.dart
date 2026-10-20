@@ -15,6 +15,7 @@ import '../../repositories/classroom_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../services/classroom_upload_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
 import 'classroom_display_page.dart';
 import 'classroom_slide.dart';
 import '../academic_content/content_viewer_page.dart';
@@ -56,20 +57,29 @@ class _ClassroomTeacherPageState extends State<ClassroomTeacherPage> {
   @override
   Widget build(BuildContext context) {
     if (!_canTeach) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Classroom')),
-        body: Center(child: Text('Only teachers can run a classroom.', style: GoogleFonts.inter(color: ac.txt2))),
+      return ApplicationShell(
+        user: widget.user,
+        currentTitle: 'Classroom',
+        currentDestination: AppNavDestination.classroom,
+        child: Center(
+          child: Text(
+            'Only teachers can run a classroom.',
+            style: GoogleFonts.inter(color: ac.txt2),
+          ),
+        ),
       );
     }
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(title: const Text('Classroom')),
+    return ApplicationShell(
+      user: widget.user,
+      currentTitle: 'Classroom Sessions',
+      subtitle: 'Start a live presentation or manage lesson resources',
+      currentDestination: AppNavDestination.classroom,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _startClassDialog,
         icon: const Icon(Icons.cast_rounded),
         label: const Text('Start Class'),
       ),
-      body: _loading
+      child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _sessions.isEmpty
               ? _empty()
@@ -216,22 +226,33 @@ class ClassroomControlPage extends StatelessWidget {
       builder: (context, snap) {
         final s = snap.data;
         if (s == null) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return ApplicationShell(
+            user: user,
+            currentTitle: 'Classroom Control',
+            currentDestination: AppNavDestination.classroom,
+            child: const Center(child: CircularProgressIndicator()),
+          );
         }
-        return Scaffold(
-          backgroundColor: ac.bg,
-          appBar: AppBar(
-            title: Text('${s.classLevel} · ${s.subject}'),
-            actions: [
-              IconButton(
-                tooltip: 'Open projector display',
-                icon: const Icon(Icons.tv_rounded),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => ClassroomDisplayPage(sessionId: sessionId))),
+        return ApplicationShell(
+          user: user,
+          currentTitle: '${s.classLevel} · ${s.subject}',
+          subtitle: s.topic,
+          currentDestination: AppNavDestination.classroom,
+          headerActions: [
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ClassroomDisplayPage(sessionId: sessionId),
+                ),
               ),
-            ],
-          ),
-          body: ListView(
+              icon: const Icon(Icons.tv_rounded, size: 16),
+              label: const Text('Projector Display'),
+              style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+          child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
               // Live/slide status + slide preview

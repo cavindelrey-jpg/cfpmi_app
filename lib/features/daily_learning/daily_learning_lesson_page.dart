@@ -14,6 +14,7 @@ import '../../repositories/daily_learning_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
+import '../../widgets/application_shell.dart';
 
 enum _Phase { teach, quiz, result }
 
@@ -87,15 +88,17 @@ class _DailyLearningLessonPageState extends State<DailyLearningLessonPage> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        backgroundColor: ac.bg,
-        elevation: 0,
-        title: Text(widget.lesson.title, style: AppText.h2.copyWith(fontSize: 16, color: ac.txt)),
-        iconTheme: IconThemeData(color: ac.txt),
-      ),
-      body: switch (_phase) {
+    return ApplicationShell(
+      user: widget.user,
+      currentDestination: AppNavDestination.academicCourses,
+      title: widget.lesson.title,
+      breadcrumbs: [
+        const ShellBreadcrumb(label: 'Daily Challenge'),
+        ShellBreadcrumb(label: widget.course.title, onTap: () => Navigator.of(context).pop()),
+        ShellBreadcrumb(label: widget.lesson.title),
+      ],
+      rightPanel: CoursesContextualPanel(user: widget.user),
+      child: switch (_phase) {
         _Phase.teach => _teachView(ac),
         _Phase.quiz => _quizView(ac),
         _Phase.result => _resultView(ac),
@@ -107,7 +110,7 @@ class _DailyLearningLessonPageState extends State<DailyLearningLessonPage> {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('What you\'ll learn', style: GoogleFonts.sora(
+        Text('What you\'ll learn', style: GoogleFonts.inter(
             fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt)),
         const SizedBox(height: 16),
         Expanded(
@@ -157,7 +160,7 @@ class _DailyLearningLessonPageState extends State<DailyLearningLessonPage> {
         Text('Question ${_questionIndex + 1} of $total',
             style: GoogleFonts.inter(fontSize: 11.5, color: ac.txt2)),
         const SizedBox(height: 20),
-        Text(_question.prompt, style: GoogleFonts.sora(
+        Text(_question.prompt, style: GoogleFonts.inter(
             fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt, height: 1.35)),
         const SizedBox(height: 20),
         Expanded(
@@ -207,7 +210,7 @@ class _DailyLearningLessonPageState extends State<DailyLearningLessonPage> {
           child: Icon(Icons.check_circle_rounded, color: ac.grn, size: 44),
         ),
         const SizedBox(height: 20),
-        Text('Lesson complete!', style: GoogleFonts.sora(
+        Text('Lesson complete!', style: GoogleFonts.inter(
             fontSize: 20, fontWeight: FontWeight.w800, color: ac.txt)),
         const SizedBox(height: 8),
         Text('$_correctCount of $total correct',
@@ -217,7 +220,7 @@ class _DailyLearningLessonPageState extends State<DailyLearningLessonPage> {
           Icon(Icons.star_rounded, color: ac.gold, size: 18),
           const SizedBox(width: 4),
           Text(_wasReplay ? 'Practice round — XP was earned the first time' : '+$_xpAwarded XP',
-              style: GoogleFonts.sora(fontSize: _wasReplay ? 12.5 : 14, fontWeight: FontWeight.w700, color: ac.gold)),
+              style: GoogleFonts.inter(fontSize: _wasReplay ? 12.5 : 14, fontWeight: FontWeight.w700, color: ac.gold)),
         ]),
         const SizedBox(height: 28),
         PrimaryBtn(

@@ -11,6 +11,7 @@ import '../../models/test_attempt.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
+import '../../widgets/application_shell.dart';
 
 class TestResultPage extends StatelessWidget {
   final TestAttempt attempt;
@@ -33,22 +34,26 @@ class TestResultPage extends StatelessWidget {
     final scorePct = gradedMax == 0 ? 0.0 : (gradedPoints / gradedMax * 100);
     final color = _scoreColor(ac, scorePct);
 
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(title: Text(attempt.testTitle, style: AppText.h2)),
-      body: ListView(
+    return ApplicationShell(
+      currentDestination: AppNavDestination.testsAndQuizzes,
+      title: attempt.testTitle,
+      subtitle: '${attempt.subject} · Test Results',
+      breadcrumbs: [
+        const ShellBreadcrumb(label: 'Tests & Quizzes'),
+        ShellBreadcrumb(label: attempt.testTitle),
+      ],
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           ACard(
             padding: const EdgeInsets.all(24),
             child: Column(children: [
-              Container(
-                width: 84, height: 84,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: .12)),
-                child: Center(
-                  child: Text('${scorePct.round()}%',
-                      style: AppText.display.copyWith(fontSize: 26, color: color)),
-                ),
+              AcademicCircularProgressRing(
+                progress: scorePct / 100.0,
+                size: 88,
+                strokeWidth: 8,
+                color: color,
+                customText: '${scorePct.round()}%',
               ),
               const SizedBox(height: 14),
               Text(

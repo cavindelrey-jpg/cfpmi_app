@@ -77,6 +77,7 @@ class _CoursesHomePageState extends State<CoursesHomePage> {
       user: widget.user,
       currentTitle: 'Academic Courses',
       currentDestination: AppNavDestination.academicCourses,
+      contextualPanel: CoursesContextualPanel(user: widget.user ?? AppUser.guest()),
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         children: [
@@ -179,25 +180,57 @@ class _CoursesHomePageState extends State<CoursesHomePage> {
           future: _iconsFuture,
           builder: (context, iconSnap) {
             final icons = iconSnap.data ?? const <String, CurriculumIcon>{};
-            return SizedBox(
-              height: 118,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: levels.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, i) => _LevelCard(
-                  level: levels[i],
-                  icon: icons[PublicCourseRepository.eduLevelIconKey(levels[i].name)] ?? CurriculumIcon.none,
-                  canManage: widget.user?.canUploadContent ?? false,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => LevelSubjectsPage(level: levels[i].name, user: widget.user)));
-                  },
-                  onChanged: _reloadIcons,
-                ),
-              ),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 720 && levels.length <= 6) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        for (int i = 0; i < levels.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 12),
+                          Expanded(
+                            child: SizedBox(
+                              height: 118,
+                              child: _LevelCard(
+                                level: levels[i],
+                                icon: icons[PublicCourseRepository.eduLevelIconKey(levels[i].name)] ?? CurriculumIcon.none,
+                                canManage: widget.user?.canUploadContent ?? false,
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                      builder: (_) => LevelSubjectsPage(level: levels[i].name, user: widget.user)));
+                                },
+                                onChanged: _reloadIcons,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }
+                return SizedBox(
+                  height: 118,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: levels.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (context, i) => _LevelCard(
+                      level: levels[i],
+                      icon: icons[PublicCourseRepository.eduLevelIconKey(levels[i].name)] ?? CurriculumIcon.none,
+                      canManage: widget.user?.canUploadContent ?? false,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => LevelSubjectsPage(level: levels[i].name, user: widget.user)));
+                      },
+                      onChanged: _reloadIcons,
+                    ),
+                  ),
+                );
+              },
             );
           },
         );

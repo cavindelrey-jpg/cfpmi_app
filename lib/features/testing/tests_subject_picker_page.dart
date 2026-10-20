@@ -18,6 +18,7 @@ import '../../repositories/recommendation_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
+import '../../widgets/application_shell.dart';
 import 'quiz_icon_editor.dart';
 import 'test_taking_page.dart';
 import 'tests_topic_picker_page.dart';
@@ -111,21 +112,25 @@ class _TestsSubjectPickerPageState extends State<TestsSubjectPickerPage> {
   @override
   Widget build(BuildContext context) {
     final isGuest = widget.user.isGuest;
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(
-        title: Text(widget.category, style: AppText.h2),
-        actions: [
-          if (!isGuest)
-            IconButton(
-              icon: Icon(Icons.bolt_rounded, color: ac.gold),
-              tooltip: 'XP Dashboard',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => XpDashboardPage(user: widget.user))),
-            ),
-        ],
-      ),
-      body: FutureBuilder<Map<String, int>>(
+    return ApplicationShell(
+      user: widget.user,
+      currentDestination: AppNavDestination.testsAndQuizzes,
+      title: widget.category,
+      breadcrumbs: [
+        ShellBreadcrumb(label: 'Tests & Quizzes', onTap: () => Navigator.of(context).pop()),
+        ShellBreadcrumb(label: widget.category),
+      ],
+      headerActions: [
+        if (!isGuest)
+          IconButton(
+            icon: Icon(Icons.bolt_rounded, color: ac.gold),
+            tooltip: 'XP Dashboard',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => XpDashboardPage(user: widget.user))),
+          ),
+      ],
+      rightPanel: QuizzesContextualPanel(user: widget.user),
+      child: FutureBuilder<Map<String, int>>(
         future: _counts,
         builder: (context, snap) {
           if (!snap.hasData) {

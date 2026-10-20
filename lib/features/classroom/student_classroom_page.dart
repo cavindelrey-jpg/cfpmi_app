@@ -14,6 +14,7 @@ import '../../models/app_user.dart';
 import '../../models/classroom.dart';
 import '../../repositories/classroom_repository.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/application_shell.dart';
 import '../../widgets/web_embed/web_embed.dart';
 import 'classroom_slide.dart';
 
@@ -25,10 +26,12 @@ class StudentClassroomPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final schoolId = user.schoolId ?? '';
-    return Scaffold(
-      backgroundColor: ac.bg,
-      appBar: AppBar(title: const Text('Live Class')),
-      body: StreamBuilder<ClassroomSession?>(
+    return ApplicationShell(
+      user: user,
+      currentTitle: 'Live Classroom',
+      subtitle: user.classLevel.isNotEmpty ? user.classLevel : null,
+      currentDestination: AppNavDestination.classroom,
+      child: StreamBuilder<ClassroomSession?>(
         stream: ClassroomRepository.instance.watchLiveForClass(schoolId, user.classLevel),
         builder: (context, snap) {
           final s = snap.data;

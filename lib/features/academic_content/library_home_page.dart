@@ -15,6 +15,7 @@
 // read as a reskin of Courses, per the user's explicit instruction.
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -44,17 +45,74 @@ import 'content_viewer_page.dart';
 
 class LibraryHomePage extends StatelessWidget {
   final AppUser user;
-  const LibraryHomePage({super.key, required this.user});
+  final String? initialCollectionFilter;
+  final AppNavDestination? navDestination;
+
+  const LibraryHomePage({
+    super.key,
+    required this.user,
+    this.initialCollectionFilter,
+    this.navDestination,
+  });
 
   bool get _canUpload => user.canUploadContent;
+
+  void _openContentDirectly(BuildContext context, AcademicContent item) {
+    if ((item.fileUrl ?? '').isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ContentViewerPage(content: item, user: user),
+        ),
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ContentDetailsPage(contentId: item.id, user: user),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+    final dest = navDestination ?? AppNavDestination.academicLibrary;
+    final isPast = dest == AppNavDestination.pastQuestions;
+
     return ApplicationShell(
       user: user,
-      currentTitle: 'Academic Library',
-      currentDestination: AppNavDestination.academicLibrary,
+      currentTitle: isPast ? 'Past Questions' : 'Academic Library',
+      subtitle: isPast
+          ? 'GCE & National Examination Papers Repository'
+          : 'Books, Textbooks, Lecture Notes & Past Papers',
+      currentDestination: dest,
+      contextualPanel: LibraryContextualPanel(
+        user: user,
+        isPastQuestions: isPast,
+      ),
+      headerActions: [
+        IconButton(
+          icon: Icon(Icons.search_rounded, color: ac.txt2, size: 20),
+          tooltip: 'Search Library',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => LibrarySearchPage(user: user)),
+          ),
+        ),
+        if (_canUpload)
+          IconButton(
+            icon: Icon(Icons.drive_folder_upload_rounded,
+                color: ac.primary, size: 20),
+            tooltip: 'Mass Upload Past Papers',
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => BulkPastPaperUploadPage(user: user),
+                ),
+              );
+            },
+          ),
+      ],
       floatingActionButton: _canUpload
           ? FloatingActionButton.extended(
               onPressed: () {
@@ -70,15 +128,20 @@ class LibraryHomePage extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         children: [
-          _sectionHeader('File Explorer', ac),
+          _sectionHeader('File Explorer Collections', ac),
           const SizedBox(height: 12),
           _fileExplorer(context, ac),
           const SizedBox(height: 26),
-          _sectionHeader('Recommended for You', ac, onSeeAll: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => RecommendedLibraryPage(user: user)))),
+          _sectionHeader(
+            'Recommended for You',
+            ac,
+            onSeeAll: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => RecommendedLibraryPage(user: user),
+              ),
+            ),
+          ),
           const SizedBox(height: 12),
-          // Re-built (and so re-fetched) whenever connectivity flips, so
-          // "needs an internet connection" clears by itself on reconnect.
           StreamBuilder<bool>(
             stream: ConnectivityService().watchOffline(),
             builder: (context, net) => Column(
@@ -313,8 +376,7 @@ class LibraryHomePage extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, i) => _RecommendedCard(
               item: items[i],
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ContentDetailsPage(contentId: items[i].id, user: user))),
+              onTap: () => _openContentDirectly(context, items[i]),
             ),
           ),
         );
@@ -342,8 +404,7 @@ class LibraryHomePage extends StatelessWidget {
         if (recent.isNotEmpty) {
           return Column(children: recent.map((c) => _RecentReadTile(
             item: c, recentlyOpened: true,
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ContentDetailsPage(contentId: c.id, user: user))),
+            onTap: () => _openContentDirectly(context, c),
           )).toList());
         }
         if (recentSnap.hasError) {
@@ -363,8 +424,7 @@ class LibraryHomePage extends StatelessWidget {
             }
             return Column(children: fill.map((c) => _RecentReadTile(
               item: c, recentlyOpened: false,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ContentDetailsPage(contentId: c.id, user: user))),
+              onTap: () => _openContentDirectly(context, c),
             )).toList());
           },
         );
@@ -439,6 +499,8 @@ class LibraryHomePage extends StatelessWidget {
                   final kind = viewableKindFor(path ?? item.fileUrl ?? '') ?? ViewableFileKind.pdf;
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => ContentViewerPage(
+                      content: item,
+                      user: user,
                       fileUrl: item.fileUrl ?? path ?? '',
                       title: item.title,
                       kind: kind,
@@ -674,7 +736,7 @@ class _OfflineContentCard extends StatelessWidget {
                       future: AcademicContentRepository.instance.offlineThumbnailPath(item.id),
                       builder: (context, thumbSnap) {
                         final localThumb = thumbSnap.data;
-                        if (localThumb != null && File(localThumb).existsSync()) {
+                        if (!kIsWeb && localThumb != null && File(localThumb).existsSync()) {
                           return Image.file(File(localThumb), fit: BoxFit.cover);
                         }
                         return hasThumb

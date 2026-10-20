@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -83,7 +84,7 @@ class CourseOfflineService {
       final prefs = await SharedPreferences.getInstance();
 
       // Cache cover image locally for offline display
-      if (course.coverImageUrl != null && course.coverImageUrl!.isNotEmpty) {
+      if (!kIsWeb && course.coverImageUrl != null && course.coverImageUrl!.isNotEmpty) {
         try {
           final dir = await getApplicationDocumentsDirectory();
           final courseDir = Directory('${dir.path}/offline_courses');
@@ -128,10 +129,15 @@ class CourseOfflineService {
 
   /// Returns path to locally-cached course cover image, if downloaded.
   Future<String?> getCourseCoverPath(String courseId) async {
+    if (kIsWeb) return null;
     final prefs = await SharedPreferences.getInstance();
     final path = prefs.getString('offline_course_cover_$courseId');
     if (path == null) return null;
-    return File(path).existsSync() ? path : null;
+    try {
+      return File(path).existsSync() ? path : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Removes a downloaded course and its cached lessons from the device.
@@ -141,10 +147,12 @@ class CourseOfflineService {
     await prefs.remove('$_offlineCourseLessonsPrefix$courseId');
     final coverPath = prefs.getString('offline_course_cover_$courseId');
     if (coverPath != null) {
-      try {
-        final f = File(coverPath);
-        if (await f.exists()) await f.delete();
-      } catch (_) {}
+      if (!kIsWeb) {
+        try {
+          final f = File(coverPath);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
       await prefs.remove('offline_course_cover_$courseId');
     }
     final ids = prefs.getStringList(_offlineCourseIdsKey) ?? <String>[];
@@ -243,8 +251,96 @@ class CourseOfflineService {
       final offlineLessons = await getOfflineLessons(courseId);
       total = offlineLessons.length;
     }
+    if (total == 0 && courseId.isNotEmpty) {
+      try {
+        final remoteLessons = await CourseLessonRepository.instance.lessonsOnce(courseId);
+        total = remoteLessons.length;
+      } catch (_) {}
+    }
     final completedCount = completedSet.length;
+    if (total > 0 && completedCount > total) {
+      total = completedCount;
+    }
     final percent = total > 0 ? (completedCount / total).clamp(0.0, 1.0) : 0.0;
     return (completed: completedCount, total: total, percent: percent);
+  }
+
+  /// Reactive stream of completion progress for [courseId].
+  Stream<({int completed, int total, double percent})> watchProgress(
+    String userId,
+    String courseId, {
+    int? totalLessons,
+  }) async* {
+    yield await getProgress(userId, courseId, totalLessons: totalLessons);
+    await for (final _ in watchCompletedLessonIds(userId, courseId)) {
+      yield await getProgress(userId, courseId, totalLessons: totalLessons);
+    }
+  }
+
+  /// Computes aggregate course progress across all active/enrolled/downloaded courses for [userId].
+  Future<({int completedLessons, int totalLessons, int activeCourses, double percent})> getOverallProgress(
+    String userId, {
+    List<String> enrolledCourseIds = const [],
+  }) async {
+    if (userId.isEmpty) {
+      return (completedLessons: 0, totalLessons: 0, activeCourses: 0, percent: 0.0);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = '$_completedLessonsPrefix${userId}_';
+    final courseIds = <String>{...enrolledCourseIds};
+
+    // Include downloaded courses
+    final downloadedIds = prefs.getStringList(_offlineCourseIdsKey) ?? const <String>[];
+    courseIds.addAll(downloadedIds);
+
+    // Include any course where user has completed at least one lesson
+    for (final key in prefs.getKeys()) {
+      if (key.startsWith(prefix)) {
+        final cid = key.substring(prefix.length);
+        final completed = prefs.getStringList(key) ?? const <String>[];
+        if (cid.isNotEmpty && completed.isNotEmpty) {
+          courseIds.add(cid);
+        }
+      }
+    }
+
+    courseIds.removeWhere((id) => id.trim().isEmpty);
+    if (courseIds.isEmpty) {
+      return (completedLessons: 0, totalLessons: 0, activeCourses: 0, percent: 0.0);
+    }
+
+    int totalCompleted = 0;
+    int totalAvailable = 0;
+    int activeCount = 0;
+
+    for (final cid in courseIds) {
+      final p = await getProgress(userId, cid);
+      if (p.total > 0 || p.completed > 0) {
+        activeCount++;
+        totalCompleted += p.completed;
+        totalAvailable += p.total > 0 ? p.total : p.completed;
+      }
+    }
+
+    final percent = totalAvailable > 0
+        ? (totalCompleted / totalAvailable).clamp(0.0, 1.0)
+        : 0.0;
+    return (
+      completedLessons: totalCompleted,
+      totalLessons: totalAvailable,
+      activeCourses: activeCount,
+      percent: percent,
+    );
+  }
+
+  /// Reactive stream of aggregate course progress across active courses for [userId].
+  Stream<({int completedLessons, int totalLessons, int activeCourses, double percent})> watchOverallProgress(
+    String userId, {
+    List<String> enrolledCourseIds = const [],
+  }) async* {
+    yield await getOverallProgress(userId, enrolledCourseIds: enrolledCourseIds);
+    await for (final _ in _changeNotifier.stream) {
+      yield await getOverallProgress(userId, enrolledCourseIds: enrolledCourseIds);
+    }
   }
 }
