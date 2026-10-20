@@ -211,9 +211,11 @@ class _ApplicationShellState extends State<ApplicationShell> {
   @override
   void initState() {
     super.initState();
-    _authSub = AuthService.instance.authStateChanges.listen((_) {
-      if (mounted) setState(() {});
-    });
+    try {
+      _authSub = AuthService.instance.authStateChanges.listen((_) {
+        if (mounted) setState(() {});
+      });
+    } catch (_) {}
   }
 
   @override

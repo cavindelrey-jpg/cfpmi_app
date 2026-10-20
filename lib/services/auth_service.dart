@@ -44,19 +44,38 @@ class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
-  final SupabaseClient _supabase = Supabase.instance.client;
+  SupabaseClient? get _safeSupabase {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  SupabaseClient get _supabase => _safeSupabase ?? Supabase.instance.client;
   final GoogleSignIn _google = GoogleSignIn(scopes: ['email', 'profile']);
 
-  User? get firebaseUser => _supabase.auth.currentUser;
-  Stream<User?> get authStateChanges =>
-      _supabase.auth.onAuthStateChange.map((state) => state.session?.user);
+  User? get firebaseUser => _safeSupabase?.auth.currentUser;
+  Stream<User?> get authStateChanges {
+    final sb = _safeSupabase;
+    if (sb == null) return const Stream.empty();
+    try {
+      return sb.auth.onAuthStateChange.map((state) => state.session?.user);
+    } catch (_) {
+      return const Stream.empty();
+    }
+  }
 
   AppUser? _lastKnownUser;
-  AppUser? get lastKnownUser =>
-      _lastKnownUser ??
-      (firebaseUser != null
-          ? AppUserCacheService.instance.getCachedInMemory(firebaseUser!.id)
-          : null);
+  AppUser? get lastKnownUser {
+    try {
+      final u = firebaseUser;
+      return _lastKnownUser ??
+          (u != null ? AppUserCacheService.instance.getCachedInMemory(u.id) : null);
+    } catch (_) {
+      return _lastKnownUser;
+    }
+  }
 
   Future<AppUser?> currentAppUser() async {
     final u = _supabase.auth.currentUser;
