@@ -21,6 +21,7 @@ import '../../models/app_user.dart';
 import '../../models/homework.dart';
 import '../../models/test.dart';
 import '../../repositories/homework_repository.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/test_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
@@ -107,13 +108,31 @@ class _CreateHomeworkTabState extends State<_CreateHomeworkTab> {
   bool _notify = true;
   bool _saving = false;
   String? _testId;
+  List<String> _dynamicClasses = [];
 
-  List<String> get _classLevels =>
-      widget.user.teachingAssignments.map((a) => a.classLevel).toSet().toList()..sort();
+  @override
+  void initState() {
+    super.initState();
+    _loadClasses();
+  }
 
-  List<String> _subjectsFor(String classLevel) =>
-      widget.user.teachingAssignments.where((a) => a.classLevel == classLevel).map((a) => a.subject).toSet().toList()
-        ..sort();
+  Future<void> _loadClasses() async {
+    final list = await SchoolClassRepository.instance.getClassNames(widget.user.effectiveSchoolId, activeOnly: true);
+    if (mounted) setState(() => _dynamicClasses = list);
+  }
+
+  List<String> get _classLevels {
+    final assigned = widget.user.teachingAssignments.map((a) => a.classLevel).toSet().toList()..sort();
+    if (assigned.isNotEmpty) return assigned;
+    return _dynamicClasses;
+  }
+
+  List<String> _subjectsFor(String classLevel) {
+    final assigned = widget.user.teachingAssignments.where((a) => a.classLevel == classLevel).map((a) => a.subject).toSet().toList()
+      ..sort();
+    if (assigned.isNotEmpty) return assigned;
+    return const ['General', 'Mathematics', 'Science', 'Languages', 'Technical Studies'];
+  }
 
   @override
   void dispose() {

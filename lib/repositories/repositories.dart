@@ -18,3 +18,4 @@ export 'school_access_repository.dart';
 export 'academia_voucher_repository.dart';
 export 'exam_repository.dart';
 export 'daily_notice_repository.dart';
+export 'school_class_repository.dart';

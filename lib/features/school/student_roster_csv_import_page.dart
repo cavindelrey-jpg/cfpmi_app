@@ -13,6 +13,7 @@ import '../../core/result.dart';
 import '../../core/student_roster_csv.dart';
 import '../../models/app_user.dart';
 import '../../models/student_record.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
@@ -90,10 +91,12 @@ class _StudentRosterCsvImportPageState extends State<StudentRosterCsvImportPage>
 
       final existingRes = await StudentRosterRepository.instance.getStudents(_schoolId);
       final existing = existingRes is Success<List<StudentRecord>> ? existingRes.value : null;
+      final schoolClasses = await SchoolClassRepository.instance.getClassNames(_schoolId, activeOnly: true);
 
       final plan = parseStudentRosterCsv(
         content,
         _schoolId,
+        availableClasses: schoolClasses.isNotEmpty ? schoolClasses : null,
         existingStudents: existing,
       );
 

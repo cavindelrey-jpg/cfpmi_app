@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../models/app_user.dart';
 import '../../../models/examination.dart';
 import '../../../repositories/exam_repository.dart';
+import '../../../repositories/school_class_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
 import 'exam_composer_page.dart';
@@ -33,10 +34,12 @@ class _ExamMetadataPageState extends State<ExamMetadataPage> {
 
   late ExamTemplateType _type;
   late DateTime _date;
+  List<String> _suggestedClasses = [];
 
   @override
   void initState() {
     super.initState();
+    _loadClasses();
     final exam = widget.initialExam;
     _type = exam?.examinationType ?? ExamTemplateType.examination;
     _date = exam?.date ?? DateTime.now();
@@ -72,6 +75,16 @@ class _ExamMetadataPageState extends State<ExamMetadataPage> {
     _examinerCtrl.dispose();
     _instructionsCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadClasses() async {
+    final list = await SchoolClassRepository.instance.getClassNames(
+      widget.user.effectiveSchoolId,
+      activeOnly: true,
+    );
+    if (mounted && list.isNotEmpty) {
+      setState(() => _suggestedClasses = list);
+    }
   }
 
   Future<void> _pickDate() async {
@@ -201,13 +214,33 @@ class _ExamMetadataPageState extends State<ExamMetadataPage> {
                       style: AppText.bodySm.copyWith(color: ac.txt),
                       decoration: const InputDecoration(
                         labelText: 'Class / Level *',
-                        hintText: 'e.g. Form 5',
+                        hintText: 'e.g. Form 5, Upper C, 1A',
                         prefixIcon: Icon(Icons.school_outlined),
                       ),
                     ),
                   ),
                 ],
               ),
+              if (_suggestedClasses.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      Text('Suggestions: ', style: AppText.caption.copyWith(color: ac.muted)),
+                      for (final c in _suggestedClasses)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ActionChip(
+                            label: Text(c, style: const TextStyle(fontSize: 11)),
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => setState(() => _classLevelCtrl.text = c),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               // Academic Year & Duration Row

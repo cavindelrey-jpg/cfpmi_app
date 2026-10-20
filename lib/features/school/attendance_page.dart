@@ -14,6 +14,7 @@ import '../../models/app_user.dart';
 import '../../models/attendance_record.dart';
 import '../../models/student_record.dart';
 import '../../repositories/attendance_repository.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_skeleton.dart';
@@ -68,7 +69,9 @@ class _AttendancePageState extends State<AttendancePage> {
     final all = res is Success<List<StudentRecord>>
         ? res.value
         : <StudentRecord>[];
+    final configured = await SchoolClassRepository.instance.getClassNames(_schoolId, activeOnly: true);
     final classes = <String>{
+      ...configured,
       for (final s in all)
         if (s.classLevel.isNotEmpty) s.classLevel,
     }.toList()

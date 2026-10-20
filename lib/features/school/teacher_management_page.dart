@@ -20,6 +20,7 @@ import '../../models/academic_content.dart' show kAcademicSubjects, kAcademicLev
 import '../../models/app_user.dart';
 import '../../models/teaching_assignment.dart';
 import '../../repositories/teacher_management_repository.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/school_repository.dart';
 import '../../services/school_document_export_service.dart';
 import '../../theme/app_theme.dart';
@@ -47,6 +48,7 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
   List<AppUser> _results = [];
   List<AppUser> _assigned = [];
   List<String> _subjects = kAcademicSubjects;
+  List<String> _schoolClasses = [];
   bool _searching = false;
   bool _loadingAssigned = true;
 
@@ -57,6 +59,12 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
     super.initState();
     _loadAssigned();
     _loadSubjects();
+    _loadClasses();
+  }
+
+  Future<void> _loadClasses() async {
+    final classes = await SchoolClassRepository.instance.getClassNames(_schoolId, activeOnly: true);
+    if (mounted) setState(() => _schoolClasses = classes);
   }
 
   Future<void> _loadSubjects() async {
@@ -186,6 +194,7 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
       builder: (_) => _AssignmentEditorSheet(
         teacher: teacher,
         subjects: _subjects,
+        classes: _schoolClasses.isNotEmpty ? _schoolClasses : _schoolClassLevels,
         onChanged: () {
           _loadAssigned();
           setState(() => _results = []);
@@ -400,8 +409,14 @@ class _StaffTile extends StatelessWidget {
 class _AssignmentEditorSheet extends StatefulWidget {
   final AppUser teacher;
   final List<String> subjects;
+  final List<String> classes;
   final VoidCallback onChanged;
-  const _AssignmentEditorSheet({required this.teacher, required this.subjects, required this.onChanged});
+  const _AssignmentEditorSheet({
+    required this.teacher,
+    required this.subjects,
+    required this.classes,
+    required this.onChanged,
+  });
 
   @override
   State<_AssignmentEditorSheet> createState() => _AssignmentEditorSheetState();
@@ -410,7 +425,7 @@ class _AssignmentEditorSheet extends StatefulWidget {
 class _AssignmentEditorSheetState extends State<_AssignmentEditorSheet> {
   late List<TeachingAssignment> _assignments = List.of(widget.teacher.teachingAssignments);
   late String? _classMaster = widget.teacher.classMasterOfClass;
-  String _addClass = _schoolClassLevels.first;
+  late String _addClass = widget.classes.isNotEmpty ? widget.classes.first : 'Form 1';
   late String _addSubject = widget.subjects.isNotEmpty ? widget.subjects.first : 'Mathematics';
   bool _saving = false;
 
@@ -461,7 +476,7 @@ class _AssignmentEditorSheetState extends State<_AssignmentEditorSheet> {
               decoration: const InputDecoration(hintText: 'Not a class master'),
               items: [
                 const DropdownMenuItem<String?>(value: null, child: Text('Not a class master')),
-                for (final c in _schoolClassLevels) DropdownMenuItem<String?>(value: c, child: Text(c)),
+                for (final c in widget.classes) DropdownMenuItem<String?>(value: c, child: Text(c)),
               ],
               onChanged: _saving ? null : _saveClassMaster,
             ),
@@ -484,7 +499,7 @@ class _AssignmentEditorSheetState extends State<_AssignmentEditorSheet> {
                   isExpanded: true,
                   initialValue: _addClass,
                   decoration: const InputDecoration(labelText: 'Class'),
-                  items: [for (final c in _schoolClassLevels) DropdownMenuItem(value: c, child: Text(c))],
+                  items: [for (final c in widget.classes) DropdownMenuItem(value: c, child: Text(c))],
                   onChanged: (v) => setState(() => _addClass = v ?? _addClass),
                 ),
               ),

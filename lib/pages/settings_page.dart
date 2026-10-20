@@ -19,6 +19,7 @@ import 'delete_account_page.dart';
 import 'help_support_page.dart';
 import 'about_academia_page.dart';
 import '../features/onboarding/school_admin_page.dart';
+import '../features/school/class_management_page.dart';
 
 import '../widgets/app_background.dart';
 import '../widgets/application_shell.dart';
@@ -61,13 +62,18 @@ class SettingsPage extends StatelessWidget {
               () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => NotificationPreferencesPage(userId: user.id)))),
 
-          if (user.canManageUsers) ...[
+          if (user.canManageSchool || user.isAdmin || user.isSchoolClassMaster) ...[
             const SizedBox(height: 24),
             _sectionLabel(context, 'School Administration'),
-            _tile(context, Icons.badge_outlined, 'School Access Admin',
-                'Register schools, issue voucher codes',
+            _tile(context, Icons.meeting_room_outlined, 'Class Management',
+                'Configure custom classes, technical programmes, and academic years',
                 () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => SchoolAdminPage(user: user)))),
+                    builder: (_) => ClassManagementPage(user: user)))),
+            if (user.canManageUsers)
+              _tile(context, Icons.badge_outlined, 'School Access Admin',
+                  'Register schools, issue voucher codes',
+                  () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => SchoolAdminPage(user: user)))),
           ],
 
           const SizedBox(height: 24),

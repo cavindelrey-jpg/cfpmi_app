@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../models/app_user.dart';
 import '../../../models/examination.dart';
 import '../../../repositories/exam_repository.dart';
+import '../../../repositories/student_roster_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
 import 'exam_composer_page.dart';
@@ -31,7 +32,7 @@ class _ExamListPageState extends State<ExamListPage> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final schoolId = widget.user.effectiveSchoolId;
+    final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
     final canManageTemplates = widget.user.isAdmin || widget.user.canManageSchool;
 
     return Scaffold(
@@ -210,30 +211,44 @@ class _ExamItemCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: ac.primaryBg, borderRadius: BorderRadius.circular(8)),
-                    child: Text(
-                      exam.examinationType.label,
-                      style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: ac.primaryBg, borderRadius: BorderRadius.circular(8)),
+                          child: Text(
+                            exam.examinationType.label,
+                            style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: ac.surf2, borderRadius: BorderRadius.circular(8)),
+                          child: Text(
+                            exam.classLevel,
+                            style: AppText.caption.copyWith(color: ac.txt2, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: ac.surf2, borderRadius: BorderRadius.circular(8)),
-                    child: Text(
-                      exam.classLevel,
-                      style: AppText.caption.copyWith(color: ac.txt2, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const Spacer(),
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                     icon: Icon(Icons.preview_outlined, size: 20, color: ac.primary),
                     tooltip: 'Preview / Print',
                     onPressed: onPreview,
                   ),
+                  const SizedBox(width: 4),
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                     icon: Icon(Icons.delete_outline, size: 20, color: ac.muted),
                     tooltip: 'Delete',
                     onPressed: onDelete,
@@ -248,12 +263,12 @@ class _ExamItemCard extends StatelessWidget {
                   style: AppText.caption.copyWith(color: ac.muted)),
 
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
                 children: [
                   _infoChip(ac, '${exam.questions.length} questions', Icons.playlist_add_check_rounded),
-                  const SizedBox(width: 8),
                   _infoChip(ac, '${exam.effectiveTotalMarks} marks', Icons.stars_rounded),
-                  const SizedBox(width: 8),
                   _infoChip(ac, '${exam.durationMinutes} mins', Icons.timer_outlined),
                 ],
               ),

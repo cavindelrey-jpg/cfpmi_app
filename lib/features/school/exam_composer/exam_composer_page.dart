@@ -9,6 +9,7 @@ import '../../../models/exam_question.dart';
 import '../../../models/examination.dart';
 import '../../../models/test.dart';
 import '../../../repositories/exam_repository.dart';
+import '../../../repositories/student_roster_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
 import 'exam_preview_page.dart';
@@ -47,12 +48,13 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
   }
 
   void _addFromQuestionBank() {
+    final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => QuestionBankPickerSheet(
-        schoolId: widget.user.effectiveSchoolId,
+        schoolId: schoolId,
         defaultSubject: _exam.subject,
         defaultClassLevel: _exam.classLevel,
         alreadyAddedIds: _exam.questions.map((q) => q.id).toSet(),
@@ -67,7 +69,7 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
   }
 
   void _addFromCollections() async {
-    final schoolId = widget.user.effectiveSchoolId;
+    final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
     final collections = await ExamRepository.instance
         .watchCollections(schoolId: schoolId, teacherId: widget.user.id)
         .first;
@@ -132,12 +134,13 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
   }
 
   void _createQuestionFromScratch() async {
+    final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
     final q = await showDialog<ExamQuestion>(
       context: context,
       builder: (_) => QuestionEditorDialog(
         defaultSubject: _exam.subject,
         defaultClassLevel: _exam.classLevel,
-        schoolId: widget.user.effectiveSchoolId,
+        schoolId: schoolId,
       ),
     );
     if (q != null) {
@@ -150,6 +153,7 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
   }
 
   void _editQuestion(int index) async {
+    final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
     final current = _exam.questions[index];
     final updated = await showDialog<ExamQuestion>(
       context: context,
@@ -157,7 +161,7 @@ class _ExamComposerPageState extends State<ExamComposerPage> {
         initialQuestion: current,
         defaultSubject: _exam.subject,
         defaultClassLevel: _exam.classLevel,
-        schoolId: widget.user.effectiveSchoolId,
+        schoolId: schoolId,
       ),
     );
     if (updated != null) {
@@ -430,37 +434,41 @@ class _PlaylistQuestionCard extends StatelessWidget {
               ReorderableDragStartListener(
                 index: index,
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.only(right: 6),
                   child: Icon(Icons.drag_indicator_rounded, color: ac.muted, size: 20),
                 ),
               ),
 
-              // Question number badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: ac.primaryBg, borderRadius: BorderRadius.circular(6)),
-                child: Text('Q${index + 1}',
-                    style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.bold)),
+              // Question badges
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: ac.primaryBg, borderRadius: BorderRadius.circular(6)),
+                      child: Text('Q${index + 1}',
+                          style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.bold)),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: ac.purBg, borderRadius: BorderRadius.circular(6)),
+                      child: Text(question.type.label,
+                          style: AppText.caption.copyWith(fontSize: 10, color: ac.pur, fontWeight: FontWeight.bold)),
+                    ),
+                    Text('[${question.marks} marks]',
+                        style: AppText.caption.copyWith(fontWeight: FontWeight.bold, color: ac.blu)),
+                  ],
+                ),
               ),
-              const SizedBox(width: 8),
-
-              // Format chip
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: ac.purBg, borderRadius: BorderRadius.circular(6)),
-                child: Text(question.type.label,
-                    style: AppText.caption.copyWith(fontSize: 10, color: ac.pur, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 8),
-
-              // Marks
-              Text('[${question.marks} marks]',
-                  style: AppText.caption.copyWith(fontWeight: FontWeight.bold, color: ac.blu)),
-
-              const Spacer(),
 
               // Edit action
               IconButton(
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 tooltip: 'Edit wording or marks',
                 onPressed: onEdit,
@@ -468,6 +476,9 @@ class _PlaylistQuestionCard extends StatelessWidget {
 
               // Delete action
               IconButton(
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 icon: Icon(Icons.delete_outline, size: 18, color: ac.red),
                 tooltip: 'Remove from exam',
                 onPressed: onDelete,

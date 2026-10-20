@@ -25,3 +25,4 @@ export 'teaching_assignment.dart';
 export 'exam_question.dart';
 export 'examination.dart';
 export 'daily_notice.dart';
+export 'school_class.dart';

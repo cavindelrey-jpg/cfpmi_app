@@ -24,6 +24,7 @@ import '../../core/result.dart';
 import '../../models/academic_content.dart' show kAcademicSubjects, kAcademicLevels;
 import '../../models/app_user.dart';
 import '../../models/school_mark.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/school_marks_repository.dart';
 import '../../services/school_document_export_service.dart';
 import '../../theme/app_theme.dart';
@@ -79,7 +80,7 @@ class MarksEntryPage extends StatefulWidget {
 }
 
 class _MarksEntryPageState extends State<MarksEntryPage> {
-  late final List<String> _classes = recordableClassesFor(widget.staff);
+  List<String> _classes = [];
   String? _class;
   String? _subject;
   AcademicSequence _sequence = AcademicSequence.t1s1;
@@ -105,12 +106,34 @@ class _MarksEntryPageState extends State<MarksEntryPage> {
     if (widget.initialSequence != null) {
       _sequence = widget.initialSequence!;
     }
-    if (_classes.isNotEmpty) {
-      _class = _classes.contains(widget.initialClass) ? widget.initialClass : _classes.first;
-      final subjects = recordableSubjectsFor(widget.staff, _class!);
-      _subject = subjects.contains(widget.initialSubject)
-          ? widget.initialSubject
-          : (subjects.isNotEmpty ? subjects.first : null);
+    _initClasses();
+  }
+
+  Future<void> _initClasses() async {
+    final schoolClasses = await SchoolClassRepository.instance.getClassNames(_schoolId, activeOnly: true);
+    final fallback = schoolClasses.isNotEmpty ? schoolClasses : kAcademicLevels.take(7).toList();
+    final allowed = widget.staff.isSuperAdmin || widget.staff.isAdmin || widget.staff.hasMinRole(UserRole.schoolAdmin)
+        ? fallback
+        : () {
+            final assigned = {
+              if ((widget.staff.classMasterOfClass ?? '').isNotEmpty) widget.staff.classMasterOfClass!,
+              for (final a in widget.staff.teachingAssignments) a.classLevel,
+            }.where((c) => c.isNotEmpty).toList();
+            return assigned.isNotEmpty ? assigned : fallback;
+          }();
+
+    if (!mounted) return;
+    setState(() {
+      _classes = allowed;
+      if (_classes.isNotEmpty) {
+        _class = _classes.contains(widget.initialClass) ? widget.initialClass : _classes.first;
+        final subjects = recordableSubjectsFor(widget.staff, _class!);
+        _subject = subjects.contains(widget.initialSubject)
+            ? widget.initialSubject
+            : (subjects.isNotEmpty ? subjects.first : null);
+      }
+    });
+    if (_class != null) {
       _load();
     }
   }

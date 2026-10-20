@@ -115,6 +115,14 @@ class AcademicContent {
   /// Supabase project). Null means "Unfiled".
   final String? folderId;
 
+  /// Document access policy: 'view_only' (default for past papers),
+  /// 'download_allowed', or 'restricted'.
+  final String accessPolicy;
+
+  bool get isPastPaper => contentType == ContentType.pastPaper;
+  bool get isViewOnly => isPastPaper || accessPolicy == 'view_only';
+  bool get isDownloadPermitted => !isViewOnly && accessPolicy != 'restricted';
+
   const AcademicContent({
     required this.id,
     required this.title,
@@ -135,6 +143,7 @@ class AcademicContent {
     this.views = 0,
     this.downloads = 0,
     this.folderId,
+    this.accessPolicy = 'standard',
   });
 
   factory AcademicContent.fromSupabase(Map<String, dynamic> d) {
@@ -160,6 +169,7 @@ class AcademicContent {
       views: (d['views'] as num?)?.toInt() ?? 0,
       downloads: (d['downloads'] as num?)?.toInt() ?? 0,
       folderId: d['folder_id'] as String?,
+      accessPolicy: d['access_policy'] as String? ?? (typeStr == 'pastPaper' ? 'view_only' : 'standard'),
     );
   }
 
@@ -185,6 +195,7 @@ class AcademicContent {
     'views': views,
     'downloads': downloads,
     'folder_id': folderId,
+    'access_policy': accessPolicy,
   };
 
   AcademicContent copyWith({
@@ -208,6 +219,7 @@ class AcademicContent {
     int? views,
     int? downloads,
     String? folderId,
+    String? accessPolicy,
   }) => AcademicContent(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -228,6 +240,7 @@ class AcademicContent {
     views: views ?? this.views,
     downloads: downloads ?? this.downloads,
     folderId: folderId ?? this.folderId,
+    accessPolicy: accessPolicy ?? this.accessPolicy,
   );
 }
 

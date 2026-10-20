@@ -10,6 +10,7 @@ import '../../models/app_user.dart';
 import '../../models/disciplinary_record.dart';
 import '../../models/student_record.dart';
 import '../../repositories/disciplinary_repository.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../services/sms_service.dart';
 import '../../theme/app_colors.dart';
@@ -36,7 +37,7 @@ class _DisciplinaryRecordsPageState extends State<DisciplinaryRecordsPage> {
   String? _selectedClass;
   bool _loading = true;
 
-  final List<String> _classes = [
+  List<String> _classes = [
     'Form 1',
     'Form 2',
     'Form 3',
@@ -49,7 +50,15 @@ class _DisciplinaryRecordsPageState extends State<DisciplinaryRecordsPage> {
   @override
   void initState() {
     super.initState();
+    _loadClasses();
     _load();
+  }
+
+  Future<void> _loadClasses() async {
+    final list = await SchoolClassRepository.instance.getClassNames(_schoolId, activeOnly: true);
+    if (mounted && list.isNotEmpty) {
+      setState(() => _classes = list);
+    }
   }
 
   Future<void> _load() async {

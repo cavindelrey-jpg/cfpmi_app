@@ -172,43 +172,49 @@ class _ContentViewerPageState extends State<ContentViewerPage> {
     final userId = widget.userId ?? (currentUser.id.isNotEmpty ? currentUser.id : null);
     final localPath = _resolvedLocalPath;
     final isPastPaper = item?.contentType == ContentType.pastPaper;
+    final isViewOnly = item?.isViewOnly ?? isPastPaper;
     final canEdit = item != null &&
+        !isViewOnly &&
         !currentUser.isGuest &&
         (currentUser.canUploadContent || item.uploadedBy == currentUser.id);
+
+    final innerViewer = switch (kind) {
+      ViewableFileKind.image =>
+        _ImageViewer(url: fileUrl, localFilePath: localPath),
+      ViewableFileKind.pdf => _PdfViewer(
+          url: fileUrl,
+          localFilePath: localPath,
+          contentId: contentId,
+          userId: userId,
+          isViewOnly: isViewOnly,
+        ),
+      ViewableFileKind.video =>
+        _VideoViewer(url: fileUrl, localFilePath: localPath),
+      ViewableFileKind.docx => _DocxViewer(
+          url: fileUrl,
+          localFilePath: localPath,
+          contentId: contentId,
+          isViewOnly: isViewOnly,
+        ),
+      ViewableFileKind.pptx => _ExternalDocFallback(fileUrl: fileUrl),
+      ViewableFileKind.epub => _EpubViewer(
+          url: fileUrl,
+          localFilePath: localPath,
+          contentId: contentId,
+          isViewOnly: isViewOnly,
+        ),
+      ViewableFileKind.txt => _TextViewer(
+          url: fileUrl,
+          localFilePath: localPath,
+          contentId: contentId,
+          isViewOnly: isViewOnly,
+        ),
+    };
 
     final viewerBody = (kIsWeb &&
             (kind == ViewableFileKind.pdf || kind == ViewableFileKind.pptx))
         ? _WebDocBody(fileUrl: fileUrl, kind: kind)
-        : SelectionArea(
-            child: switch (kind) {
-              ViewableFileKind.image =>
-                _ImageViewer(url: fileUrl, localFilePath: localPath),
-              ViewableFileKind.pdf => _PdfViewer(
-                  url: fileUrl,
-                  localFilePath: localPath,
-                  contentId: contentId,
-                  userId: userId,
-                ),
-              ViewableFileKind.video =>
-                _VideoViewer(url: fileUrl, localFilePath: localPath),
-              ViewableFileKind.docx => _DocxViewer(
-                  url: fileUrl,
-                  localFilePath: localPath,
-                  contentId: contentId,
-                ),
-              ViewableFileKind.pptx => _ExternalDocFallback(fileUrl: fileUrl),
-              ViewableFileKind.epub => _EpubViewer(
-                  url: fileUrl,
-                  localFilePath: localPath,
-                  contentId: contentId,
-                ),
-              ViewableFileKind.txt => _TextViewer(
-                  url: fileUrl,
-                  localFilePath: localPath,
-                  contentId: contentId,
-                ),
-            },
-          );
+        : (isViewOnly ? innerViewer : SelectionArea(child: innerViewer));
 
     return ApplicationShell(
       user: currentUser,
@@ -245,7 +251,30 @@ class _ContentViewerPageState extends State<ContentViewerPage> {
         ShellBreadcrumb(label: title),
       ],
       headerActions: [
-        if (item != null && !currentUser.isGuest && currentUser.id.isNotEmpty)
+        if (isViewOnly)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: ac.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(Rad.sm),
+              border: Border.all(color: ac.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline_rounded, size: 14, color: ac.primary),
+                const SizedBox(width: 5),
+                Text('Protected Read-Only',
+                    style: AppText.caption.copyWith(
+                      color: ac.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    )),
+              ],
+            ),
+          ),
+        if (!isViewOnly && item != null && !currentUser.isGuest && currentUser.id.isNotEmpty)
           StreamBuilder<bool>(
             stream: AcademicContentRepository.instance
                 .watchIsSaved(item.id, currentUser.id),
@@ -313,7 +342,7 @@ class _ContentViewerPageState extends State<ContentViewerPage> {
             },
           ),
         ],
-        if (fileUrl.isNotEmpty)
+        if (!isViewOnly && fileUrl.isNotEmpty)
           IconButton(
             icon: Icon(Icons.open_in_new_rounded, size: 20, color: ac.txt2),
             tooltip: 'Open externally / in browser',
@@ -568,7 +597,14 @@ class _PdfViewer extends StatefulWidget {
   final String? localFilePath;
   final String? contentId;
   final String? userId;
-  const _PdfViewer({required this.url, this.localFilePath, this.contentId, this.userId});
+  final bool isViewOnly;
+  const _PdfViewer({
+    required this.url,
+    this.localFilePath,
+    this.contentId,
+    this.userId,
+    this.isViewOnly = false,
+  });
 
   @override
   State<_PdfViewer> createState() => _PdfViewerState();
@@ -637,6 +673,7 @@ class _PdfViewerState extends State<_PdfViewer> {
           initialPage: page,
           contentId: widget.contentId,
           userId: widget.userId,
+          isViewOnly: widget.isViewOnly,
         );
       },
     );
@@ -649,12 +686,14 @@ class _PdfViewerBody extends StatefulWidget {
   final int initialPage;
   final String? contentId;
   final String? userId;
+  final bool isViewOnly;
   const _PdfViewerBody({
     required this.url,
     this.localFilePath,
     required this.initialPage,
     this.contentId,
     this.userId,
+    this.isViewOnly = false,
   });
 
   @override
@@ -749,7 +788,7 @@ class _PdfViewerBodyState extends State<_PdfViewerBody> {
     final ac = AppColors.of(context);
     return Stack(children: [
       Positioned.fill(child: viewer),
-      if (_selection != null)
+      if (_selection != null && !widget.isViewOnly)
         Positioned(
           left: 16, right: 16, bottom: 16,
           child: SafeArea(
@@ -829,7 +868,13 @@ class _DocxViewer extends StatefulWidget {
   final String url;
   final String? localFilePath;
   final String? contentId;
-  const _DocxViewer({required this.url, this.localFilePath, this.contentId});
+  final bool isViewOnly;
+  const _DocxViewer({
+    required this.url,
+    this.localFilePath,
+    this.contentId,
+    this.isViewOnly = false,
+  });
 
   @override
   State<_DocxViewer> createState() => _DocxViewerState();
@@ -912,24 +957,25 @@ class _DocxViewerState extends State<_DocxViewer> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Word Document · Select text or tap Copy',
+                widget.isViewOnly ? 'Protected Document' : 'Word Document · Select text or tap Copy',
                 style: AppText.caption.copyWith(color: ac.txt2, fontWeight: FontWeight.w600),
               ),
             ),
-            TextButton.icon(
-              onPressed: () {
-                final text = controller.document.toPlainText().trim();
-                Clipboard.setData(ClipboardData(text: text));
-                showToast(context, 'Document text copied to clipboard.');
-              },
-              icon: Icon(Icons.copy_rounded, size: 16, color: ac.primary),
-              label: Text('Copy All', style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.w700)),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            if (!widget.isViewOnly)
+              TextButton.icon(
+                onPressed: () {
+                  final text = controller.document.toPlainText().trim();
+                  Clipboard.setData(ClipboardData(text: text));
+                  showToast(context, 'Document text copied to clipboard.');
+                },
+                icon: Icon(Icons.copy_rounded, size: 16, color: ac.primary),
+                label: Text('Copy All', style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.w700)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -964,7 +1010,13 @@ class _EpubViewer extends StatefulWidget {
   final String url;
   final String? localFilePath;
   final String? contentId;
-  const _EpubViewer({required this.url, this.localFilePath, this.contentId});
+  final bool isViewOnly;
+  const _EpubViewer({
+    required this.url,
+    this.localFilePath,
+    this.contentId,
+    this.isViewOnly = false,
+  });
 
   @override
   State<_EpubViewer> createState() => _EpubViewerState();
@@ -1142,16 +1194,17 @@ class _EpubViewerState extends State<_EpubViewer> {
                 tooltip: 'Increase font size',
                 onPressed: _fontSize < 28 ? () => setState(() => _fontSize += 1.5) : null,
               ),
-              IconButton(
-                icon: const Icon(Icons.copy_rounded, size: 18),
-                tooltip: 'Copy chapter text',
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: chapter.content));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Chapter text copied to clipboard.')),
-                  );
-                },
-              ),
+              if (!widget.isViewOnly)
+                IconButton(
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  tooltip: 'Copy chapter text',
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: chapter.content));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Chapter text copied to clipboard.')),
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -1159,14 +1212,23 @@ class _EpubViewerState extends State<_EpubViewer> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: SelectableText(
-              chapter.content,
-              style: AppText.body.copyWith(
-                fontSize: _fontSize,
-                height: 1.6,
-                color: ac.txt,
-              ),
-            ),
+            child: widget.isViewOnly
+                ? Text(
+                    chapter.content,
+                    style: AppText.body.copyWith(
+                      fontSize: _fontSize,
+                      height: 1.6,
+                      color: ac.txt,
+                    ),
+                  )
+                : SelectableText(
+                    chapter.content,
+                    style: AppText.body.copyWith(
+                      fontSize: _fontSize,
+                      height: 1.6,
+                      color: ac.txt,
+                    ),
+                  ),
           ),
         ),
         // Chapter pagination bar
@@ -1210,7 +1272,13 @@ class _TextViewer extends StatefulWidget {
   final String url;
   final String? localFilePath;
   final String? contentId;
-  const _TextViewer({required this.url, this.localFilePath, this.contentId});
+  final bool isViewOnly;
+  const _TextViewer({
+    required this.url,
+    this.localFilePath,
+    this.contentId,
+    this.isViewOnly = false,
+  });
 
   @override
   State<_TextViewer> createState() => _TextViewerState();
@@ -1286,7 +1354,7 @@ class _TextViewerState extends State<_TextViewer> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Text Document · Select text or tap Copy All',
+                  widget.isViewOnly ? 'Protected Text Document' : 'Text Document · Select text or tap Copy All',
                   style: AppText.caption.copyWith(color: ac.txt2, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -1300,19 +1368,20 @@ class _TextViewerState extends State<_TextViewer> {
                 tooltip: 'Increase font size',
                 onPressed: _fontSize < 26 ? () => setState(() => _fontSize += 1.5) : null,
               ),
-              TextButton.icon(
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: text));
-                  showToast(context, 'Text copied to clipboard.');
-                },
-                icon: Icon(Icons.copy_rounded, size: 16, color: ac.primary),
-                label: Text('Copy All', style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.w700)),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              if (!widget.isViewOnly)
+                TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: text));
+                    showToast(context, 'Text copied to clipboard.');
+                  },
+                  icon: Icon(Icons.copy_rounded, size: 16, color: ac.primary),
+                  label: Text('Copy All', style: AppText.caption.copyWith(color: ac.primary, fontWeight: FontWeight.w700)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1321,14 +1390,23 @@ class _TextViewerState extends State<_TextViewer> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
             child: SizedBox(
               width: double.infinity,
-              child: SelectableText(
-                text,
-                style: AppText.body.copyWith(
-                  fontSize: _fontSize,
-                  height: 1.65,
-                  color: ac.txt,
-                ),
-              ),
+              child: widget.isViewOnly
+                  ? Text(
+                      text,
+                      style: AppText.body.copyWith(
+                        fontSize: _fontSize,
+                        height: 1.65,
+                        color: ac.txt,
+                      ),
+                    )
+                  : SelectableText(
+                      text,
+                      style: AppText.body.copyWith(
+                        fontSize: _fontSize,
+                        height: 1.65,
+                        color: ac.txt,
+                      ),
+                    ),
             ),
           ),
         ),

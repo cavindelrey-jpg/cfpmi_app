@@ -30,6 +30,7 @@ import '../../pages/notifications_page.dart';
 import '../announcements/announcements_page.dart';
 import 'daily_notices/daily_notices_page.dart';
 import 'disciplinary_records_page.dart';
+import 'class_management_page.dart';
 import 'student_roster_page.dart';
 import 'exam_composer/exam_list_page.dart';
 import 'homework_page.dart';
@@ -195,130 +196,137 @@ class SchoolConnectPage extends StatelessWidget {
   }
 
   Widget _academicToolsRow(BuildContext context, AppColors ac) {
-    final canComposeExam = user.isAdmin || user.isTeacher || user.isSchoolClassMaster || user.canManageSchool;
+    final canCompose = user.canComposeExam;
+    final canManageClasses = user.canManageSchool || user.isAdmin || user.isSchoolClassMaster || user.isTeacher;
+
+    final cards = <Widget>[
+      _toolCard(
+        context,
+        ac,
+        icon: Icons.campaign_outlined,
+        iconColor: ac.org,
+        iconBg: ac.orgBg,
+        title: 'Daily Notices',
+        subtitle: "Tomorrow's Programme",
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => DailyNoticesPage(user: user),
+        )),
+      ),
+      if (canCompose)
+        _toolCard(
+          context,
+          ac,
+          icon: Icons.assignment_outlined,
+          iconColor: ac.primary,
+          iconBg: ac.primaryBg,
+          title: 'Exam Composer',
+          subtitle: 'Question Bank',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => ExamListPage(user: user),
+          )),
+        ),
+      if (canCompose)
+        _toolCard(
+          context,
+          ac,
+          icon: Icons.gavel_rounded,
+          iconColor: ac.red,
+          iconBg: ac.redBg,
+          title: 'Discipline',
+          subtitle: 'Conduct Logs',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => DisciplinaryRecordsPage(user: user),
+          )),
+        ),
+      if (canManageClasses)
+        _toolCard(
+          context,
+          ac,
+          icon: Icons.meeting_room_outlined,
+          iconColor: ac.pur,
+          iconBg: ac.purBg,
+          title: 'Classes',
+          subtitle: 'Custom Levels',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => ClassManagementPage(user: user),
+          )),
+        ),
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Material(
-              color: ac.surf,
-              borderRadius: BorderRadius.circular(Rad.md),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(Rad.md),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => DailyNoticesPage(user: user),
-                )),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(Rad.md),
-                    border: Border.all(color: ac.bdr2),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: ac.orgBg, borderRadius: BorderRadius.circular(8)),
-                        child: Icon(Icons.campaign_outlined, color: ac.org, size: 20),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Daily Notices', style: AppText.title.copyWith(fontSize: 13, color: ac.txt)),
-                            Text("Tomorrow's Programme", style: AppText.caption.copyWith(color: ac.muted, fontSize: 10)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          // On mobile or narrow screens, use 2-column grid
+          if (width < 640) {
+            final cardWidth = (width - 10) / 2;
+            return Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final c in cards)
+                  SizedBox(width: cardWidth, child: c),
+              ],
+            );
+          }
+          // On desktop / wide screens, use flexible Row
+          return Row(
+            children: [
+              for (int i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(child: cards[i]),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _toolCard(
+    BuildContext context,
+    AppColors ac, {
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: ac.surf,
+      borderRadius: BorderRadius.circular(Rad.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Rad.md),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Rad.md),
+            border: Border.all(color: ac.bdr2),
           ),
-          if (canComposeExam) ...[
-            const SizedBox(width: 10),
-            Expanded(
-              child: Material(
-                color: ac.surf,
-                borderRadius: BorderRadius.circular(Rad.md),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(Rad.md),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => ExamListPage(user: user),
-                  )),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Rad.md),
-                      border: Border.all(color: ac.bdr2),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: ac.primaryBg, borderRadius: BorderRadius.circular(8)),
-                          child: Icon(Icons.assignment_outlined, color: ac.primary, size: 20),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Exam Composer', style: AppText.title.copyWith(fontSize: 13, color: ac.txt)),
-                              Text('Question Bank', style: AppText.caption.copyWith(color: ac.muted, fontSize: 10)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(8)),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, style: AppText.title.copyWith(fontSize: 13, color: ac.txt), overflow: TextOverflow.ellipsis),
+                    Text(subtitle, style: AppText.caption.copyWith(color: ac.muted, fontSize: 10), overflow: TextOverflow.ellipsis),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Material(
-                color: ac.surf,
-                borderRadius: BorderRadius.circular(Rad.md),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(Rad.md),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => DisciplinaryRecordsPage(user: user),
-                  )),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Rad.md),
-                      border: Border.all(color: ac.bdr2),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: ac.redBg, borderRadius: BorderRadius.circular(8)),
-                          child: Icon(Icons.gavel_rounded, color: ac.red, size: 20),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Discipline', style: AppText.title.copyWith(fontSize: 13, color: ac.txt)),
-                              Text('Conduct Logs', style: AppText.caption.copyWith(color: ac.muted, fontSize: 10)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

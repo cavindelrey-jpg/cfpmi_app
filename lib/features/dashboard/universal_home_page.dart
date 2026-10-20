@@ -1298,7 +1298,7 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
           () => _open(context, SchoolConnectPage(user: _userOrGuest))),
       ('Daily Notices', Icons.campaign_outlined, ac.org,
           () => _open(context, DailyNoticesPage(user: _userOrGuest))),
-      if (!_isGuest && (_u!.isAdmin || _u!.isTeacher || _u!.isSchoolClassMaster || _u!.canManageSchool))
+      if (!_isGuest && _u != null && _u!.canComposeExam)
         ('Exam Composer', Icons.assignment_outlined, ac.primary,
             () => _open(context, ExamListPage(user: _u!))),
       ('Dictionary', Icons.spellcheck_rounded, ac.primary,

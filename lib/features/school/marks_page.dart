@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/app_user.dart';
 import '../../models/school_mark.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/school_marks_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
@@ -395,17 +396,48 @@ class _MarksPageState extends State<MarksPage> {
 
 /// What a teacher / class master / admin sees on "Marks":
 /// Prominent "Record Marks" and "Upload CSV" controls, plus one card per class/subject.
-class _StaffMarksHome extends StatelessWidget {
+class _StaffMarksHome extends StatefulWidget {
   final AppUser staff;
   const _StaffMarksHome({required this.staff});
 
   @override
+  State<_StaffMarksHome> createState() => _StaffMarksHomeState();
+}
+
+class _StaffMarksHomeState extends State<_StaffMarksHome> {
+  List<String> _dynamicClasses = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClasses();
+  }
+
+  Future<void> _loadClasses() async {
+    final list = await SchoolClassRepository.instance.getClassNames(
+      widget.staff.effectiveSchoolId,
+      activeOnly: true,
+    );
+    if (mounted) setState(() => _dynamicClasses = list);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final availableClasses = recordableClassesFor(staff);
+    final availableClasses = _dynamicClasses.isNotEmpty
+        ? (widget.staff.hasMinRole(UserRole.schoolAdmin) || widget.staff.isSuperAdmin || widget.staff.isAdmin
+            ? _dynamicClasses
+            : () {
+                final assigned = {
+                  if ((widget.staff.classMasterOfClass ?? '').isNotEmpty) widget.staff.classMasterOfClass!,
+                  for (final a in widget.staff.teachingAssignments) a.classLevel,
+                }.where((c) => c.isNotEmpty).toList();
+                return assigned.isNotEmpty ? assigned : _dynamicClasses;
+              }())
+        : recordableClassesFor(widget.staff);
 
     final cards = <(String, String?)>[];
-    if (staff.teachingAssignments.isEmpty) {
+    if (widget.staff.teachingAssignments.isEmpty) {
       // Default: All classes are accessible with "All subjects"
       for (final c in availableClasses) {
         cards.add((c, null));
@@ -413,14 +445,14 @@ class _StaffMarksHome extends StatelessWidget {
     } else {
       final pairs = <(String, String)>[
         for (final c in availableClasses)
-          for (final s in recordableSubjectsFor(staff, c))
-            if (staff.hasMinRole(UserRole.schoolAdmin) ||
-                staff.classMasterOfClass == c ||
-                staff.teachingAssignments.any((a) => a.classLevel == c && a.subject == s))
+          for (final s in recordableSubjectsFor(widget.staff, c))
+            if (widget.staff.hasMinRole(UserRole.schoolAdmin) ||
+                widget.staff.classMasterOfClass == c ||
+                widget.staff.teachingAssignments.any((a) => a.classLevel == c && a.subject == s))
               (c, s),
       ];
       for (final (c, s) in pairs) {
-        final wholeClass = staff.hasMinRole(UserRole.schoolAdmin) || staff.classMasterOfClass == c;
+        final wholeClass = widget.staff.hasMinRole(UserRole.schoolAdmin) || widget.staff.classMasterOfClass == c;
         if (wholeClass) {
           if (!cards.any((e) => e.$1 == c && e.$2 == null)) cards.add((c, null));
         } else {
@@ -436,7 +468,7 @@ class _StaffMarksHome extends StatelessWidget {
 
     void open(String? cls, String? subject, {AcademicSequence? sequence}) => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => MarksEntryPage(
-              staff: staff,
+              staff: widget.staff,
               initialClass: cls,
               initialSubject: subject,
               initialSequence: sequence,

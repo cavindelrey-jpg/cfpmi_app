@@ -9,6 +9,7 @@ import '../../../models/app_user.dart';
 import '../../../models/exam_question.dart';
 import '../../../models/examination.dart';
 import '../../../repositories/exam_repository.dart';
+import '../../../repositories/student_roster_repository.dart';
 import '../../../services/exam_docx_export_service.dart';
 import '../../../services/exam_pdf_export_service.dart';
 import '../../../theme/app_theme.dart';
@@ -39,13 +40,14 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
   void initState() {
     super.initState();
     _exam = widget.examination;
+    final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
     _currentTemplate = _exam.selectedTemplate ??
-        ExamRepository.instance.getDefaultTemplate(widget.user.effectiveSchoolId);
+        ExamRepository.instance.getDefaultTemplate(schoolId);
     _loadTemplates();
   }
 
   Future<void> _loadTemplates() async {
-    final schoolId = widget.user.effectiveSchoolId;
+    final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
     final templates = await ExamRepository.instance.watchSchoolTemplates(schoolId).first;
     if (templates.isNotEmpty && mounted) {
       setState(() {
@@ -62,7 +64,7 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
   }
 
   void _chooseTemplate() async {
-    final schoolId = widget.user.effectiveSchoolId;
+    final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
     final templates = await ExamRepository.instance.watchSchoolTemplates(schoolId).first;
     if (!mounted) return;
     final ac = AppColors.of(context);
@@ -105,7 +107,8 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
   /// letterhead text, headers, and exam layout.
   void _customizeLetterheadAndFormatting() {
     final ac = AppColors.of(context);
-    final tmpl = _currentTemplate ?? ExamRepository.instance.getDefaultTemplate(widget.user.effectiveSchoolId);
+    final schoolId = StudentRosterRepository.resolveSchoolId(widget.user.effectiveSchoolId);
+    final tmpl = _currentTemplate ?? ExamRepository.instance.getDefaultTemplate(schoolId);
 
     final schoolNameCtrl = TextEditingController(text: tmpl.schoolName);
     final countryHeaderCtrl = TextEditingController(text: tmpl.countryHeader);
@@ -530,37 +533,85 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
           color: ac.surf,
           border: Border(top: BorderSide(color: ac.bdr)),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => setState(() => _showMarkingScheme = !_showMarkingScheme),
-                icon: Icon(_showMarkingScheme ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
-                label: Text(_showMarkingScheme ? 'Hide Solutions' : 'Show Solutions', style: const TextStyle(fontSize: 12)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _customizeLetterheadAndFormatting,
-                icon: const Icon(Icons.tune_rounded, size: 18),
-                label: const Text('Format Paper', style: TextStyle(fontSize: 12)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: ElevatedButton.icon(
-                onPressed: _exporting ? null : _showExportMenu,
-                icon: _exporting
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.download_rounded, size: 18),
-                label: Text(_exporting ? 'Exporting…' : 'Export Document',
-                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(backgroundColor: ac.primary, foregroundColor: Colors.white),
-              ),
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (ctx, constraints) {
+            final isNarrow = constraints.maxWidth < 460;
+            if (isNarrow) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => setState(() => _showMarkingScheme = !_showMarkingScheme),
+                          icon: Icon(_showMarkingScheme ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 16),
+                          label: Text(_showMarkingScheme ? 'Hide Solutions' : 'Show Solutions', style: const TextStyle(fontSize: 11.5)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _customizeLetterheadAndFormatting,
+                          icon: const Icon(Icons.tune_rounded, size: 16),
+                          label: const Text('Format Paper', style: TextStyle(fontSize: 11.5)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _exporting ? null : _showExportMenu,
+                      icon: _exporting
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.download_rounded, size: 18),
+                      label: Text(_exporting ? 'Exporting…' : 'Export Document (PDF / Word)',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ac.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => setState(() => _showMarkingScheme = !_showMarkingScheme),
+                    icon: Icon(_showMarkingScheme ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
+                    label: Text(_showMarkingScheme ? 'Hide Solutions' : 'Show Solutions', style: const TextStyle(fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _customizeLetterheadAndFormatting,
+                    icon: const Icon(Icons.tune_rounded, size: 18),
+                    label: const Text('Format Paper', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed: _exporting ? null : _showExportMenu,
+                    icon: _exporting
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.download_rounded, size: 18),
+                    label: Text(_exporting ? 'Exporting…' : 'Export Document',
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(backgroundColor: ac.primary, foregroundColor: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
       body: SingleChildScrollView(

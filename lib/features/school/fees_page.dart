@@ -17,8 +17,10 @@ import '../../models/school_expense.dart';
 import '../../models/student_record.dart';
 import '../../repositories/expense_repository.dart';
 import '../../repositories/fee_repository.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/app_skeleton.dart';
 import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart';
@@ -67,7 +69,9 @@ class _FeesPageState extends State<FeesPage> {
     final all = res is Success<List<StudentRecord>>
         ? res.value
         : <StudentRecord>[];
+    final configured = await SchoolClassRepository.instance.getClassNames(_schoolId, activeOnly: true);
     final classes = <String>{
+      ...configured,
       for (final s in all)
         if (s.classLevel.isNotEmpty) s.classLevel,
     }.toList()

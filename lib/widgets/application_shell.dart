@@ -21,6 +21,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/branding.dart';
 import '../core/result.dart';
 import '../models/academic_content.dart';
 import '../models/announcement.dart';
@@ -81,6 +82,7 @@ import '../features/school/homework_page.dart';
 import '../features/school/marks_page.dart';
 import '../features/school/school_connect_page.dart';
 import '../features/school/timetable_page.dart';
+import '../features/school/exam_composer/exam_list_page.dart';
 import '../features/testing/leaderboard_page.dart';
 import '../features/testing/quiz_categories_page.dart';
 import '../features/testing/xp_dashboard_page.dart';
@@ -106,6 +108,7 @@ enum AppNavDestination {
   fees,
   classroom,
   announcements,
+  examComposer,
   settings,
   help,
   none,
@@ -212,6 +215,8 @@ class _ApplicationShellState extends State<ApplicationShell> {
         return 'Fees & Ledger';
       case AppNavDestination.announcements:
         return 'Daily Notices';
+      case AppNavDestination.examComposer:
+        return 'Exam Composer';
       case AppNavDestination.magazine:
         return 'Magazine';
       case AppNavDestination.clubs:
@@ -301,6 +306,9 @@ class _ApplicationShellState extends State<ApplicationShell> {
         break;
       case AppNavDestination.announcements:
         page = DailyNoticesPage(user: _user);
+        break;
+      case AppNavDestination.examComposer:
+        page = ExamListPage(user: _user);
         break;
       case AppNavDestination.settings:
         page = SettingsPage(user: _user);
@@ -1360,6 +1368,12 @@ class _GlobalSidebarContentState extends State<_GlobalSidebarContent> {
                   Icons.campaign_rounded,
                   'Announcements',
                 ),
+                if (widget.user != null && widget.user!.canComposeExam)
+                  _item(
+                    AppNavDestination.examComposer,
+                    Icons.assignment_outlined,
+                    'Exam Composer',
+                  ),
               ],
             ),
           ),

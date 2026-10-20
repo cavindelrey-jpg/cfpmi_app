@@ -132,7 +132,7 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
                     if (wasSaved) {
                       await AcademicContentRepository.instance
                           .removeOfflineFile(item.id);
-                    } else if ((item.fileUrl ?? '').isNotEmpty) {
+                    } else if (!item.isViewOnly && (item.fileUrl ?? '').isNotEmpty) {
                       showToast(context, 'Downloading for offline…');
                       final res = await AcademicContentRepository.instance
                           .downloadForOffline(item);
@@ -144,12 +144,15 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
                             : 'Saved — available offline in your Library.',
                         isError: res is Failure<String>,
                       );
+                    } else if (item.isViewOnly) {
+                      if (!context.mounted) return;
+                      showToast(context, 'Saved to your Library bookmarks.');
                     }
                   },
                 );
               },
             ),
-            if (canEdit) ...[
+            if (canEdit && !item.isPastPaper) ...[
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: 'Edit',
@@ -325,6 +328,58 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
                             children: item.tags.map((t) => _Tag(label: t)).toList(),
                           ),
                         ],
+
+                        // Super Admin Policy Control
+                        if (widget.user.isSuperAdmin) ...[
+                          const SizedBox(height: 18),
+                          Divider(height: 1, thickness: 0.8, color: ac.bdr.withValues(alpha: 0.7)),
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: ac.surf2,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: ac.bdr),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.admin_panel_settings_outlined, color: ac.primary, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Document Access Policy', style: AppText.caption.copyWith(fontWeight: FontWeight.bold)),
+                                      Text(
+                                        item.isViewOnly ? 'Protected View Only' : 'Download Permitted',
+                                        style: AppText.caption.copyWith(color: ac.muted, fontSize: 11),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                DropdownButton<String>(
+                                  value: item.accessPolicy,
+                                  underline: const SizedBox.shrink(),
+                                  items: const [
+                                    DropdownMenuItem(value: 'view_only', child: Text('View Only')),
+                                    DropdownMenuItem(value: 'download_allowed', child: Text('Allow Download')),
+                                    DropdownMenuItem(value: 'standard', child: Text('Standard')),
+                                  ],
+                                  onChanged: (newPolicy) async {
+                                    if (newPolicy != null) {
+                                      await AcademicContentRepository.instance.updateContent(
+                                        item.copyWith(accessPolicy: newPolicy),
+                                      );
+                                      if (context.mounted) {
+                                        showToast(context, 'Access policy updated to $newPolicy');
+                                      }
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -473,7 +528,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
   Future<void> _openFile() async {
     // Images, PDFs, video, .docx, .epub, and .txt render in-app instead of
     // handing off to whatever external app the OS picks.
-    final kind = _viewableKind;
+    final kind = _viewableKind ?? (widget.item.isViewOnly ? ViewableFileKind.pdf : null);
     if (kind != null) {
       await AcademicContentRepository.instance.incrementDownloads(widget.item.id);
       String? localPath;
@@ -495,6 +550,16 @@ class _DownloadButtonState extends State<_DownloadButton> {
       ));
       return;
     }
+
+    if (widget.item.isViewOnly) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This protected document is view-only.')),
+        );
+      }
+      return;
+    }
+
     final uri = Uri.tryParse(widget.item.fileUrl!);
     if (uri != null && await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -533,11 +598,15 @@ class _DownloadButtonState extends State<_DownloadButton> {
         icon: _loading
             ? const SizedBox(width: 18, height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-            : Icon(_viewableKind != null ? Icons.menu_book_rounded : Icons.download_rounded),
+            : Icon(widget.item.isViewOnly
+                ? Icons.menu_book_rounded
+                : (_viewableKind != null ? Icons.menu_book_rounded : Icons.download_rounded)),
         label: Text(
             _loading
                 ? 'Opening…'
-                : (_viewableKind != null ? 'Read / Open File' : 'Download / Open'),
+                : (widget.item.isViewOnly
+                    ? 'Read Document (Protected Read-Only)'
+                    : (_viewableKind != null ? 'Read / Open File' : 'Download / Open')),
             style: AppText.button.copyWith(fontSize: 15)),
       ),
     );

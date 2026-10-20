@@ -24,6 +24,7 @@ import '../../core/timetable_csv.dart' hide normalizeTime;
 import '../../models/academic_content.dart' show kAcademicLevels, kAcademicSubjects;
 import '../../models/app_user.dart';
 import '../../models/school_timetable_slot.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/school_repository.dart';
 import '../../repositories/school_timetable_repository.dart';
 import '../../repositories/teacher_management_repository.dart';
@@ -51,8 +52,10 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
   List<TimetableStaff>? _staff; // null = couldn't load -> staff checks skipped
   List<String> _staffNames = const [];
   List<String> _subjects = kAcademicSubjects;
+  List<String> _schoolClasses = [];
 
   String get _schoolId => widget.user.schoolId ?? '';
+  List<String> get _activeClasses => _schoolClasses.isNotEmpty ? _schoolClasses : _classLevels;
 
   @override
   void initState() {
@@ -67,6 +70,7 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
     try {
       final staff = await TeacherManagementRepository.instance.staffOnce(_schoolId);
       final subjects = await SchoolRepository.instance.getSubjects(_schoolId);
+      final classes = await SchoolClassRepository.instance.getClassNames(_schoolId, activeOnly: true);
       if (!mounted) return;
       setState(() {
         _staff = [
@@ -76,6 +80,13 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
         _staffNames = staff.map((u) => u.name).toList();
         if (subjects is Success<List<String>> && subjects.value.isNotEmpty) {
           _subjects = {...subjects.value, ...kAcademicSubjects}.toList();
+        }
+        if (classes.isNotEmpty) {
+          _schoolClasses = classes;
+          if (!_schoolClasses.contains(_classLevel)) {
+            final own = widget.user.classMasterOfClass ?? widget.user.classLevel;
+            _classLevel = _schoolClasses.contains(own) ? own : _schoolClasses.first;
+          }
         }
       });
     } catch (_) {
@@ -161,7 +172,7 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
     );
     if (mounted) {
       setState(() {
-        if (res is String && _classLevels.contains(res)) {
+        if (res is String && _activeClasses.contains(res)) {
           _classLevel = res;
         }
         _schoolStream = SchoolTimetableRepository.instance.watchForSchool(_schoolId);
@@ -277,7 +288,7 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
               filled: true, fillColor: ac.surf3,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.sm), borderSide: BorderSide.none),
             ),
-            items: [for (final c in _classLevels) DropdownMenuItem(value: c, child: Text(c))],
+            items: [for (final c in _activeClasses) DropdownMenuItem(value: c, child: Text(c))],
             onChanged: (v) => setState(() => _classLevel = v ?? _classLevel),
           ),
         ),

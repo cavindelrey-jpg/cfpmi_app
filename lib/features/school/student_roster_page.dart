@@ -14,19 +14,20 @@ import '../../core/student_roster_csv.dart';
 import '../../models/academic_content.dart' show kAcademicLevels;
 import '../../models/app_user.dart';
 import '../../models/student_record.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/student_roster_repository.dart';
 import '../../services/school_document_export_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/widgets.dart';
+import 'class_management_page.dart';
 import 'student_roster_csv_import_page.dart';
 import 'widgets/management_scaffold.dart';
 
-List<String> get _schoolClassLevels => kAcademicLevels.take(7).toList();
-
 class StudentRosterPage extends StatefulWidget {
   final AppUser user;
-  const StudentRosterPage({super.key, required this.user});
+  final String? initialClass;
+  const StudentRosterPage({super.key, required this.user, this.initialClass});
 
   @override
   State<StudentRosterPage> createState() => _StudentRosterPageState();
@@ -37,14 +38,29 @@ class _StudentRosterPageState extends State<StudentRosterPage> {
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
   List<StudentRecord> _students = [];
+  List<String> _schoolClasses = [];
   bool _loading = true;
 
   String get _schoolId => widget.user.effectiveSchoolId;
 
+  List<String> get _activeClassList =>
+      _schoolClasses.isNotEmpty ? _schoolClasses : kAcademicLevels.take(7).toList();
+
   @override
   void initState() {
     super.initState();
+    _selectedClass = widget.initialClass;
+    _loadClasses();
     _load();
+  }
+
+  Future<void> _loadClasses() async {
+    final classes = await SchoolClassRepository.instance.getClassNames(_schoolId, activeOnly: true);
+    if (mounted) {
+      setState(() {
+        _schoolClasses = classes;
+      });
+    }
   }
 
   @override
@@ -76,7 +92,7 @@ class _StudentRosterPageState extends State<StudentRosterPage> {
       ),
     );
     if (!mounted) return;
-    if (updated is String && _schoolClassLevels.contains(updated)) {
+    if (updated is String && _activeClassList.contains(updated)) {
       _selectedClass = updated;
     }
     _load();
@@ -237,7 +253,8 @@ class _StudentRosterPageState extends State<StudentRosterPage> {
     final nameCtrl = TextEditingController(text: editing?.name ?? '');
     final matriculeCtrl = TextEditingController(text: editing?.matricule ?? '');
     final contactCtrl = TextEditingController(text: editing?.parentContact ?? '');
-    String classLevel = editing?.classLevel ?? (_selectedClass ?? _schoolClassLevels.first);
+    final availableClasses = _activeClassList;
+    String classLevel = editing?.classLevel ?? (_selectedClass ?? availableClasses.first);
     String gender = editing?.gender ?? 'M';
 
     final saved = await showDialog<bool>(
@@ -257,10 +274,10 @@ class _StudentRosterPageState extends State<StudentRosterPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: classLevel,
+                  value: availableClasses.contains(classLevel) ? classLevel : availableClasses.first,
                   decoration: const InputDecoration(labelText: 'Class Level *'),
                   items: [
-                    for (final c in _schoolClassLevels) DropdownMenuItem(value: c, child: Text(c)),
+                    for (final c in availableClasses) DropdownMenuItem(value: c, child: Text(c)),
                   ],
                   onChanged: (v) => setDialogState(() => classLevel = v ?? classLevel),
                 ),
@@ -495,7 +512,7 @@ class _StudentRosterPageState extends State<StudentRosterPage> {
                     hint: Text('All Classes', style: GoogleFonts.inter(fontSize: 12.5, color: ac.txt)),
                     items: [
                       const DropdownMenuItem<String?>(value: null, child: Text('All Classes')),
-                      for (final c in _schoolClassLevels) DropdownMenuItem<String?>(value: c, child: Text(c)),
+                      for (final c in _activeClassList) DropdownMenuItem<String?>(value: c, child: Text(c)),
                     ],
                     onChanged: (v) {
                       setState(() => _selectedClass = v);
@@ -526,6 +543,24 @@ class _StudentRosterPageState extends State<StudentRosterPage> {
                   onPressed: _exportCsv,
                   icon: const Icon(Icons.download_rounded, size: 16),
                   label: const Text('Export CSV'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    side: BorderSide(color: ac.bdr),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    await Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ClassManagementPage(user: widget.user),
+                    ));
+                    _loadClasses();
+                    _load();
+                  },
+                  icon: const Icon(Icons.meeting_room_outlined, size: 16),
+                  label: const Text('Classes'),
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     side: BorderSide(color: ac.bdr),

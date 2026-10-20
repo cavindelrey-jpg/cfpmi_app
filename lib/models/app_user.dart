@@ -379,6 +379,18 @@ class AppUser {
   bool get canManageUsers      => hasMinRole(UserRole.departmentAdmin);
   bool get canManageSchool     => hasMinRole(UserRole.schoolAdmin);
   bool get canManagePlatform   => isSuperAdmin;
+  bool get canComposeExam =>
+      !isGuest &&
+      (isAdmin ||
+          isTeacher ||
+          hasMinRole(UserRole.lecturer) ||
+          isSchoolClassMaster ||
+          canManageSchool ||
+          isSchoolStaff ||
+          schoolRole == SchoolRole.teacher ||
+          schoolRole == SchoolRole.admin ||
+          schoolRole == SchoolRole.itSupport ||
+          teachingAssignments.isNotEmpty);
 
   // ── Firestore ──────────────────────────────────────────────────────────────
   /// Lightweight placeholder passed to pages that require a non-null

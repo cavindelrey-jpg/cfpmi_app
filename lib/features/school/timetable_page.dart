@@ -12,6 +12,7 @@ import '../../models/academic_content.dart' show kAcademicLevels;
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/app_user.dart';
 import '../../models/school_timetable_slot.dart';
+import '../../repositories/school_class_repository.dart';
 import '../../repositories/school_timetable_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
@@ -22,7 +23,8 @@ import '../../widgets/application_shell.dart';
 
 class TimetablePage extends StatelessWidget {
   final AppUser user;
-  const TimetablePage({super.key, required this.user});
+  final String? initialClass;
+  const TimetablePage({super.key, required this.user, this.initialClass});
 
   @override
   Widget build(BuildContext context) {
@@ -296,17 +298,32 @@ class _StaffTimetableView extends StatefulWidget {
 
 class _StaffTimetableViewState extends State<_StaffTimetableView> {
   static const _mine = '__mine__';
-  late String _view = _mine;
+  late String _view = widget.page.initialClass ?? _mine;
+  List<String> _dynamicClasses = [];
   late final Stream<List<SchoolTimetableSlot>> _stream =
       SchoolTimetableRepository.instance.watchForSchool(widget.page.user.effectiveSchoolId);
 
   String _n(String s) => s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
   @override
+  void initState() {
+    super.initState();
+    _loadClasses();
+  }
+
+  Future<void> _loadClasses() async {
+    final list = await SchoolClassRepository.instance.getClassNames(
+      widget.page.user.effectiveSchoolId,
+      activeOnly: true,
+    );
+    if (mounted) setState(() => _dynamicClasses = list);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final user = widget.page.user;
-    final classes = kAcademicLevels.take(7).toList();
+    final classes = _dynamicClasses.isNotEmpty ? _dynamicClasses : kAcademicLevels.take(7).toList();
     return StreamBuilder<List<SchoolTimetableSlot>>(
       stream: _stream,
       builder: (context, snap) {
