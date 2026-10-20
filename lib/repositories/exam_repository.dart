@@ -11,6 +11,7 @@ import '../models/examination.dart';
 import '../services/exam_content_indexer_service.dart';
 import '../core/realtime_tolerant.dart';
 import '../config/branding.dart';
+import 'student_roster_repository.dart';
 
 class ExamRepository {
   ExamRepository._();
@@ -28,6 +29,7 @@ class ExamRepository {
       yield const [];
       return;
     }
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
 
     // 1. Offline-first: render the locally cached state immediately, without
     //    waiting for the network (see FIX 3, AUTOPILOT_LOG).
@@ -39,7 +41,7 @@ class ExamRepository {
     yield* _db
         .from('examinations')
         .stream(primaryKey: ['id'])
-        .eq('school_id', schoolId)
+        .eq('school_id', resolvedSchoolId)
         .order('updated_at', ascending: false)
         .realtimeTolerant()
         .asyncMap((rows) async {
@@ -62,11 +64,12 @@ class ExamRepository {
   }
 
   Future<List<Examination>> _getLocalExaminations(String schoolId, String? teacherId) async {
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
     try {
       final cached = await LocalDatabase.instance.getCachedCollection('examinations');
       return cached
           .map(Examination.fromJson)
-          .where((e) => e.schoolId == schoolId && (teacherId == null || e.examinerId == teacherId))
+          .where((e) => (e.schoolId == schoolId || e.schoolId == resolvedSchoolId) && (teacherId == null || e.examinerId == teacherId))
           .toList();
     } catch (_) {
       return [];
@@ -91,7 +94,9 @@ class ExamRepository {
   }
 
   Future<bool> saveExamination(Examination exam) async {
-    final json = exam.toJson();
+    final resolved = StudentRosterRepository.resolveSchoolId(exam.schoolId);
+    final normalized = exam.copyWith(schoolId: resolved);
+    final json = normalized.toJson();
     await LocalDatabase.instance.cacheData('examinations', exam.id, json);
 
     try {
@@ -124,6 +129,7 @@ class ExamRepository {
       yield const [];
       return;
     }
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
 
     // Offline-first: emit cached collections immediately, then sync live.
     final cached = await _getLocalCollections(schoolId, teacherId);
@@ -139,7 +145,7 @@ class ExamRepository {
       try {
         final list = rows
             .map((r) => QuestionCollection.fromJson(r))
-            .where((c) => c.schoolId == schoolId)
+            .where((c) => c.schoolId == schoolId || c.schoolId == resolvedSchoolId)
             .toList();
 
         for (final col in list) {
@@ -153,11 +159,12 @@ class ExamRepository {
   }
 
   Future<List<QuestionCollection>> _getLocalCollections(String schoolId, String teacherId) async {
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
     try {
       final cached = await LocalDatabase.instance.getCachedCollection('question_collections');
       return cached
           .map(QuestionCollection.fromJson)
-          .where((c) => c.schoolId == schoolId && c.teacherId == teacherId)
+          .where((c) => (c.schoolId == schoolId || c.schoolId == resolvedSchoolId) && c.teacherId == teacherId)
           .toList();
     } catch (_) {
       return [];
@@ -165,7 +172,9 @@ class ExamRepository {
   }
 
   Future<bool> saveCollection(QuestionCollection collection) async {
-    final json = collection.toJson();
+    final resolved = StudentRosterRepository.resolveSchoolId(collection.schoolId);
+    final normalized = collection.copyWith(schoolId: resolved);
+    final json = normalized.toJson();
     await LocalDatabase.instance.cacheData('question_collections', collection.id, json);
 
     try {
@@ -303,6 +312,7 @@ class ExamRepository {
       yield const [];
       return;
     }
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
 
     // Offline-first: emit cached templates (falling back to the built-in
     // default letterhead) immediately, then sync live.
@@ -311,7 +321,7 @@ class ExamRepository {
     yield* _db
         .from('school_exam_templates')
         .stream(primaryKey: ['id'])
-        .eq('school_id', schoolId)
+        .eq('school_id', resolvedSchoolId)
         .realtimeTolerant()
         .asyncMap((rows) async {
       try {
@@ -330,9 +340,10 @@ class ExamRepository {
   }
 
   Future<List<SchoolExamTemplate>> _getLocalTemplates(String schoolId) async {
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
     try {
       final cached = await LocalDatabase.instance.getCachedCollection('school_exam_templates');
-      final list = cached.map(SchoolExamTemplate.fromJson).where((t) => t.schoolId == schoolId).toList();
+      final list = cached.map(SchoolExamTemplate.fromJson).where((t) => t.schoolId == schoolId || t.schoolId == resolvedSchoolId).toList();
       return list.isNotEmpty ? list : [getDefaultTemplate(schoolId)];
     } catch (_) {
       return [getDefaultTemplate(schoolId)];
@@ -340,7 +351,9 @@ class ExamRepository {
   }
 
   Future<bool> saveSchoolTemplate(SchoolExamTemplate template) async {
-    final json = template.toJson();
+    final resolved = StudentRosterRepository.resolveSchoolId(template.schoolId);
+    final normalized = template.copyWith(schoolId: resolved);
+    final json = normalized.toJson();
     await LocalDatabase.instance.cacheData('school_exam_templates', template.id, json);
 
     try {

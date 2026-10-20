@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/result.dart';
 import '../core/realtime_tolerant.dart';
 import '../models/classroom.dart';
+import 'student_roster_repository.dart';
 
 class ClassroomRepository {
   ClassroomRepository._();
@@ -29,7 +30,9 @@ class ClassroomRepository {
     final t = _sessions;
     if (t == null) return const Failure('Classroom is offline right now.');
     try {
-      final row = await t.insert(s.toInsertMap()).select('id').single();
+      final map = s.toInsertMap();
+      map['school_id'] = StudentRosterRepository.resolveSchoolId(s.schoolId);
+      final row = await t.insert(map).select('id').single();
       return Success(row['id'].toString());
     } catch (e) {
       return Failure('Could not create the class session.', e);
@@ -67,7 +70,9 @@ class ClassroomRepository {
     final t = _resources;
     if (t == null) return const Failure('Classroom is offline right now.');
     try {
-      await t.insert(r.toInsertMap());
+      final map = r.toInsertMap();
+      map['school_id'] = StudentRosterRepository.resolveSchoolId(r.schoolId);
+      await t.insert(map);
       return const Success(null);
     } catch (e) {
       return Failure('Could not add the resource.', e);
@@ -117,9 +122,10 @@ class ClassroomRepository {
   Stream<ClassroomSession?> watchLiveForClass(String schoolId, String classLevel) {
     final t = _sessions;
     if (t == null || schoolId.isEmpty) return const Stream.empty();
+    final resolved = StudentRosterRepository.resolveSchoolId(schoolId);
     return t
         .stream(primaryKey: ['id'])
-        .eq('school_id', schoolId)
+        .eq('school_id', resolved)
         .realtimeTolerant()
         .map((rows) {
       final live = rows
@@ -151,9 +157,10 @@ class ClassroomRepository {
     final t = _sessions;
     if (t == null) return const Failure('Classroom is offline right now.');
     try {
+      final resolved = StudentRosterRepository.resolveSchoolId(schoolId);
       final rows = await t
           .select()
-          .eq('school_id', schoolId)
+          .inFilter('school_id', [schoolId, resolved])
           .eq('teacher_id', teacherId)
           .order('created_at', ascending: false)
           .limit(50);

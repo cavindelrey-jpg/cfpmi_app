@@ -101,7 +101,7 @@ class _ExamMetadataPageState extends State<ExamMetadataPage> {
     if (!_formKey.currentState!.validate()) return;
 
     final duration = int.tryParse(_durationCtrl.text.trim()) ?? 90;
-    final schoolId = widget.user.schoolId ?? '';
+    final schoolId = widget.user.effectiveSchoolId;
 
     final exam = (widget.initialExam ??
             Examination(

@@ -184,9 +184,18 @@ class AcademicContent {
     'exam_board': examBoard,
     'year': year,
     // institutionId is sometimes the 'independent' sentinel (see
-    // Institution.independentDefault) rather than a real institutions.id
-    // uuid — only pass through values that look like one.
-    'institution_id': RegExp(r'^[0-9a-f-]{36}$').hasMatch(institutionId) ? institutionId : null,
+    // Institution.independentDefault) or a school slug ('cfpmi') rather than a real institutions.id
+    // uuid — resolve known school aliases before checking for valid uuid.
+    'institution_id': () {
+      final slug = institutionId.trim().toLowerCase();
+      final resolved = switch (slug) {
+        'cfpmi' || 'cf' => '446007a8-4389-40eb-bfa7-5452541b5a1f',
+        'ladybird' || 'lb' => 'e57702a0-91b1-4dd3-8d31-29bb928d3114',
+        'green_hill' || 'gh' => '93f2afa1-aaa1-4d15-86e8-41a15b1f94c2',
+        _ => institutionId.trim(),
+      };
+      return RegExp(r'^[0-9a-f-]{36}$').hasMatch(resolved) ? resolved : null;
+    }(),
     'uploaded_by': uploadedBy.isEmpty ? null : uploadedBy,
     'uploader_name': uploaderName,
     'file_size_bytes': fileSizeBytes,

@@ -198,15 +198,20 @@ class StudentRosterRepository {
 
   Future<Result<void>> batchUpsert(String schoolId, List<StudentRecord> students) async {
     if (students.isEmpty) return const Success(null);
+    final resolvedSchoolId = resolveSchoolId(schoolId);
+    final normalizedStudents = students.map((s) => s.copyWith(schoolId: resolvedSchoolId)).toList();
 
     // 1. Immediately persist locally so 100% of imported students appear in the UI
-    await _saveAllLocalFallback(schoolId, students);
+    await _saveAllLocalFallback(resolvedSchoolId, normalizedStudents);
+    if (schoolId != resolvedSchoolId) {
+      await _saveAllLocalFallback(schoolId, students);
+    }
 
     // 2. Sync to Supabase
     final tableQuery = _table;
     if (tableQuery != null) {
       try {
-        final rows = students.map((s) => s.toMap()).toList();
+        final rows = normalizedStudents.map((s) => s.toMap()).toList();
         await tableQuery.upsert(rows);
       } catch (_) {}
     }
@@ -215,6 +220,7 @@ class StudentRosterRepository {
   }
 
   Future<Result<void>> deleteStudent(String studentId, String schoolId) async {
+    final resolvedSchoolId = resolveSchoolId(schoolId);
     // 1. Remove from local cache
     try {
       const classes = [
@@ -224,15 +230,19 @@ class StudentRosterRepository {
         'Upper Sixth Arts', 'Upper Sixth Science',
         'Undergraduate', 'All Levels', 'all',
       ];
-      for (final c in classes) {
-        final key = 'roster_${schoolId}_$c';
-        final cached = await OfflineCache.instance.get<List<StudentRecord>>(
-          key,
-          (json) => OfflineCache.listFromJson(json, (j) => StudentRecord.fromMap(j)),
-        );
-        if (cached != null) {
-          final next = cached.where((s) => s.id != studentId).toList();
-          await OfflineCache.instance.put(key, OfflineCache.listToJson(next, (s) => s.toMap()));
+      final schoolIds = {schoolId, resolvedSchoolId};
+      for (final sid in schoolIds) {
+        if (sid.isEmpty) continue;
+        for (final c in classes) {
+          final key = 'roster_${sid}_$c';
+          final cached = await OfflineCache.instance.get<List<StudentRecord>>(
+            key,
+            (json) => OfflineCache.listFromJson(json, (j) => StudentRecord.fromMap(j)),
+          );
+          if (cached != null) {
+            final next = cached.where((s) => s.id != studentId).toList();
+            await OfflineCache.instance.put(key, OfflineCache.listToJson(next, (s) => s.toMap()));
+          }
         }
       }
     } catch (_) {}

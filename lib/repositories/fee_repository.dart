@@ -8,6 +8,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/result.dart';
 import '../models/fee_ledger_entry.dart';
+import 'student_roster_repository.dart';
 
 class FeeRepository {
   FeeRepository._();
@@ -28,7 +29,10 @@ class FeeRepository {
     final table = _table;
     if (table == null) return const Failure('Fees are offline right now.');
     try {
-      await table.insert(entry.toMap());
+      final resolved = StudentRosterRepository.resolveSchoolId(entry.schoolId);
+      final map = entry.toMap();
+      map['school_id'] = resolved;
+      await table.insert(map);
       return const Success(null);
     } catch (e) {
       return Failure('Could not save the fee entry.', e);
@@ -70,7 +74,9 @@ class FeeRepository {
     final table = _table;
     if (table == null) return const Failure('Fees are offline right now.');
     try {
-      var q = table.select().eq('school_id', schoolId).eq('class_level', classLevel);
+      final resolved = StudentRosterRepository.resolveSchoolId(schoolId);
+      final schoolIds = {schoolId, resolved}.toList();
+      var q = table.select().inFilter('school_id', schoolIds).eq('class_level', classLevel);
       if (academicYear != null && academicYear.isNotEmpty) q = q.eq('academic_year', academicYear);
       if (term != null && term.isNotEmpty) q = q.eq('term', term);
       final rows = await q.order('entry_date', ascending: false);

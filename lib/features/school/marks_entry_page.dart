@@ -519,7 +519,7 @@ class _MarksEntryPageState extends State<MarksEntryPage> {
             tooltip: 'Class Roster',
             icon: const Icon(Icons.people_alt_outlined),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => StudentRosterPage(user: widget.staff))).then((_) => _load()),
+                builder: (_) => StudentRosterPage(user: widget.staff, initialClass: _class))).then((_) => _load()),
           ),
           IconButton(
             tooltip: 'Import Marks CSV',
@@ -741,7 +741,7 @@ class _MarksEntryPageState extends State<MarksEntryPage> {
                   ),
                   OutlinedButton.icon(
                     onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => StudentRosterPage(user: widget.staff))).then((_) => _load()),
+                        builder: (_) => StudentRosterPage(user: widget.staff, initialClass: _class))).then((_) => _load()),
                     icon: const Icon(Icons.people_alt_outlined, size: 18),
                     label: const Text('Class Roster'),
                     style: OutlinedButton.styleFrom(

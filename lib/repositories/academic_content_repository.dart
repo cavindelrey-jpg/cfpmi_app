@@ -770,15 +770,16 @@ class AcademicContentRepository {
       final name = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(10000)}.$safeExt';
       final path = '$folder/$safeInst/$name';
       onProgress?.call(0.1);
+      final contentType = _mimeForExt(safeExt);
       if (bytes != null) {
         await _db.storage
             .from(_bucket)
-            .uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true))
+            .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: true))
             .timeout(const Duration(minutes: 5));
       } else if (file != null) {
         await _db.storage
             .from(_bucket)
-            .upload(path, file, fileOptions: const FileOptions(upsert: true))
+            .upload(path, file, fileOptions: FileOptions(contentType: contentType, upsert: true))
             .timeout(const Duration(minutes: 5));
       } else {
         return const Failure('No file data selected to upload');
@@ -861,4 +862,21 @@ class AcademicContentRepository {
     }
     return counts;
   }
+
+  static String _mimeForExt(String ext) => switch (ext.toLowerCase()) {
+        'png' => 'image/png',
+        'jpg' || 'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'pdf' => 'application/pdf',
+        'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'ppt' => 'application/vnd.ms-powerpoint',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'doc' => 'application/msword',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'xls' => 'application/vnd.ms-excel',
+        'mp4' => 'video/mp4',
+        'epub' => 'application/epub+zip',
+        _ => 'application/octet-stream',
+      };
 }

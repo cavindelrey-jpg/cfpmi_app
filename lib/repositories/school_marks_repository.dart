@@ -121,21 +121,24 @@ class SchoolMarksRepository {
   /// already lets same-school staff read these rows.
   Future<Result<List<RosterStudent>>> classRoster(String schoolId, String classLevel) async {
     if (schoolId.isEmpty || classLevel.isEmpty) return const Success([]);
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
     try {
-      List<dynamic> rows;
+      List<dynamic> rows = [];
       try {
         rows = await _db
             .from('users')
             .select('id, name, class_level')
-            .eq('institution_id', schoolId)
+            .eq('institution_id', resolvedSchoolId)
             .eq('class_level', classLevel)
             .eq('role', 'student');
       } catch (_) {
-        rows = await _db
-            .from('users')
-            .select('id, name, class_level')
-            .eq('institution_id', schoolId)
-            .eq('class_level', classLevel);
+        try {
+          rows = await _db
+              .from('users')
+              .select('id, name, class_level')
+              .eq('institution_id', resolvedSchoolId)
+              .eq('class_level', classLevel);
+        } catch (_) {}
       }
 
       final students = <RosterStudent>[
@@ -149,7 +152,7 @@ class SchoolMarksRepository {
 
       // Include any students registered in the school roster
       try {
-        final rosterRes = await StudentRosterRepository.instance.getStudents(schoolId, classLevel: classLevel);
+        final rosterRes = await StudentRosterRepository.instance.getStudents(resolvedSchoolId, classLevel: classLevel);
         if (rosterRes is Success<List<StudentRecord>>) {
           final existingIds = students.map((s) => s.id).toSet();
           final existingNames = students.map((s) => s.name.trim().toLowerCase()).toSet();
@@ -172,7 +175,7 @@ class SchoolMarksRepository {
         try {
           final markRows = await _marks
               .select('student_id, teacher_name')
-              .eq('school_id', schoolId)
+              .eq('school_id', resolvedSchoolId)
               .eq('class_level', classLevel);
           final seen = <String>{};
           for (final m in markRows) {
@@ -204,10 +207,11 @@ class SchoolMarksRepository {
     required AcademicSequence sequence,
     required String academicYear,
   }) async {
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
     try {
       final rows = await _marks
           .select()
-          .eq('school_id', schoolId)
+          .eq('school_id', resolvedSchoolId)
           .eq('class_level', classLevel)
           .eq('subject', subject)
           .eq('sequence', sequence.name)
@@ -267,12 +271,13 @@ class SchoolMarksRepository {
   /// picker.
   Future<List<String>> distinctStudentIds(String schoolId, String classLevel) async {
     if (schoolId.isEmpty) return const [];
-    final rows = await _marks.select('student_id').eq('school_id', schoolId).eq('class_level', classLevel);
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
+    final rows = await _marks.select('student_id').eq('school_id', resolvedSchoolId).eq('class_level', classLevel);
     return rows.map((r) => r['student_id'] as String).toSet().toList();
   }
 
   Map<String, dynamic> _toRow(SchoolMark m) => {
-        'school_id': m.schoolId,
+        'school_id': StudentRosterRepository.resolveSchoolId(m.schoolId),
         'student_id': m.studentId,
         'class_level': m.classLevel,
         'subject': m.subject,
