@@ -14,9 +14,16 @@ class NotificationRepository {
   NotificationRepository._();
   static final NotificationRepository instance = NotificationRepository._();
 
-  final SupabaseClient _db = Supabase.instance.client;
-  SupabaseQueryBuilder get _notifications => _db.from('notifications');
-  SupabaseQueryBuilder get _prefs => _db.from('notification_preferences');
+  SupabaseClient? get _db {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  SupabaseQueryBuilder? get _notifications => _db?.from('notifications');
+  SupabaseQueryBuilder? get _prefs => _db?.from('notification_preferences');
 
   // ── Feed ───────────────────────────────────────────────
 
@@ -31,7 +38,9 @@ class NotificationRepository {
       if (cached != null && !controller.isClosed) {
         controller.add(cached.map(AppNotification.fromSupabase).toList());
       }
-      liveSub = _notifications
+      final n = _notifications;
+      if (n == null) return;
+      liveSub = n
           .stream(primaryKey: ['id'])
           .eq('user_id', uid)
           .order('created_at', ascending: false)
@@ -53,7 +62,9 @@ class NotificationRepository {
 
   Stream<int> watchUnreadCount(String uid) {
     if (uid.isEmpty) return Stream.value(0);
-    return _notifications
+    final n = _notifications;
+    if (n == null) return Stream.value(0);
+    return n
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
         .realtimeTolerant()

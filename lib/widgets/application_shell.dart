@@ -592,6 +592,22 @@ class _GlobalTopBar extends StatelessWidget {
     required this.onNavigateHome,
   });
 
+  Stream<int> _safeWatchNotificationCount(String uid) {
+    try {
+      return NotificationRepository.instance.watchUnreadCount(uid);
+    } catch (_) {
+      return Stream.value(0);
+    }
+  }
+
+  Stream<List<Conversation>> _safeWatchConversations(String uid) {
+    try {
+      return MessagingRepository.instance.watchConversations(uid);
+    } catch (_) {
+      return Stream.value(const <Conversation>[]);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     ThemeProvider? themeProvider;
@@ -795,7 +811,7 @@ class _GlobalTopBar extends StatelessWidget {
           // Real Notifications Icon + Live Unread Count Badge
           if (!isGuest)
             StreamBuilder<int>(
-              stream: NotificationRepository.instance.watchUnreadCount(uid),
+              stream: _safeWatchNotificationCount(uid),
               builder: (context, snap) {
                 final unread = snap.data ?? 0;
                 return _TopBarBadgeIcon(
@@ -831,7 +847,7 @@ class _GlobalTopBar extends StatelessWidget {
           // Real Messages Icon + Live Unread Count Badge
           if (!isGuest)
             StreamBuilder<List<Conversation>>(
-              stream: MessagingRepository.instance.watchConversations(uid),
+              stream: _safeWatchConversations(uid),
               builder: (context, snap) {
                 final convs = snap.data ?? const <Conversation>[];
                 int unread = 0;
