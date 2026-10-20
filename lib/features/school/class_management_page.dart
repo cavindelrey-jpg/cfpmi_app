@@ -497,7 +497,10 @@ class _ClassManagementPageState extends State<ClassManagementPage> {
     return ApplicationShell(
       user: widget.user,
       currentDestination: AppNavDestination.schoolConnect,
-      breadcrumbs: const ['School Connect', 'Class Management'],
+      breadcrumbs: const [
+        ShellBreadcrumb(label: 'School Connect'),
+        ShellBreadcrumb(label: 'Class Management'),
+      ],
       headerActions: [
         FilledButton.icon(
           style: FilledButton.styleFrom(

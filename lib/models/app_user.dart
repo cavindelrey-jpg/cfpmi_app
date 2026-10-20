@@ -294,6 +294,14 @@ class AppUser {
           : (Branding.current.schoolId ?? '');
 
   bool get isSchoolClassMaster => schoolRole == SchoolRole.classMaster || (classMasterOfClass ?? '').isNotEmpty;
+  bool get isSchoolStaff =>
+      schoolRole == SchoolRole.teacher ||
+      schoolRole == SchoolRole.admin ||
+      schoolRole == SchoolRole.classMaster ||
+      schoolRole == SchoolRole.principal ||
+      schoolRole == SchoolRole.itSupport ||
+      isTeacher ||
+      isAdmin;
 
   /// Marks/attendance-record permission for one (subject, classLevel) —
   /// item 22/23/24. Admins (schoolAdmin+) can record anywhere in their own
