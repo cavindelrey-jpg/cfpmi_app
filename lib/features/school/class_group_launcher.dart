@@ -86,6 +86,6 @@ Future<void> openClassGroup(BuildContext context, AppUser user) async {
   if (!context.mounted) return;
   Navigator.of(context).push(MaterialPageRoute(
     settings: RouteSettings(name: '/clubs/${club!.id}/chat'),
-    builder: (_) => ClubChatPage(club: club, user: user),
+    builder: (_) => ClubChatPage(club: club!, user: user),
   ));
 }
