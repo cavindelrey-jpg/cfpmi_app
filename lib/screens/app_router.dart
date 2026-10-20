@@ -38,6 +38,7 @@ import '../features/school/classroom_page.dart';
 import '../features/school/daily_notices/daily_notices_page.dart';
 import '../features/school/exam_composer/exam_list_page.dart';
 import '../pages/settings_page.dart';
+import '../widgets/application_shell.dart';
 import '../pages/help_support_page.dart';
 import '../pages/bookmarks_page.dart';
 import '../features/timetable/personal_study_page.dart';
