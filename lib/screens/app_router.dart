@@ -71,7 +71,11 @@ class AppRouter extends StatefulWidget {
         page = LibraryHomePage(user: user);
         break;
       case '/past-questions':
-        page = LibraryHomePage(user: user, initialContentType: ContentType.pastPaper);
+        page = LibraryHomePage(
+          user: user,
+          initialCollectionFilter: 'past_papers',
+          navDestination: AppNavDestination.academicPastQuestions,
+        );
         break;
       case '/tests':
       case '/quizzes':

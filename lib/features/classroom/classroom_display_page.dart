@@ -10,7 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/classroom.dart';
 import '../../repositories/classroom_repository.dart';
-import '../../widgets/web_doc_embed.dart';
+import '../../widgets/web_embed/web_embed.dart';
 import 'classroom_slide.dart';
 
 class ClassroomDisplayPage extends StatelessWidget {
