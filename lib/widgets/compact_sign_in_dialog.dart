@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
-import '../screens/voucher_entry_screen.dart';
+import '../features/onboarding/voucher_entry_screen.dart';
 
 Future<bool?> showCompactSignInDialog(BuildContext context) {
   return showDialog<bool>(
@@ -234,7 +234,11 @@ class _CompactSignInDialogState extends State<CompactSignInDialog> {
                     onPressed: () {
                       Navigator.of(context).pop(false);
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const VoucherEntryScreen()),
+                        MaterialPageRoute(
+                          builder: (ctx) => VoucherEntryScreen(
+                            onBrowseAsGuest: () => Navigator.of(ctx).pop(),
+                          ),
+                        ),
                       );
                     },
                     child: Text(

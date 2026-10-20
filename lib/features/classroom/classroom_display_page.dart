@@ -77,7 +77,7 @@ class _ClassroomDisplayPageState extends State<ClassroomDisplayPage> {
     if (_pdfController != null && _pdfController!.isReady) {
       final current = _pdfController!.pageNumber ?? 1;
       if (current < _pdfController!.pageCount) {
-        _pdfController!.jumpToPage(current + 1);
+        _pdfController!.goToPage(pageNumber: current + 1);
         ClassroomRepository.instance.setCurrentSlide(widget.sessionId, current);
       }
       return;
@@ -91,7 +91,7 @@ class _ClassroomDisplayPageState extends State<ClassroomDisplayPage> {
     if (_pdfController != null && _pdfController!.isReady) {
       final current = _pdfController!.pageNumber ?? 1;
       if (current > 1) {
-        _pdfController!.jumpToPage(current - 1);
+        _pdfController!.goToPage(pageNumber: current - 1);
         ClassroomRepository.instance.setCurrentSlide(widget.sessionId, current - 2);
       }
       return;
@@ -126,7 +126,7 @@ class _ClassroomDisplayPageState extends State<ClassroomDisplayPage> {
             targetPage <= _pdfController!.pageCount) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _pdfController!.isReady) {
-              _pdfController!.jumpToPage(targetPage);
+              _pdfController!.goToPage(pageNumber: targetPage);
             }
           });
         }

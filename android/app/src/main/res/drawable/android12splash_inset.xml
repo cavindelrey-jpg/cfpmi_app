@@ -31,7 +31,7 @@
 -->
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/android12splash"
-    android:insetLeft="20%"
-    android:insetTop="20%"
-    android:insetRight="20%"
-    android:insetBottom="20%" />
+    android:insetLeft="24%"
+    android:insetTop="24%"
+    android:insetRight="24%"
+    android:insetBottom="24%" />
