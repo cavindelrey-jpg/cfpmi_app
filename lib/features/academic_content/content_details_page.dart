@@ -367,7 +367,7 @@ class _ContentDetailsPageState extends State<ContentDetailsPage> {
                                   ],
                                   onChanged: (newPolicy) async {
                                     if (newPolicy != null) {
-                                      await AcademicContentRepository.instance.updateContent(
+                                      await AcademicContentRepository.instance.update(
                                         item.copyWith(accessPolicy: newPolicy),
                                       );
                                       if (context.mounted) {

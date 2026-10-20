@@ -476,7 +476,7 @@ class _StaffMarksHomeState extends State<_StaffMarksHome> {
 
     Future<void> openCsvImport() async {
       final res = await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => MarksCsvImportPage(staff: staff)));
+          builder: (_) => MarksCsvImportPage(staff: widget.staff)));
       if (res != null && context.mounted) {
         if (res is MarksImportResult && res.classLevel != null) {
           open(res.classLevel, res.subject, sequence: res.sequence);
@@ -487,7 +487,7 @@ class _StaffMarksHomeState extends State<_StaffMarksHome> {
     }
 
     return ApplicationShell(
-      user: staff,
+      user: widget.staff,
       currentTitle: 'Marks',
       currentDestination: AppNavDestination.marks,
       child: ListView(
