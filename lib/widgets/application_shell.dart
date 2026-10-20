@@ -2595,7 +2595,7 @@ class LibraryContextualPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, size: 16, color: ac.txt3),
+              Icon(Icons.chevron_right_rounded, size: 16, color: ac.muted),
             ],
           ),
         ),
@@ -3237,7 +3237,7 @@ class CoursesContextualPanel extends StatelessWidget {
                                             size: 16,
                                             color: isDone
                                                 ? const Color(0xFF10B981)
-                                                : ac.txt3,
+                                                : ac.muted,
                                           ),
                                           const SizedBox(width: 8),
                                           Expanded(
@@ -3320,7 +3320,7 @@ class CoursesContextualPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, size: 16, color: ac.txt3),
+              Icon(Icons.chevron_right_rounded, size: 16, color: ac.muted),
             ],
           ),
         ),
@@ -4080,7 +4080,7 @@ class SchoolContextualPanel extends StatelessWidget {
                         Text(
                           user.classLevel.isNotEmpty
                               ? 'Class: ${user.classLevel}'
-                              : user.role.label,
+                              : user.roleLabel,
                           style: GoogleFonts.inter(fontSize: 11, color: ac.txt2),
                         ),
                       ],
@@ -4088,7 +4088,7 @@ class SchoolContextualPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              if (user.matricule != null && user.matricule!.isNotEmpty) ...[
+              if (user.id.isNotEmpty && !user.isGuest) ...[
                 const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -4097,7 +4097,7 @@ class SchoolContextualPanel extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    'Matricule: ${user.matricule}',
+                    'ID: ${user.id.length > 8 ? user.id.substring(0, 8) : user.id}',
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,

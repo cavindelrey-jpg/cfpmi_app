@@ -317,6 +317,12 @@ class TestAttempt {
     );
   }
 
+  int get totalPointsAwarded =>
+      responses.fold(0, (sum, r) => sum + (r.pointsAwarded ?? 0));
+  int get totalScore => totalPointsAwarded;
+  int get maxScore => totalPossiblePoints;
+  int get totalXpEarned => totalXpAwarded;
+
   Map<String, dynamic> toSupabase() => {
         'test_id': testId.isEmpty ? null : testId,
         'homework_id': homeworkId,
