@@ -4,6 +4,10 @@ import 'friendly_error.dart';
 
 sealed class Result<T> {
   const Result();
+
+  bool get isSuccess => this is Success<T>;
+  bool get isFailure => this is Failure<T>;
+  T? get valueOrNull => this is Success<T> ? (this as Success<T>).value : null;
 }
 
 class Success<T> extends Result<T> {

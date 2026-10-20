@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../core/result.dart';
 import '../models/academic_content.dart';
 import '../models/announcement.dart';
 import '../models/app_user.dart';
@@ -56,6 +57,7 @@ import '../services/course_offline_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'create_content_sheet.dart';
+import 'widgets.dart';
 
 // Core feature destinations
 import '../features/academic_content/content_viewer_page.dart';
@@ -494,7 +496,7 @@ class _WorkspaceSubHeader extends StatelessWidget {
                                 child: Icon(
                                   Icons.chevron_right_rounded,
                                   size: 16,
-                                  color: ac.txt3,
+                                  color: ac.muted,
                                 ),
                               ),
                             _BreadcrumbChip(

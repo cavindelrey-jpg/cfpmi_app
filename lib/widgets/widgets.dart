@@ -24,17 +24,20 @@ class AcademicCircularProgressRing extends StatelessWidget {
   final Color? backgroundColor;
   final TextStyle? textStyle;
   final Widget? center;
+  final String? customText;
 
   const AcademicCircularProgressRing({
     super.key,
-    required this.percent,
+    double? percent,
+    double? progress,
     this.size = 54,
     this.strokeWidth = 4.5,
     this.color,
     this.backgroundColor,
     this.textStyle,
     this.center,
-  });
+    this.customText,
+  }) : percent = percent ?? progress ?? 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +64,7 @@ class AcademicCircularProgressRing extends StatelessWidget {
               padding: EdgeInsets.all(strokeWidth + 2),
               child: center ??
                   Text(
-                    '${(clamped * 100).round()}%',
+                    customText ?? '${(clamped * 100).round()}%',
                     style: textStyle ??
                         AppText.title.copyWith(
                           fontSize: size * 0.26,

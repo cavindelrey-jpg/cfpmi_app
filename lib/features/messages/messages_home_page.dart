@@ -414,7 +414,7 @@ class _MessageRequestsList extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Icons.mark_email_Read_rounded_or_default,
+                    Icons.mark_email_read_rounded,
                     size: 44,
                     color: ac.muted.withValues(alpha: 0.5),
                   ),
