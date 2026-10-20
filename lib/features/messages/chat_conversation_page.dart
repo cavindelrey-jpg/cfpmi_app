@@ -68,6 +68,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import '../../widgets/application_shell.dart';
+import '../../widgets/compact_sign_in_dialog.dart';
 import '../../widgets/chat_media_widgets.dart';
 import '../../widgets/media_players.dart' show ArticleVideoPlayer;
 import '../academic_content/content_details_page.dart';
@@ -150,6 +151,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   Future<void> _sendText([String? explicitText]) async {
+    if (widget.currentUser.isGuest) {
+      await showCompactSignInDialog(context);
+      return;
+    }
     final text = (explicitText ?? _textCtrl.text).trim();
     if (text.isEmpty) return;
     if (explicitText == null) _textCtrl.clear();
@@ -528,6 +533,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   void _showAttachSheet() {
+    if (widget.currentUser.isGuest) {
+      showCompactSignInDialog(context);
+      return;
+    }
     final ac = AppColors.of(context);
     showModalBottomSheet(
       context: context,
@@ -586,6 +595,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     required SharedContentType type, required String id,
     required String title, required String subtitle, String? thumbnailUrl,
   }) async {
+    if (widget.currentUser.isGuest) {
+      showCompactSignInDialog(context);
+      return;
+    }
     await MessagingRepository.instance.sendMessage(
       conversationId: widget.conversationId,
       senderId: widget.currentUser.id, senderName: widget.currentUser.name,

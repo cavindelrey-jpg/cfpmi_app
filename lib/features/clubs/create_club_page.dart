@@ -27,6 +27,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/club_visuals.dart';
 import '../../core/club_scope.dart';
 import '../../config/branding.dart';
+import '../../widgets/compact_sign_in_dialog.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import 'clubs_page.dart';
@@ -179,6 +180,52 @@ class _CreateClubPageState extends State<CreateClubPage> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+    if (widget.user.isGuest) {
+      return Scaffold(
+        backgroundColor: ac.bg,
+        appBar: AppBar(
+          backgroundColor: ac.bg,
+          elevation: 0,
+          iconTheme: IconThemeData(color: ac.txt),
+          title: Text('Create a Group', style: GoogleFonts.sora(
+              fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline_rounded, size: 52, color: ac.muted),
+                const SizedBox(height: 16),
+                Text(
+                  'Sign In to Create a Group',
+                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: ac.txt),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Guests can browse open groups. Sign in to start your own study group or club.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(fontSize: 13, color: ac.txt2),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () => showCompactSignInDialog(context),
+                  icon: const Icon(Icons.login_rounded, size: 16),
+                  label: const Text('Sign In Now'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ac.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: ac.bg,
       appBar: AppBar(

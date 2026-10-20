@@ -257,81 +257,223 @@ class ClassroomControlPage extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
-              // Live/slide status + slide preview
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: ClassroomSlide(url: s.currentSlideUrl, index: s.currentSlide, total: s.slideCount, topic: s.topic),
+              // ── AREA 1: PROJECTED LESSON ─────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: ac.surf,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: ac.bdr),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: ac.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.cast_for_education_rounded, color: ac.primary, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Area 1: Projected Lesson',
+                                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt),
+                              ),
+                              Text(
+                                'Multi-page presentation or slide deck shown on the classroom projector screen',
+                                style: GoogleFonts.inter(fontSize: 12, color: ac.txt2),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ClassroomDisplayPage(sessionId: sessionId),
+                            ),
+                          ),
+                          icon: const Icon(Icons.tv_rounded, size: 16),
+                          label: const Text('Open Projector Screen'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF081630),
+                            foregroundColor: Colors.white,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Slide Preview
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: ClassroomSlide(
+                        url: s.currentSlideUrl,
+                        index: s.currentSlide,
+                        total: s.slideCount,
+                        topic: s.topic,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Slide Stepper Controls
+                    Row(
+                      children: [
+                        _ctrlBtn(
+                          ac,
+                          Icons.chevron_left_rounded,
+                          'Previous Slide',
+                          s.currentSlide > 0
+                              ? () => repo.setCurrentSlide(sessionId, s.currentSlide - 1)
+                              : null,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              'Slide ${s.slideCount == 0 ? 1 : s.currentSlide + 1} of ${s.slideCount == 0 ? 1 : s.slideCount}',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.5, color: ac.txt),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _ctrlBtn(
+                          ac,
+                          Icons.chevron_right_rounded,
+                          'Next Slide',
+                          s.currentSlide < s.slideCount - 1
+                              ? () => repo.setCurrentSlide(sessionId, s.currentSlide + 1)
+                              : null,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Actions Row
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _attachPresentation(context, s),
+                          icon: const Icon(Icons.upload_file_rounded, size: 16),
+                          label: Text(
+                            (s.originalFile ?? '').isEmpty
+                                ? 'Upload Presentation (PDF / PowerPoint)'
+                                : 'Replace Presentation Document',
+                          ),
+                          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _uploadSlideImages(context, s),
+                          icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
+                          label: const Text('Upload Slide Images'),
+                          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                        ),
+                        if ((s.originalFile ?? '').isNotEmpty)
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: ac.primary,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            onPressed: () {
+                              final url = s.originalFile!;
+                              Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => ContentViewerPage(
+                                  fileUrl: url,
+                                  title: 'Presentation',
+                                  kind: viewableKindFor(url) ?? ViewableFileKind.pptx,
+                                ),
+                              ));
+                            },
+                            icon: const Icon(Icons.slideshow_rounded, size: 16),
+                            label: const Text('Preview Lesson'),
+                          ),
+                        s.status == ClassroomStatus.live
+                            ? FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: ac.red,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                onPressed: () => repo.endSession(sessionId),
+                                icon: const Icon(Icons.stop_rounded, size: 16),
+                                label: const Text('End Live Lesson'),
+                              )
+                            : FilledButton.icon(
+                                style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+                                onPressed: () => repo.startSession(sessionId),
+                                icon: const Icon(Icons.play_arrow_rounded, size: 16),
+                                label: const Text('Start Live Lesson'),
+                              ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
-              Row(children: [
-                _ctrlBtn(ac, Icons.chevron_left_rounded, 'Previous', s.currentSlide > 0
-                    ? () => repo.setCurrentSlide(sessionId, s.currentSlide - 1)
-                    : null),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Center(
-                    child: Text('Slide ${s.slideCount == 0 ? 0 : s.currentSlide + 1} / ${s.slideCount}',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: ac.txt)),
-                  ),
+
+              const SizedBox(height: 24),
+
+              // ── AREA 2: STUDENT RESOURCES ────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: ac.surf,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: ac.bdr),
                 ),
-                const SizedBox(width: 8),
-                _ctrlBtn(ac, Icons.chevron_right_rounded, 'Next', s.currentSlide < s.slideCount - 1
-                    ? () => repo.setCurrentSlide(sessionId, s.currentSlide + 1)
-                    : null),
-              ]),
-              // View the attached PowerPoint/PDF (renders in the viewer).
-              if ((s.originalFile ?? '').isNotEmpty) ...[
-                const SizedBox(height: 10),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(backgroundColor: ac.primary, minimumSize: const Size.fromHeight(44)),
-                  onPressed: () {
-                    final url = s.originalFile!;
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => ContentViewerPage(
-                        fileUrl: url,
-                        title: 'Presentation',
-                        kind: viewableKindFor(url) ?? ViewableFileKind.pptx,
-                      )));
-                  },
-                  icon: const Icon(Icons.slideshow_rounded, size: 18),
-                  label: const Text('View presentation'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE5A93C).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.folder_shared_rounded, color: Color(0xFFE5A93C), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Area 2: Student Resources',
+                                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt),
+                              ),
+                              Text(
+                                'Reference materials, formula sheets, and homework sheets. Kept separate from projected slides.',
+                                style: GoogleFonts.inter(fontSize: 12, color: ac.txt2),
+                              ),
+                            ],
+                          ),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () => _addResourceDialog(context, s),
+                          icon: const Icon(Icons.add_rounded, size: 16),
+                          label: const Text('Add Resource'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: ac.primary,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _ResourceControlList(sessionId: sessionId, ac: ac),
+                  ],
                 ),
-              ],
-              const SizedBox(height: 10),
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _addSlidesDialog(context, s),
-                    icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
-                    label: const Text('Add slides'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: s.status == ClassroomStatus.live
-                      ? FilledButton.icon(
-                          style: FilledButton.styleFrom(backgroundColor: ac.red),
-                          onPressed: () => repo.endSession(sessionId),
-                          icon: const Icon(Icons.stop_rounded, size: 18),
-                          label: const Text('End class'))
-                      : FilledButton.icon(
-                          onPressed: () => repo.startSession(sessionId),
-                          icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                          label: const Text('Go live')),
-                ),
-              ]),
-              const SizedBox(height: 20),
-              Row(children: [
-                Text('Resources', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: ac.txt)),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () => _addResourceDialog(context, s),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add'),
-                ),
-              ]),
-              const SizedBox(height: 4),
-              _ResourceControlList(sessionId: sessionId, ac: ac),
+              ),
             ],
           ),
         );
@@ -442,18 +584,7 @@ class ClassroomControlPage extends StatelessWidget {
       if (s.slideUrls.isEmpty) {
         await ClassroomRepository.instance.setSlides(sessionId, [up.value]);
       }
-      final ext = f.name.contains('.') ? f.name.split('.').last.toLowerCase() : 'pptx';
-      await ClassroomRepository.instance.addResource(ClassroomResource(
-        id: '',
-        sessionId: s.id,
-        schoolId: s.schoolId,
-        title: f.name,
-        kind: ext == 'pdf' ? 'pdf' : 'pptx',
-        url: up.value,
-        visibility: ResourceVisibility.released,
-        position: 0,
-      ));
-      _toast(context, 'Presentation attached & published to classroom.');
+      _toast(context, 'Presentation attached to projected lesson.');
     } else {
       _toast(context, (up as Failure<String>).friendlyMessage);
     }

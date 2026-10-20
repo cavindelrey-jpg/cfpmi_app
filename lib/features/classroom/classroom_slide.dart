@@ -26,7 +26,7 @@ class ClassroomSlide extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: const Color(0xFF0B1F3A),
+        color: const Color(0xFF11141B), // Neutral dark canvas - avoids bright blue frame
         borderRadius: BorderRadius.circular(large ? 0 : 14),
       ),
       child: (url != null && url!.isNotEmpty)
@@ -35,7 +35,7 @@ class ClassroomSlide extends StatelessWidget {
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => _placeholder(),
               loadingBuilder: (c, child, p) =>
-                  p == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white54)),
+                  p == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white38)),
             )
           : _placeholder(),
     );

@@ -51,6 +51,10 @@ class HomeworkRepository {
   }
 
   Future<Result<void>> create(Homework homework) async {
+    final authUser = _db.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot create homework assignments. Please sign in as a teacher.');
+    }
     try {
       await _homework.insert(_toRow(homework));
       _memoizer.clear();
@@ -61,6 +65,10 @@ class HomeworkRepository {
   }
 
   Future<Result<void>> update(Homework homework) async {
+    final authUser = _db.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot update homework assignments. Please sign in as a teacher.');
+    }
     try {
       await _homework.update(_toRow(homework)).eq('id', homework.id);
       _memoizer.clear();
@@ -71,6 +79,10 @@ class HomeworkRepository {
   }
 
   Future<Result<void>> delete(String id) async {
+    final authUser = _db.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot delete homework assignments. Please sign in as a teacher.');
+    }
     try {
       await _homework.delete().eq('id', id);
       _memoizer.clear();

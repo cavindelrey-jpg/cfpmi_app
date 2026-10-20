@@ -96,6 +96,10 @@ class SchoolTimetableRepository {
   }
 
   Future<Result<void>> add(SchoolTimetableSlot slot) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot create official school timetables. Please sign in as a school administrator.');
+    }
     final slotToSave = slot.id.isNotEmpty
         ? slot
         : SchoolTimetableSlot(
@@ -123,6 +127,10 @@ class SchoolTimetableRepository {
   }
 
   Future<Result<void>> update(SchoolTimetableSlot slot) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot edit official school timetables. Please sign in as a school administrator.');
+    }
     await _saveLocalFallback(slot);
     _changeNotifier.add(slot.schoolId);
 
@@ -136,6 +144,10 @@ class SchoolTimetableRepository {
   }
 
   Future<Result<void>> delete(dynamic arg1, [String? arg2]) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot delete official school timetables. Please sign in as a school administrator.');
+    }
     final slotId = arg2 ?? arg1.toString();
     try {
       final slotsQuery = _slots;
@@ -149,6 +161,10 @@ class SchoolTimetableRepository {
 
   Future<Result<int>> batchAdd(List<SchoolTimetableSlot> slots) async {
     if (slots.isEmpty) return const Success(0);
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot import official school timetables. Please sign in as a school administrator.');
+    }
     final schoolId = slots.first.schoolId;
 
     // 1. Prepare slots with non-empty unique IDs

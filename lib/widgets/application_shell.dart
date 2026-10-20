@@ -41,6 +41,7 @@ import '../pages/profile_page.dart';
 import '../pages/search_page.dart';
 import '../pages/settings_page.dart';
 import '../providers/theme_provider.dart';
+import 'compact_sign_in_dialog.dart';
 import '../repositories/academic_content_repository.dart';
 import '../repositories/announcement_repository.dart';
 import '../repositories/course_lesson_repository.dart';
@@ -205,9 +206,32 @@ class _ApplicationShellState extends State<ApplicationShell> {
   /// On touch devices, tapping the toggle icon at top of the rail toggles expansion.
   bool _sidebarHovered = false;
   bool _touchExpanded = false;
+  StreamSubscription? _authSub;
 
-  AppUser get _user =>
-      widget.user ?? AuthService.instance.lastKnownUser ?? AppUser.guest();
+  @override
+  void initState() {
+    super.initState();
+    _authSub = AuthService.instance.authStateChanges.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+
+  AppUser get _user {
+    if (widget.user != null && !widget.user!.isGuest) {
+      return widget.user!;
+    }
+    final active = AuthService.instance.lastKnownUser;
+    if (active != null && !active.isGuest) {
+      return active;
+    }
+    return widget.user ?? AppUser.guest();
+  }
 
   String get _pageTitle {
     if (widget.currentTitle != null && widget.currentTitle!.isNotEmpty) {
@@ -1021,6 +1045,30 @@ class _GlobalTopBar extends StatelessWidget {
                   ),
                 ),
 
+              if (isGuest)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: ElevatedButton.icon(
+                    onPressed: () => showCompactSignInDialog(context),
+                    icon: const Icon(Icons.login_rounded, size: 15),
+                    label: Text(
+                      'Sign In',
+                      style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE5A93C),
+                      foregroundColor: const Color(0xFF081630),
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isNarrow ? 8 : 12,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ),
+
               SizedBox(width: isUltraNarrow ? 2 : 4),
 
               // User Profile Chip (real user data, never hardcoded fallback)
@@ -1113,11 +1161,15 @@ class _UserProfileChip extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ProfilePage(user: user ?? AppUser.guest()),
-          ),
-        );
+        if (isGuest) {
+          showCompactSignInDialog(context);
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProfilePage(user: user ?? AppUser.guest()),
+            ),
+          );
+        }
       },
       borderRadius: BorderRadius.circular(20),
       child: Padding(

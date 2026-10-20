@@ -444,6 +444,9 @@ class ClubRepository {
   }
 
   Future<Result<void>> sendMessage(String clubId, ClubMessage message, {AppUser? user}) async {
+    if (message.senderId.isEmpty || message.senderId == 'guest' || message.senderId.startsWith('guest_') || (user != null && user.isGuest)) {
+      return const Failure('Guests cannot send messages. Please sign in.', null);
+    }
     try {
       final clubRes = await getClub(clubId, user: user);
       if (clubRes is Failure<Club>) {
@@ -535,6 +538,9 @@ class ClubRepository {
     String? founderPhotoUrl,
     AppUser? user,
   }) async {
+    if (founderId.isEmpty || founderId == 'guest' || founderId.startsWith('guest_') || (user != null && user.isGuest)) {
+      return const Failure('Guests cannot create clubs or study groups. Please sign in.', null);
+    }
     try {
       final scope = ClubScope.resolveSchoolId(user: user, explicitSchoolId: club.schoolId);
       final scopedClub = Club(
@@ -562,6 +568,13 @@ class ClubRepository {
         'club_id': clubId, 'user_id': founderId,
         'name': founderName, 'photo_url': founderPhotoUrl, 'role': ClubRole.admin.name,
       });
+
+      // Invalidate cache immediately so new club persists & appears on refresh
+      final cacheKey = scope == null ? 'clubs_all_super_admin' : 'clubs_$scope';
+      unawaited(ContentCacheService.instance.invalidate(cacheKey));
+      unawaited(ContentCacheService.instance.invalidate('clubs_all_super_admin'));
+      unawaited(ContentCacheService.instance.invalidate('club_ids_$founderId'));
+
       return Success(clubId);
     } catch (e) {
       return Failure('Failed to create group', e);

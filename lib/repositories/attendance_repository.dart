@@ -53,6 +53,10 @@ class AttendanceRepository {
   /// Upsert a whole register for a class/date in one call. No-op on empty.
   Future<Result<void>> saveBatch(List<AttendanceRecord> records) async {
     if (records.isEmpty) return const Success(null);
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot record attendance. Please sign in as a teacher or administrator.');
+    }
     final table = _table;
     if (table == null) return const Failure('Attendance is offline right now.');
     try {

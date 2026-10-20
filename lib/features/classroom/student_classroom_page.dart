@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -148,13 +149,32 @@ class _LiveClass extends StatelessWidget {
   }
 
   // Main presentation area. If the teacher attached a PowerPoint/PDF it renders
-  // inline (embedded viewer on web); otherwise it shows the synced slide image.
+  // inline (pdfrx for PDFs, embedded viewer on web for PPT); otherwise it shows the synced slide image.
   Widget _presentationArea(AppColors ac) {
     final orig = session.originalFile ?? '';
     final ext = orig.contains('.') ? orig.split('.').last.toLowerCase().split('?').first : '';
-    final isDoc = orig.isNotEmpty && (ext == 'pptx' || ext == 'ppt' || ext == 'pdf');
-    if (isWebPlatform && isDoc) {
-      final embedUrl = ext == 'pdf' ? orig : officeViewerUrl(orig);
+
+    if (ext == 'pdf' && orig.isNotEmpty) {
+      return Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1117),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: ac.bdr),
+        ),
+        child: PdfViewer.uri(
+          Uri.parse(orig),
+          initialPageNumber: session.currentSlide + 1,
+          params: PdfViewerParams(
+            backgroundColor: const Color(0xFF0F1117),
+          ),
+        ),
+      );
+    }
+
+    final isPpt = orig.isNotEmpty && (ext == 'pptx' || ext == 'ppt');
+    if (isWebPlatform && isPpt) {
+      final embedUrl = officeViewerUrl(orig);
       return Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(color: ac.surf, borderRadius: BorderRadius.circular(14), border: Border.all(color: ac.bdr)),

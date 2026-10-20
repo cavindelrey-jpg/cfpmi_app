@@ -49,6 +49,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/club_visuals.dart';
 import '../../config/branding.dart';
 import '../../widgets/application_shell.dart';
+import '../../widgets/compact_sign_in_dialog.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import '../../pages/notifications_page.dart';
@@ -178,23 +179,69 @@ class _ClubsPageState extends State<ClubsPage> {
                   currentTitle: 'Study Groups & Clubs',
                   subtitle: 'Join academic clubs, subject study groups, and campus communities',
                   currentDestination: AppNavDestination.clubs,
+                  headerActions: [
+                    if (_canCreate)
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          HapticFeedback.mediumImpact();
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CreateClubPage(user: widget.user),
+                            ),
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _clubsStream = ClubRepository.instance.watchClubs(user: widget.user);
+                              _myClubIdsStream = ClubRepository.instance.watchMyClubIds(widget.user.id);
+                              _myPendingIdsStream = ClubRepository.instance.watchMyPendingRequestClubIds(widget.user.id);
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.add_rounded, size: 16),
+                        label: const Text('Create Group'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF081630),
+                          foregroundColor: Colors.white,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      )
+                    else
+                      ElevatedButton.icon(
+                        onPressed: () => showCompactSignInDialog(context),
+                        icon: const Icon(Icons.login_rounded, size: 16),
+                        label: const Text('Sign In to Create'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE5A93C),
+                          foregroundColor: const Color(0xFF081630),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                  ],
                   bottomHeader: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
                         children: [
                           Expanded(child: _searchBar(ac)),
-                          if (_canCreate) ...[
-                            const SizedBox(width: 12),
+                          const SizedBox(width: 12),
+                          if (_canCreate)
                             ElevatedButton.icon(
-                              onPressed: () {
+                              onPressed: () async {
                                 HapticFeedback.mediumImpact();
-                                Navigator.push(
+                                await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => CreateClubPage(user: widget.user),
                                   ),
                                 );
+                                if (mounted) {
+                                  setState(() {
+                                    _clubsStream = ClubRepository.instance.watchClubs(user: widget.user);
+                                    _myClubIdsStream = ClubRepository.instance.watchMyClubIds(widget.user.id);
+                                    _myPendingIdsStream = ClubRepository.instance.watchMyPendingRequestClubIds(widget.user.id);
+                                  });
+                                }
                               },
                               icon: const Icon(Icons.add_rounded, size: 18),
                               label: const Text('Create Group'),
@@ -207,8 +254,22 @@ class _ClubsPageState extends State<ClubsPage> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
+                            )
+                          else
+                            ElevatedButton.icon(
+                              onPressed: () => showCompactSignInDialog(context),
+                              icon: const Icon(Icons.login_rounded, size: 16),
+                              label: const Text('Sign In'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE5A93C),
+                                foregroundColor: const Color(0xFF081630),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
                             ),
-                          ],
                         ],
                       ),
                       if (categories.length > 1) ...[
@@ -219,13 +280,15 @@ class _ClubsPageState extends State<ClubsPage> {
                   ),
                   child: AppBackground(
                     child: ListView(
-                      padding: const EdgeInsets.only(top: 12, bottom: 100),
+                      padding: const EdgeInsets.only(top: 8, bottom: 100),
                       children: [
                         if (_searchQuery.isEmpty && _selectedCategory == null && recommendedClubs.isNotEmpty) ...[
                           _recommendedClubsSection(context, recommendedClubs),
                         ],
-                        _myClubsSection(context, myClubs, joinedIds),
-                        const SizedBox(height: 24),
+                        if (myClubs.isNotEmpty) ...[
+                          _myClubsSection(context, myClubs, joinedIds),
+                          const SizedBox(height: 20),
+                        ],
                         _discoverClubsSection(context, discoverClubs, allClubs),
                         const SizedBox(height: 20),
                         _infoCards(context),

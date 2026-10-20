@@ -27,6 +27,10 @@ class ClassroomRepository {
 
   // ── Session lifecycle ──────────────────────────────────────────────
   Future<Result<String>> createSession(ClassroomSession s) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot create classroom sessions. Please sign in as a teacher.');
+    }
     final t = _sessions;
     if (t == null) return const Failure('Classroom is offline right now.');
     try {
@@ -40,6 +44,10 @@ class ClassroomRepository {
   }
 
   Future<Result<void>> _patch(String id, Map<String, dynamic> data) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot update classroom sessions. Please sign in as a teacher.');
+    }
     final t = _sessions;
     if (t == null) return const Failure('Classroom is offline right now.');
     try {
@@ -67,6 +75,10 @@ class ClassroomRepository {
 
   // ── Resources ──────────────────────────────────────────────────────
   Future<Result<void>> addResource(ClassroomResource r) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot upload classroom resources. Please sign in as a teacher.');
+    }
     final t = _resources;
     if (t == null) return const Failure('Classroom is offline right now.');
     try {
@@ -81,6 +93,10 @@ class ClassroomRepository {
 
   /// Change a resource's visibility — this is the teacher's RELEASE control.
   Future<Result<void>> setVisibility(String resourceId, ResourceVisibility v) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot modify classroom resources. Please sign in as a teacher.');
+    }
     final t = _resources;
     if (t == null) return const Failure('Classroom is offline right now.');
     try {
@@ -95,6 +111,10 @@ class ClassroomRepository {
   }
 
   Future<Result<void>> deleteResource(String resourceId) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot delete classroom resources. Please sign in as a teacher.');
+    }
     final t = _resources;
     if (t == null) return const Failure('Classroom is offline right now.');
     try {

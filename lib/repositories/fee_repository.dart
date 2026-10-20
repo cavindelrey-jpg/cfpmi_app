@@ -26,6 +26,10 @@ class FeeRepository {
 
   /// Record one ledger line (a charge or a recorded payment).
   Future<Result<void>> addEntry(FeeLedgerEntry entry) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot record fee entries. Please sign in as a school administrator.');
+    }
     final table = _table;
     if (table == null) return const Failure('Fees are offline right now.');
     try {
@@ -40,6 +44,10 @@ class FeeRepository {
   }
 
   Future<Result<void>> deleteEntry(String id) async {
+    final authUser = _db?.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot delete fee entries. Please sign in as a school administrator.');
+    }
     final table = _table;
     if (table == null) return const Failure('Fees are offline right now.');
     try {

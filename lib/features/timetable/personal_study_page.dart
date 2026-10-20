@@ -14,6 +14,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
+import '../../widgets/compact_sign_in_dialog.dart';
 
 class PersonalStudyPage extends StatefulWidget {
   final AppUser user;
@@ -25,6 +26,10 @@ class PersonalStudyPage extends StatefulWidget {
 
 class _PersonalStudyPageState extends State<PersonalStudyPage> {
   Future<void> _openCreateSheet(BuildContext context) async {
+    if (widget.user.isGuest) {
+      await showCompactSignInDialog(context);
+      return;
+    }
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -47,25 +52,43 @@ class _PersonalStudyPageState extends State<PersonalStudyPage> {
       subtitle: 'Plan your weekly study sessions, revision blocks, and practice goals',
       currentDestination: AppNavDestination.studyPlan,
       headerActions: [
-        ElevatedButton.icon(
-          key: const Key('add_session_appbar_btn'),
-          onPressed: () => _openCreateSheet(context),
-          icon: const Icon(Icons.add_rounded, size: 18),
-          label: const Text(
-            'Add Session',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: ac.primary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+        if (widget.user.isGuest)
+          ElevatedButton.icon(
+            onPressed: () => showCompactSignInDialog(context),
+            icon: const Icon(Icons.login_rounded, size: 16),
+            label: const Text(
+              'Sign In to Plan',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE5A93C),
+              foregroundColor: const Color(0xFF081630),
+              elevation: 0,
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          )
+        else
+          ElevatedButton.icon(
+            key: const Key('add_session_appbar_btn'),
+            onPressed: () => _openCreateSheet(context),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text(
+              'Add Session',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ac.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
-        ),
       ],
       child: AppBackground(
         child: StreamBuilder<List<PersonalStudySlot>>(
@@ -149,15 +172,17 @@ class _PersonalStudyPageState extends State<PersonalStudyPage> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: ac.primary,
-        foregroundColor: Colors.white,
-        elevation: 3,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add to Personal Timetable',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
-        onPressed: () => _openCreateSheet(context),
-      ),
+      floatingActionButton: widget.user.isGuest
+          ? null
+          : FloatingActionButton.extended(
+              backgroundColor: ac.primary,
+              foregroundColor: Colors.white,
+              elevation: 3,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Add to Personal Timetable',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+              onPressed: () => _openCreateSheet(context),
+            ),
     );
   }
 

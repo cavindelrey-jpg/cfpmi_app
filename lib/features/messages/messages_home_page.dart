@@ -9,6 +9,7 @@ import '../../models/messaging.dart';
 import '../../repositories/messaging_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/application_shell.dart';
+import '../../widgets/compact_sign_in_dialog.dart';
 import '../../widgets/widgets.dart';
 import 'chat_conversation_page.dart';
 import 'find_people_page.dart';
@@ -164,25 +165,35 @@ class _MessagesHomePageState extends State<MessagesHomePage> {
             },
           ),
         const SizedBox(width: 8),
-        ElevatedButton.icon(
-          onPressed: isGuest
-              ? null
-              : () {
-                  HapticFeedback.lightImpact();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => FindPeoplePage(user: widget.user),
-                    ),
-                  );
-                },
-          icon: const Icon(Icons.edit_square, size: 16),
-          label: const Text('New Message'),
-          style: ElevatedButton.styleFrom(
-            visualDensity: VisualDensity.compact,
-            backgroundColor: const Color(0xFF081630),
-            foregroundColor: Colors.white,
+        if (isGuest)
+          ElevatedButton.icon(
+            onPressed: () => showCompactSignInDialog(context),
+            icon: const Icon(Icons.login_rounded, size: 16),
+            label: const Text('Sign In to Chat'),
+            style: ElevatedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              backgroundColor: const Color(0xFFE5A93C),
+              foregroundColor: const Color(0xFF081630),
+            ),
+          )
+        else
+          ElevatedButton.icon(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => FindPeoplePage(user: widget.user),
+                ),
+              );
+            },
+            icon: const Icon(Icons.edit_square, size: 16),
+            label: const Text('New Message'),
+            style: ElevatedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              backgroundColor: const Color(0xFF081630),
+              foregroundColor: Colors.white,
+            ),
           ),
-        ),
       ],
       child: Column(
         children: [
@@ -254,6 +265,18 @@ class _ConversationsOverview extends StatelessWidget {
                 'Create an account or sign in to send direct messages and share study materials.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(fontSize: 13, color: ac.txt2),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => showCompactSignInDialog(context),
+                icon: const Icon(Icons.login_rounded, size: 16),
+                label: const Text('Sign In Now'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ac.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
               ),
             ],
           ),

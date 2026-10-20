@@ -30,6 +30,9 @@ class ClassroomUploadService {
   }) async {
     final db = _db;
     if (db == null) return const Failure('Upload is offline right now.');
+    if (db.auth.currentUser == null) {
+      return const Failure('Guests cannot upload files. Please sign in as a teacher or administrator.');
+    }
     try {
       final safe = filename.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
       final ext = safe.contains('.') ? safe.split('.').last.toLowerCase() : '';

@@ -95,7 +95,13 @@ class PersonalStudyRepository {
     return watchAll(userId).map((all) => all.where((s) => s.dayOfWeek == today).toList());
   }
 
+  static bool isGuestUid(String uid) =>
+      uid.isEmpty || uid == 'guest' || uid.startsWith('guest_');
+
   Future<Result<void>> add(PersonalStudySlot slot) async {
+    if (isGuestUid(slot.userId)) {
+      return const Failure('Guests cannot create personal study timetables. Please sign in.');
+    }
     final id = slot.id.isNotEmpty ? slot.id : _uuidV4();
     final slotWithId = PersonalStudySlot(
       id: id,
@@ -135,6 +141,9 @@ class PersonalStudyRepository {
   }
 
   Future<Result<void>> update(PersonalStudySlot slot) async {
+    if (isGuestUid(slot.userId)) {
+      return const Failure('Guests cannot edit personal study timetables. Please sign in.');
+    }
     await _saveLocalFallback(slot);
     _changeNotifier.add(slot.userId);
 
@@ -154,6 +163,9 @@ class PersonalStudyRepository {
   }
 
   Future<Result<void>> delete(String userId, String slotId) async {
+    if (isGuestUid(userId)) {
+      return const Failure('Guests cannot delete personal study timetables. Please sign in.');
+    }
     try {
       final existing = await _getLocalSlots(userId);
       final next = existing.where((s) => s.id != slotId).toList();

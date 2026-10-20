@@ -97,6 +97,10 @@ class SchoolMarksRepository {
   }
 
   Future<Result<void>> upsert(SchoolMark mark) async {
+    final authUser = _db.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot enter or edit marks. Please sign in as a teacher or administrator.');
+    }
     try {
       await _marks.upsert(_toRow(mark), onConflict: 'student_id,subject,sequence,academic_year');
       await OfflineCache.instance.remove('all_marks_${mark.studentId}');
@@ -107,6 +111,10 @@ class SchoolMarksRepository {
   }
 
   Future<Result<void>> delete(String markId) async {
+    final authUser = _db.auth.currentUser;
+    if (authUser == null) {
+      return const Failure('Guests cannot delete marks. Please sign in as a teacher or administrator.');
+    }
     try {
       await _marks.delete().eq('id', markId);
       return const Success(null);

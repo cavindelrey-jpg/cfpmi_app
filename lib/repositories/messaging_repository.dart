@@ -186,6 +186,9 @@ class MessagingRepository {
     required String userAId, required String userAName, String? userAPhoto,
     required String userBId, required String userBName, String? userBPhoto,
   }) async {
+    if (userAId.isEmpty || userAId == 'guest' || userAId.startsWith('guest_')) {
+      return const Failure('Guests cannot start conversations. Please sign in.', null);
+    }
     try {
       final id = await _db.rpc('get_or_create_direct_conversation', params: {'p_other': userBId});
       return Success(id as String);
@@ -389,6 +392,9 @@ class MessagingRepository {
     String? sharedSubtitle,
     String? sharedThumbnailUrl,
   }) async {
+    if (senderId.isEmpty || senderId == 'guest' || senderId.startsWith('guest_')) {
+      return const Failure('Guests cannot send messages. Please sign in.', null);
+    }
     try {
       final preview = text.isNotEmpty ? text
           : (imageUrl != null ? '📷 Photo'

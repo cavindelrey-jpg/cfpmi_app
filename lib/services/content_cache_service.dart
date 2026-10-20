@@ -49,4 +49,23 @@ class ContentCacheService {
       // until the live fetch/stream succeeds.
     }
   }
+
+  Future<void> invalidate(String key) async {
+    _memory.remove(key);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_prefix$key');
+    } catch (_) {}
+  }
+
+  Future<void> clearAll() async {
+    _memory.clear();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith(_prefix)).toList();
+      for (final k in keys) {
+        await prefs.remove(k);
+      }
+    } catch (_) {}
+  }
 }

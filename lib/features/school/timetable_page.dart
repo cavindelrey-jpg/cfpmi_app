@@ -20,6 +20,7 @@ import '../timetable/personal_study_page.dart';
 import 'timetable_manager_page.dart';
 import 'widgets/school_shared_widgets.dart';
 import '../../widgets/application_shell.dart';
+import '../../widgets/compact_sign_in_dialog.dart';
 
 class TimetablePage extends StatelessWidget {
   final AppUser user;
@@ -224,25 +225,48 @@ class TimetablePage extends StatelessWidget {
               child: Icon(Icons.school_outlined, size: 44, color: ac.muted),
             ),
             const SizedBox(height: 16),
-            Text('Your class isn\'t set yet',
-                style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w700, color: ac.txt)),
+            Text(
+              user.isGuest ? 'Sign in to access official timetables' : 'Your class isn\'t set yet',
+              style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w700, color: ac.txt),
+            ),
             const SizedBox(height: 8),
-            Text('Set your class in Profile to see your school timetable, or create your own personal study timetable now.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 12.5, color: ac.txt2, height: 1.4)),
+            Text(
+              user.isGuest
+                  ? 'Official school timetables are published by school administration for enrolled students and teachers. Sign in to view your class schedule.'
+                  : 'Set your class in Profile to see your school timetable, or open your personal study plan.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(fontSize: 12.5, color: ac.txt2, height: 1.4),
+            ),
             const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => PersonalStudyPage(user: user)),
-              ),
-              icon: const Icon(Icons.event_note_rounded, size: 18),
-              label: const Text('Open Personal Timetable'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ac.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [
+                if (user.isGuest)
+                  ElevatedButton.icon(
+                    onPressed: () => showCompactSignInDialog(context),
+                    icon: const Icon(Icons.login_rounded, size: 18),
+                    label: const Text('Sign In to School Account'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE5A93C),
+                      foregroundColor: const Color(0xFF081630),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => PersonalStudyPage(user: user)),
+                  ),
+                  icon: const Icon(Icons.event_note_rounded, size: 18),
+                  label: const Text('Browse Personal Study Plan'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
             ),
           ]),
         ),
