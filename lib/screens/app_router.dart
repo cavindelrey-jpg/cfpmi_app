@@ -23,21 +23,51 @@ import 'first_login_screen.dart';
 import '../features/dashboard/universal_home_page.dart';
 import '../features/school/parent_dashboard_page.dart';
 import '../features/courses_marketplace/courses_home_page.dart';
+import '../features/courses_marketplace/course_composer_page.dart';
 import '../features/academic_content/library_home_page.dart';
+import '../features/academic_content/library_folder_page.dart';
+import '../features/academic_content/content_details_page.dart';
+import '../features/academic_content/content_upload_page.dart';
+import '../features/academic_content/bulk_past_paper_upload_page.dart';
 import '../features/testing/quiz_categories_page.dart';
 import '../features/magazine/magazine_feed_page.dart';
 import '../features/clubs/clubs_page.dart';
+import '../features/clubs/create_club_page.dart';
 import '../features/messages/messages_home_page.dart';
+import '../features/messages/chat_conversation_page.dart';
+import '../features/messages/find_people_page.dart';
 import '../features/school/school_connect_page.dart';
 import '../features/school/marks_page.dart';
+import '../features/school/marks_entry_page.dart';
+import '../features/school/marks_csv_import_page.dart';
 import '../features/school/homework_page.dart';
 import '../features/school/timetable_page.dart';
+import '../features/school/timetable_manager_page.dart';
+import '../features/school/timetable_csv_import_page.dart';
 import '../features/school/attendance_page.dart';
+import '../features/school/attendance_summary_page.dart';
 import '../features/school/fees_page.dart';
 import '../features/school/classroom_page.dart';
+import '../features/classroom/classroom_teacher_page.dart';
+import '../features/classroom/classroom_display_page.dart';
+import '../features/classroom/student_classroom_page.dart';
 import '../features/school/daily_notices/daily_notices_page.dart';
+import '../features/school/daily_notices/compose_daily_notice_page.dart';
+import '../features/school/class_management_page.dart';
+import '../features/school/student_roster_page.dart';
+import '../features/school/student_roster_csv_import_page.dart';
+import '../features/school/teacher_management_page.dart';
+import '../features/school/teacher_csv_import_page.dart';
+import '../features/school/school_calendar_page.dart';
+import '../features/school/school_calendar_manager_page.dart';
+import '../features/school/school_calendar_csv_import_page.dart';
 import '../features/school/exam_composer/exam_list_page.dart';
+import '../features/onboarding/voucher_entry_screen.dart';
 import '../pages/settings_page.dart';
+import '../pages/change_password_page.dart';
+import '../pages/notifications_page.dart';
+import '../pages/profile_page.dart';
+import '../pages/profile_edit_page.dart';
 import '../widgets/application_shell.dart';
 import '../pages/help_support_page.dart';
 import '../pages/bookmarks_page.dart';
@@ -57,93 +87,318 @@ import 'login_screen.dart';
 class AppRouter extends StatefulWidget {
   const AppRouter({super.key});
 
+  /// Deeply-layered hierarchical route generator comparable to modern platforms (Facebook).
+  /// Parses multi-segment paths, nested resources, and query parameters cleanly.
   static Route<dynamic>? generateRoute(RouteSettings settings) {
-    final name = settings.name;
-    if (name == null || name == '/' || name.isEmpty) return null;
+    final rawName = settings.name;
+    if (rawName == null || rawName.isEmpty) return null;
+
+    final uri = Uri.tryParse(rawName);
+    if (uri == null) return null;
+
+    final segments = uri.pathSegments;
+    if (segments.isEmpty) {
+      return null;
+    }
 
     final user = AuthService.instance.lastKnownUser ?? AppUser.guest();
+    final q = uri.queryParameters;
 
-    Widget page;
-    switch (name) {
-      case '/courses':
-        page = CoursesHomePage(user: user);
+    Widget? page;
+    final root = segments[0];
+
+    switch (root) {
+      case 'home':
+        page = user.isParent ? ParentDashboardPage(user: user) : UniversalHomePage(user: user);
         break;
-      case '/library':
-        page = LibraryHomePage(user: user);
-        break;
-      case '/past-questions':
-        page = LibraryHomePage(
-          user: user,
-          initialCollectionFilter: 'past_papers',
-          navDestination: AppNavDestination.pastQuestions,
-        );
-        break;
-      case '/tests':
-      case '/quizzes':
-        page = QuizCategoriesPage(user: user);
-        break;
-      case '/homework':
-        page = HomeworkPage(user: user);
-        break;
-      case '/marks':
-        page = MarksPage(user: user);
-        break;
-      case '/classroom':
-        page = ClassroomPage(user: user);
-        break;
-      case '/set-exam':
-      case '/exam-composer':
-        page = ExamListPage(user: user);
-        break;
-      case '/messages':
-        page = MessagesHomePage(user: user);
-        break;
-      case '/clubs':
-        page = ClubsPage(user: user);
-        break;
-      case '/timetable':
-        page = TimetablePage(user: user);
-        break;
-      case '/attendance':
-        page = AttendancePage(user: user);
-        break;
-      case '/fees':
-        page = FeesPage(user: user);
-        break;
-      case '/announcements':
-        page = DailyNoticesPage(user: user);
-        break;
-      case '/magazine':
-        page = MagazineFeedPage(user: user);
-        break;
-      case '/dictionary':
-        page = DictionaryScreen(user: user);
-        break;
-      case '/bookmarks':
-        page = BookmarksPage(user: user);
-        break;
-      case '/study-plan':
-        page = PersonalStudyPage(user: user);
-        break;
-      case '/school-connect':
-        page = SchoolConnectPage(user: user);
-        break;
-      case '/settings':
-        page = SettingsPage(user: user);
-        break;
-      case '/help':
-        page = HelpSupportPage(user: user);
-        break;
-      case '/login':
+
+      case 'login':
         page = const LoginScreen();
         break;
+
+      case 'register':
+      case 'voucher':
+        page = VoucherEntryScreen(onBrowseAsGuest: () {});
+        break;
+
+      // ── 1. Academic Library & Past Questions Hierarchy ──
+      case 'library':
+        if (segments.length == 1) {
+          page = LibraryHomePage(user: user);
+        } else if (segments.length >= 3 && segments[1] == 'folders') {
+          final folderId = segments[2];
+          page = LibraryFolderPage(
+            folderId: folderId,
+            folderName: q['name'] ?? 'Folder',
+            user: user,
+            navDestination: AppNavDestination.academicLibrary,
+          );
+        } else if (segments.length >= 3 && segments[1] == 'item') {
+          page = ContentDetailsPage(contentId: segments[2], user: user);
+        } else if (segments.length >= 2 && segments[1] == 'upload') {
+          page = ContentUploadPage(user: user);
+        } else {
+          page = LibraryHomePage(user: user);
+        }
+        break;
+
+      case 'past-questions':
+      case 'past-papers':
+        if (segments.length >= 2 && segments[1] == 'upload') {
+          page = BulkPastPaperUploadPage(user: user);
+        } else {
+          page = LibraryHomePage(
+            user: user,
+            initialCollectionFilter: 'past_papers',
+            navDestination: AppNavDestination.pastQuestions,
+          );
+        }
+        break;
+
+      // ── 2. Academic Courses Hierarchy ───────────────────
+      case 'courses':
+        if (segments.length == 1) {
+          page = CoursesHomePage(user: user);
+        } else if (segments.length >= 2 && (segments[1] == 'create' || segments[1] == 'composer')) {
+          page = CourseComposerPage(user: user);
+        } else {
+          page = CoursesHomePage(user: user);
+        }
+        break;
+
+      // ── 3. Groups & Clubs Hierarchy ─────────────────────
+      case 'groups':
+      case 'clubs':
+        if (segments.length == 1) {
+          page = ClubsPage(user: user);
+        } else if (segments.length >= 2 && segments[1] == 'create') {
+          page = CreateClubPage(user: user);
+        } else {
+          page = ClubsPage(user: user);
+        }
+        break;
+
+      // ── 4. Messaging Hierarchy ──────────────────────────
+      case 'messages':
+        if (segments.length >= 3 && segments[1] == 't') {
+          final convId = segments[2];
+          final otherId = q['u'] ?? '';
+          final otherName = q['name'] ?? 'Chat';
+          page = ChatConversationPage(
+            conversationId: convId,
+            currentUser: user,
+            otherUserId: otherId,
+            otherUserName: otherName,
+          );
+        } else if (segments.length >= 2 && (segments[1] == 'find' || segments[1] == 'people')) {
+          page = FindPeoplePage(user: user);
+        } else {
+          page = MessagesHomePage(user: user);
+        }
+        break;
+
+      // ── 5. Live Classroom & Projector Hierarchy ─────────
+      case 'classroom':
+        if (segments.length >= 4 && segments[1] == 'session' && (segments[3] == 'projector' || segments[3] == 'display')) {
+          final sessionId = segments[2];
+          page = ClassroomDisplayPage(sessionId: sessionId);
+        } else if (segments.length >= 4 && segments[1] == 'session' && segments[3] == 'teacher') {
+          final sessionId = segments[2];
+          page = ClassroomControlPage(user: user, sessionId: sessionId);
+        } else if (segments.length >= 3 && segments[1] == 'session') {
+          final sessionId = segments[2];
+          page = user.isStaff
+              ? ClassroomControlPage(user: user, sessionId: sessionId)
+              : StudentClassroomPage(user: user);
+        } else {
+          page = ClassroomPage(user: user);
+        }
+        break;
+
+      // ── 6. Tests, Quizzes & Exam Composer ───────────────
+      case 'tests':
+      case 'quizzes':
+        page = QuizCategoriesPage(user: user);
+        break;
+
+      case 'set-exam':
+      case 'exam-composer':
+        page = ExamListPage(user: user);
+        break;
+
+      // ── 7. School Hub & Hierarchical Sub-routes ──────────
+      case 'school':
+        if (segments.length == 1) {
+          page = SchoolConnectPage(user: user);
+        } else {
+          final sub = segments[1];
+          switch (sub) {
+            case 'classes':
+              page = ClassManagementPage(user: user);
+              break;
+            case 'students':
+              if (segments.length >= 3 && segments[2] == 'import') {
+                page = StudentRosterCsvImportPage(staff: user, targetClass: q['class']);
+              } else {
+                page = StudentRosterPage(user: user, initialClass: q['class']);
+              }
+              break;
+            case 'teachers':
+              if (segments.length >= 3 && segments[2] == 'import') {
+                page = TeacherCsvImportPage(admin: user);
+              } else {
+                page = TeacherManagementPage(admin: user);
+              }
+              break;
+            case 'timetable':
+              if (segments.length >= 3 && segments[2] == 'manage') {
+                page = TimetableManagerPage(user: user);
+              } else if (segments.length >= 3 && segments[2] == 'import') {
+                page = TimetableCsvImportPage(user: user);
+              } else {
+                page = TimetablePage(user: user);
+              }
+              break;
+            case 'attendance':
+              if (segments.length >= 3 && segments[2] == 'summary') {
+                page = AttendanceSummaryPage(user: user);
+              } else {
+                page = AttendancePage(user: user);
+              }
+              break;
+            case 'marks':
+              if (segments.length >= 3 && segments[2] == 'import') {
+                page = MarksCsvImportPage(staff: user);
+              } else if (segments.length >= 3 && segments[2] == 'entry') {
+                page = MarksEntryPage(staff: user);
+              } else {
+                page = MarksPage(user: user);
+              }
+              break;
+            case 'homework':
+              page = HomeworkPage(user: user);
+              break;
+            case 'fees':
+              page = FeesPage(user: user);
+              break;
+            case 'calendar':
+              if (segments.length >= 3 && segments[2] == 'manage') {
+                page = SchoolCalendarManagerPage(user: user);
+              } else if (segments.length >= 3 && segments[2] == 'import') {
+                page = SchoolCalendarCsvImportPage(staff: user);
+              } else {
+                page = SchoolCalendarPage(user: user);
+              }
+              break;
+            case 'announcements':
+              if (segments.length >= 3 && segments[2] == 'compose') {
+                page = ComposeDailyNoticePage(user: user);
+              } else {
+                page = DailyNoticesPage(user: user);
+              }
+              break;
+            default:
+              page = SchoolConnectPage(user: user);
+          }
+        }
+        break;
+
+      // Direct Top-Level Aliases
+      case 'classes':
+        page = ClassManagementPage(user: user);
+        break;
+      case 'students':
+        if (segments.length >= 2 && segments[1] == 'import') {
+          page = StudentRosterCsvImportPage(staff: user, targetClass: q['class']);
+        } else {
+          page = StudentRosterPage(user: user, initialClass: q['class']);
+        }
+        break;
+      case 'teachers':
+        if (segments.length >= 2 && segments[1] == 'import') {
+          page = TeacherCsvImportPage(admin: user);
+        } else {
+          page = TeacherManagementPage(admin: user);
+        }
+        break;
+      case 'timetable':
+        if (segments.length >= 2 && segments[1] == 'manage') {
+          page = TimetableManagerPage(user: user);
+        } else if (segments.length >= 2 && segments[1] == 'personal') {
+          page = PersonalStudyPage(user: user);
+        } else {
+          page = TimetablePage(user: user);
+        }
+        break;
+      case 'attendance':
+        page = AttendancePage(user: user);
+        break;
+      case 'marks':
+        if (segments.length >= 2 && segments[1] == 'import') {
+          page = MarksCsvImportPage(staff: user);
+        } else {
+          page = MarksPage(user: user);
+        }
+        break;
+      case 'homework':
+        page = HomeworkPage(user: user);
+        break;
+      case 'fees':
+        page = FeesPage(user: user);
+        break;
+      case 'announcements':
+        page = DailyNoticesPage(user: user);
+        break;
+      case 'calendar':
+        page = SchoolCalendarPage(user: user);
+        break;
+      case 'study-plan':
+        page = PersonalStudyPage(user: user);
+        break;
+      case 'school-connect':
+        page = SchoolConnectPage(user: user);
+        break;
+
+      // ── 8. Profile, Notifications, Magazine, Dictionary, Settings ──
+      case 'magazine':
+        page = MagazineFeedPage(user: user);
+        break;
+      case 'dictionary':
+        page = DictionaryScreen(user: user);
+        break;
+      case 'bookmarks':
+        page = BookmarksPage(user: user);
+        break;
+      case 'notifications':
+        page = NotificationsPage(user: user);
+        break;
+      case 'profile':
+        if (segments.length >= 2 && segments[1] == 'edit') {
+          page = ProfileEditPage(user: user);
+        } else {
+          page = ProfilePage(user: user);
+        }
+        break;
+      case 'settings':
+        if (segments.length >= 2 && (segments[1] == 'security' || segments[1] == 'password')) {
+          page = const ChangePasswordPage();
+        } else {
+          page = SettingsPage(user: user);
+        }
+        break;
+      case 'help':
+        page = HelpSupportPage(user: user);
+        break;
+
       default:
         return null;
     }
 
+    if (page == null) return null;
+
     return PageRouteBuilder(
       settings: settings,
-      pageBuilder: (_, __, ___) => page,
+      pageBuilder: (_, __, ___) => page!,
       transitionDuration: Duration.zero,
     );
   }
