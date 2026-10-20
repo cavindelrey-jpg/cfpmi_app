@@ -23,6 +23,7 @@ import '../features/school/class_management_page.dart';
 
 import '../widgets/app_background.dart';
 import '../widgets/application_shell.dart';
+import '../widgets/compact_sign_in_dialog.dart';
 
 class SettingsPage extends StatelessWidget {
   final AppUser user;
@@ -101,8 +102,24 @@ class SettingsPage extends StatelessWidget {
                   builder: (_) => DeleteAccountPage(user: user))), color: ac.red),
 
           const SizedBox(height: 24),
-          _tile(context, Icons.logout_rounded, 'Sign Out', null,
-              () => AuthService.instance.performSignOut(context), color: ac.red),
+          if (user.isGuest)
+            _tile(
+              context,
+              Icons.login_rounded,
+              'Sign In to Account',
+              'Sign in with your email and password to access your student or teacher profile',
+              () => showCompactSignInDialog(context),
+              color: const Color(0xFFE5A93C),
+            )
+          else
+            _tile(
+              context,
+              Icons.logout_rounded,
+              'Sign Out',
+              null,
+              () => AuthService.instance.performSignOut(context),
+              color: ac.red,
+            ),
         ],
       ),
     );

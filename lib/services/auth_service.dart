@@ -372,9 +372,12 @@ class AuthService {
       await signOut();
       unawaited(MessageCacheService.instance.clearAll());
 
-      // Pop all routes and land clean at AppRouter root
+      // Pop all routes and land clean at AppRouter root with /home route
       nav.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AppRouter()),
+        MaterialPageRoute(
+          settings: const RouteSettings(name: '/home'),
+          builder: (_) => const AppRouter(),
+        ),
         (route) => false,
       );
     } catch (e) {

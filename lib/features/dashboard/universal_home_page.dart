@@ -76,6 +76,7 @@ import '../testing/quiz_categories_page.dart';
 import '../testing/xp_dashboard_page.dart';
 import '../timetable/personal_study_page.dart';
 import '../../widgets/application_shell.dart';
+import '../../widgets/compact_sign_in_dialog.dart';
 import '../school/attendance_page.dart';
 import '../school/classroom_page.dart';
 
@@ -547,6 +548,22 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
               ),
             ),
           ),
+          if (_isGuest) ...[
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: () => showCompactSignInDialog(context),
+              icon: const Icon(Icons.login_rounded, size: 15),
+              label: const Text('Sign In'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE5A93C),
+                foregroundColor: const Color(0xFF081630),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                textStyle: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -688,7 +705,27 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
                     );
                   }
 
-                  // 4. Default for new accounts or guests
+                  if (_isGuest) {
+                    return _heroCardLayout(
+                      context,
+                      eyebrow: 'WELCOME TO CFPMI',
+                      eyebrowIcon: Icons.login_rounded,
+                      eyebrowColor: ac.gold,
+                      title: 'Sign In to Your Account',
+                      subtitle:
+                          'Sign in to access your student records, class marks, attendance, assignments, and personalized study tools.',
+                      primaryLabel: 'Sign In to Account',
+                      primaryIcon: Icons.login_rounded,
+                      onPrimary: () {
+                        HapticFeedback.selectionClick();
+                        showCompactSignInDialog(context);
+                      },
+                      secondaryLabel: 'Explore Library as Guest',
+                      onSecondary: () => _open(context, LibraryHomePage(user: _userOrGuest)),
+                    );
+                  }
+
+                  // 4. Default for new accounts
                   return _heroCardLayout(
                     context,
                     eyebrow: 'ACADEMIC COMMAND CENTER',

@@ -119,6 +119,8 @@ class AppRouter extends StatefulWidget {
         break;
 
       case 'login':
+      case 'signin':
+      case 'sign-in':
         page = const LoginScreen();
         break;
 
@@ -623,14 +625,8 @@ class _AppUserGateState extends State<_AppUserGate> {
         }
         final user = snap.data;
         if (user == null) {
-          // currentAppUserStream() only ever emits null after a
-          // SUCCESSFUL fetch that found no row at all (account deleted
-          // server-side) — a network failure/offline reconnect keeps
-          // showing the last cached/known user instead of reaching
-          // here, so this signOut() no longer fires on a connectivity
-          // hiccup (see auth_service.dart's currentAppUserStream doc).
           AuthService.instance.signOut();
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return HomeShell(user: AppUser.guest());
         }
         if (user.status == AccountStatus.suspended) return _SuspendedScreen(user: user);
         if (user.isFirstLogin) return FirstLoginScreen(user: user);

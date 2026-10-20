@@ -21,6 +21,7 @@ import '../features/school/daily_notices/daily_notices_page.dart';
 import '../features/school/attendance_page.dart';
 import '../features/school/fees_page.dart';
 import '../features/school/classroom_page.dart';
+import 'compact_sign_in_dialog.dart';
 
 class AppDrawer extends StatelessWidget {
   final AppUser? user;
@@ -142,10 +143,16 @@ class AppDrawer extends StatelessWidget {
                       builder: (_) => HelpSupportPage(user: user ?? AppUser.guest()),
                     ));
                   }),
-                  _navItem(context, Icons.logout_rounded, 'Sign Out', () {
-                    Navigator.of(context).pop();
-                    AuthService.instance.performSignOut(context);
-                  }, iconColor: const Color(0xFFEF4444), textColor: const Color(0xFFEF4444)),
+                  if (user == null || user!.isGuest)
+                    _navItem(context, Icons.login_rounded, 'Sign In', () {
+                      Navigator.of(context).pop();
+                      showCompactSignInDialog(context);
+                    }, iconColor: const Color(0xFFE5A93C), textColor: const Color(0xFFE5A93C))
+                  else
+                    _navItem(context, Icons.logout_rounded, 'Sign Out', () {
+                      Navigator.of(context).pop();
+                      AuthService.instance.performSignOut(context);
+                    }, iconColor: const Color(0xFFEF4444), textColor: const Color(0xFFEF4444)),
                 ],
               ),
             ),
@@ -156,55 +163,65 @@ class AppDrawer extends StatelessWidget {
   }
 
   Widget _header(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: const Color(0xFFE5A93C),
-            backgroundImage: user?.photoUrl != null && user!.photoUrl!.isNotEmpty
-                ? NetworkImage(user!.photoUrl!)
-                : null,
-            child: user?.photoUrl == null || user!.photoUrl!.isEmpty
-                ? Text(
-                    user?.initials ?? 'ND',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF081630),
-                    ),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user?.name.isNotEmpty == true ? user!.name : 'Academic Student',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  user?.roleLabel.isNotEmpty == true ? user!.roleLabel : 'Student',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: const Color(0xFF8CA3CF),
-                  ),
-                ),
-              ],
+    final isGuest = user == null || user!.isGuest;
+    return InkWell(
+      onTap: isGuest
+          ? () {
+              Navigator.of(context).pop();
+              showCompactSignInDialog(context);
+            }
+          : null,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: const Color(0xFFE5A93C),
+              backgroundImage: (!isGuest && user?.photoUrl != null && user!.photoUrl!.isNotEmpty)
+                  ? NetworkImage(user!.photoUrl!)
+                  : null,
+              child: (isGuest || user?.photoUrl == null || user!.photoUrl!.isEmpty)
+                  ? Text(
+                      isGuest ? '?' : (user?.initials ?? 'S'),
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF081630),
+                      ),
+                    )
+                  : null,
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isGuest ? 'Guest User' : (user?.name.isNotEmpty == true ? user!.name : 'Student'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    isGuest ? 'Tap to Sign In' : (user?.roleLabel.isNotEmpty == true ? user!.roleLabel : 'Student'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: isGuest ? const Color(0xFFE5A93C) : const Color(0xFF8CA3CF),
+                      fontWeight: isGuest ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

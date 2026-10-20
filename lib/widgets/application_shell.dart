@@ -920,8 +920,9 @@ class _GlobalTopBar extends StatelessWidget {
                 ),
               ],
 
-              // Real Notifications Icon + Live Unread Count Badge
-              if (!isGuest)
+              // Signed-in only actions: Notifications, Messages, Bookmarks, and Upload Content
+              if (!isGuest) ...[
+                // Real Notifications Icon + Live Unread Count Badge
                 StreamBuilder<int>(
                   stream: _safeWatchNotificationCount(uid),
                   builder: (context, snap) {
@@ -934,6 +935,7 @@ class _GlobalTopBar extends StatelessWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
+                            settings: const RouteSettings(name: '/notifications'),
                             builder: (_) =>
                                 NotificationsPage(user: user ?? AppUser.guest()),
                           ),
@@ -941,26 +943,10 @@ class _GlobalTopBar extends StatelessWidget {
                       },
                     );
                   },
-                )
-              else
-                _TopBarBadgeIcon(
-                  icon: Icons.notifications_outlined,
-                  tooltip: 'Notifications',
-                  badgeCount: 0,
-                  compact: isNarrow,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            NotificationsPage(user: user ?? AppUser.guest()),
-                      ),
-                    );
-                  },
                 ),
 
-              // Real Messages Icon + Live Unread Count Badge
-              if (!isUltraNarrow) ...[
-                if (!isGuest)
+                // Real Messages Icon + Live Unread Count Badge
+                if (!isUltraNarrow)
                   StreamBuilder<List<Conversation>>(
                     stream: _safeWatchConversations(uid),
                     builder: (context, snap) {
@@ -977,6 +963,7 @@ class _GlobalTopBar extends StatelessWidget {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
+                              settings: const RouteSettings(name: '/messages'),
                               builder: (_) =>
                                   MessagesHomePage(user: user ?? AppUser.guest()),
                             ),
@@ -984,86 +971,73 @@ class _GlobalTopBar extends StatelessWidget {
                         },
                       );
                     },
-                  )
-                else
-                  _TopBarBadgeIcon(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    tooltip: 'Messages',
-                    badgeCount: 0,
-                    compact: isNarrow,
-                    onTap: () {
+                  ),
+
+                // Bookmarks & Saved Content shortcut
+                if (!isCompact)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.bookmark_border_rounded,
+                      color: Color(0xFFC0D2F0),
+                      size: 20,
+                    ),
+                    tooltip: 'Bookmarks & Saved Items',
+                    onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
+                          settings: const RouteSettings(name: '/bookmarks'),
                           builder: (_) =>
-                              MessagesHomePage(user: user ?? AppUser.guest()),
+                              BookmarksPage(user: user ?? AppUser.guest()),
                         ),
                       );
                     },
                   ),
+
+                // Create / Upload Content Button
+                if ((user?.canUploadContent ?? false) && !isNarrow)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1B3260),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      constraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 36),
+                      padding: const EdgeInsets.all(6),
+                      icon: const Icon(
+                        Icons.add_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      tooltip: 'Create or Upload Content',
+                      onPressed: () {
+                        if (user != null) {
+                          showCreateContentSheet(context, user!);
+                        }
+                      },
+                    ),
+                  ),
               ],
 
-              // Bookmarks & Saved Content shortcut
-              if (!isCompact)
-                IconButton(
-                  icon: const Icon(
-                    Icons.bookmark_border_rounded,
-                    color: Color(0xFFC0D2F0),
-                    size: 20,
-                  ),
-                  tooltip: 'Bookmarks & Saved Items',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            BookmarksPage(user: user ?? AppUser.guest()),
-                      ),
-                    );
-                  },
-                ),
-
-              // Create / Upload Content Button
-              if (!isGuest && (user?.canUploadContent ?? false) && !isNarrow)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1B3260),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    constraints:
-                        const BoxConstraints(minWidth: 36, minHeight: 36),
-                    padding: const EdgeInsets.all(6),
-                    icon: const Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    tooltip: 'Create or Upload Content',
-                    onPressed: () {
-                      if (user != null) {
-                        showCreateContentSheet(context, user!);
-                      }
-                    },
-                  ),
-                ),
-
+              // Prominent Sign In button for signed-out guests (always visible)
               if (isGuest)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: ElevatedButton.icon(
                     onPressed: () => showCompactSignInDialog(context),
-                    icon: const Icon(Icons.login_rounded, size: 15),
+                    icon: const Icon(Icons.login_rounded, size: 16),
                     label: Text(
                       'Sign In',
-                      style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700),
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE5A93C),
                       foregroundColor: const Color(0xFF081630),
-                      elevation: 0,
+                      elevation: 2,
                       padding: EdgeInsets.symmetric(
-                        horizontal: isNarrow ? 8 : 12,
-                        vertical: 8,
+                        horizontal: isNarrow ? 10 : 16,
+                        vertical: 9,
                       ),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       visualDensity: VisualDensity.compact,
@@ -1157,7 +1131,7 @@ class _UserProfileChip extends StatelessWidget {
             ? user!.name.trim()
             : (user!.email.isNotEmpty ? user!.email.split('@').first : 'Student'));
     final role = isGuest
-        ? 'Browsing Mode'
+        ? 'Tap to Sign In'
         : (user!.roleLabel.isNotEmpty ? user!.roleLabel : 'Student');
     final initials = isGuest ? 'G' : user!.initials;
 
@@ -1466,6 +1440,49 @@ class _GlobalSidebarContentState extends State<_GlobalSidebarContent> {
                 Icons.help_outline_rounded,
                 'Help & Support',
               ),
+              if (widget.user == null || widget.user!.isGuest) ...[
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: collapsed
+                      ? Tooltip(
+                          message: 'Sign In',
+                          child: InkWell(
+                            onTap: () => showCompactSignInDialog(context),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              height: 38,
+                              width: 38,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE5A93C).withValues(alpha: 0.20),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFE5A93C), width: 1.2),
+                              ),
+                              child: const Icon(
+                                Icons.login_rounded,
+                                color: Color(0xFFE5A93C),
+                                size: 19,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: () => showCompactSignInDialog(context),
+                          icon: const Icon(Icons.login_rounded, size: 16),
+                          label: Text(
+                            'Sign In',
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE5A93C),
+                            foregroundColor: const Color(0xFF081630),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                ),
+              ],
             ],
           ),
         ),

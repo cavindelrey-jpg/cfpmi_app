@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 import '../config/branding.dart';
 import '../services/auth_service.dart';
+import 'app_router.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -73,7 +74,13 @@ class _LoginScreenState extends State<LoginScreen>
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       } else {
-        setState(() => _loading = false);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            settings: const RouteSettings(name: '/home'),
+            builder: (_) => const AppRouter(),
+          ),
+          (route) => false,
+        );
       }
     } catch (e) {
       if (!mounted) return;
