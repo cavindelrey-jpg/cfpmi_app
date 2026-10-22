@@ -550,6 +550,18 @@ class AppRouter extends StatefulWidget {
   State<AppRouter> createState() => _AppRouterState();
 }
 
+import '../widgets/widgets.dart';
+
+// ────────────────────────────────────────────────────────────────────────────
+// AppRouter — watches Firebase auth state only.
+// ────────────────────────────────────────────────────────────────────────────
+class AppRouter extends StatefulWidget {
+  const AppRouter({super.key});
+
+  @override
+  State<AppRouter> createState() => _AppRouterState();
+}
+
 class _AppRouterState extends State<AppRouter> {
   late Stream<User?> _authStream;
 
@@ -566,16 +578,7 @@ class _AppRouterState extends State<AppRouter> {
       initialData: AuthService.instance.firebaseUser,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting && snap.data == null) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF5F7FA),
-            body: Center(
-              child: SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1A56DB)),
-              ),
-            ),
-          );
+          return const _LaunchPageSkeleton();
         }
         if (snap.data == null) {
           return HomeShell(user: AppUser.guest());
@@ -612,16 +615,7 @@ class _AppUserGateState extends State<_AppUserGate> {
       initialData: AuthService.instance.lastKnownUser,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting && snap.data == null) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF5F7FA),
-            body: Center(
-              child: SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1A56DB)),
-              ),
-            ),
-          );
+          return const _LaunchPageSkeleton();
         }
         final user = snap.data;
         if (user == null) {
@@ -632,6 +626,97 @@ class _AppUserGateState extends State<_AppUserGate> {
         if (user.isFirstLogin) return FirstLoginScreen(user: user);
         return DailyChallengeGate(user: user, child: HomeShell(user: user));
       },
+    );
+  }
+}
+
+/// Full-page launch skeleton sketch for seamless startup transitions without spinners.
+class _LaunchPageSkeleton extends StatelessWidget {
+  const _LaunchPageSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return Scaffold(
+      backgroundColor: ac.bg,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Bar Skeleton: Avatar + Greetings + Notification Icon
+              Row(
+                children: [
+                  const ShimmerCircle(size: 44),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShimmerLine(width: 140, height: 16),
+                        SizedBox(height: 6),
+                        ShimmerLine(width: 90, height: 12),
+                      ],
+                    ),
+                  ),
+                  const ShimmerCircle(size: 36),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Search Bar Skeleton
+              const ShimmerBlock(height: 48),
+              const SizedBox(height: 24),
+
+              // Hero Command Center Card Skeleton
+              const ShimmerBlock(height: 160),
+              const SizedBox(height: 24),
+
+              // Quick Actions / Metrics Strip Skeleton
+              Row(
+                children: const [
+                  Expanded(child: ShimmerBlock(height: 72)),
+                  SizedBox(width: 10),
+                  Expanded(child: ShimmerBlock(height: 72)),
+                  SizedBox(width: 10),
+                  Expanded(child: ShimmerBlock(height: 72)),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Section Header Skeleton
+              const ShimmerLine(width: 160, height: 18),
+              const SizedBox(height: 14),
+
+              // Hub Grid Skeleton
+              Row(
+                children: const [
+                  Expanded(child: ShimmerBlock(height: 120)),
+                  SizedBox(width: 12),
+                  Expanded(child: ShimmerBlock(height: 120)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: const [
+                  Expanded(child: ShimmerBlock(height: 120)),
+                  SizedBox(width: 12),
+                  Expanded(child: ShimmerBlock(height: 120)),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Schedule / List Skeleton
+              const ShimmerLine(width: 180, height: 18),
+              const SizedBox(height: 14),
+              const ShimmerBlock(height: 80),
+              const SizedBox(height: 10),
+              const ShimmerBlock(height: 80),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

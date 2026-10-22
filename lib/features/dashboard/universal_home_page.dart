@@ -1472,7 +1472,17 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         builder: (context, snap) {
           final slots = snap.data ?? const <SchoolTimetableSlot>[];
           if (snap.connectionState == ConnectionState.waiting) {
-            return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ShimmerLine(width: 160, height: 14),
+                  SizedBox(height: 8),
+                  ShimmerLine(width: 110, height: 12),
+                ],
+              ),
+            );
           }
           if (slots.isNotEmpty) {
             final shown = slots.take(2).toList();
@@ -1575,7 +1585,17 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
       builder: (context, snap) {
         final slots = snap.data ?? const <PersonalStudySlot>[];
         if (snap.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerLine(width: 150, height: 14),
+                SizedBox(height: 8),
+                ShimmerLine(width: 100, height: 12),
+              ],
+            ),
+          );
         }
         if (slots.isEmpty) {
           return InkWell(
@@ -1712,7 +1732,17 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
         builder: (context, snap) {
           final homeworkList = snap.data ?? const <Homework>[];
           if (snap.connectionState == ConnectionState.waiting) {
-            return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ShimmerLine(width: 170, height: 14),
+                  SizedBox(height: 8),
+                  ShimmerLine(width: 120, height: 12),
+                ],
+              ),
+            );
           }
 
           if (homeworkList.isNotEmpty) {
@@ -1780,7 +1810,17 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
       future: _continueReadingFuture,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerLine(width: 180, height: 14),
+                SizedBox(height: 8),
+                ShimmerLine(width: 130, height: 12),
+              ],
+            ),
+          );
         }
         final data = snap.data;
         if (data == null) {
@@ -1978,7 +2018,17 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
       stream: _announcementsStream ?? const Stream.empty(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 50, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerLine(width: 170, height: 14),
+                SizedBox(height: 8),
+                ShimmerLine(width: 120, height: 12),
+              ],
+            ),
+          );
         }
         final items = snap.data ?? const <Announcement>[];
         if (items.isEmpty) {
@@ -2113,7 +2163,17 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
       future: _upcomingClubEventsFuture,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 40, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerLine(width: 160, height: 14),
+                SizedBox(height: 8),
+                ShimmerLine(width: 110, height: 12),
+              ],
+            ),
+          );
         }
         final items = snap.data ?? const [];
         if (items.isEmpty) {
@@ -2221,9 +2281,15 @@ class _UniversalHomePageState extends State<UniversalHomePage> {
       future: _recommendedFuture,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const SizedBox(
+          return SizedBox(
             height: 168,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: 4,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, __) => const ShimmerBlock(width: 140, height: 168),
+            ),
           );
         }
         if (snap.hasError) {

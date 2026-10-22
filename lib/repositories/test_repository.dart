@@ -29,8 +29,8 @@
 // own Supabase rewrite made for this exact method.
 
 import 'dart:async';
-
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/core.dart';
 import '../core/essay_matching.dart';
@@ -253,6 +253,9 @@ class TestRepository {
   Future<Result<void>> updateQuizCategoryIcon(String id, {String emoji = '', String imageUrl = ''}) =>
       AcademicSectionRepository.instance.updateSectionIcon(id, emoji: emoji, imageUrl: imageUrl);
 
+  Future<Result<String>> uploadQuizCategoryImageBytes({required String categoryId, required Uint8List bytes}) =>
+      AcademicSectionRepository.instance.uploadSectionImageBytes(sectionId: categoryId, bytes: bytes);
+
   Future<Result<String>> uploadQuizCategoryImage({required String categoryId, required File imageFile}) =>
       AcademicSectionRepository.instance.uploadSectionImage(sectionId: categoryId, imageFile: imageFile);
 
@@ -291,17 +294,43 @@ class TestRepository {
     _memoizer.clear();
   }
 
+  Future<Result<String>> uploadQuizNodeImageBytes({
+    required String key,
+    required Uint8List bytes,
+  }) async {
+    try {
+      final docId = key.replaceAll('/', '-');
+      final path = 'curriculum_icons/$docId.jpg';
+      await _db.storage.from(_bucket).uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'));
+      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+    } catch (e) {
+      return Failure('Failed to upload image', e);
+    }
+  }
+
   Future<Result<String>> uploadQuizNodeImage({
     required String key,
     required File imageFile,
   }) async {
     try {
-      final docId = key.replaceAll('/', '-');
-      final path = 'curriculum_icons/$docId.jpg';
-      await _db.storage.from(_bucket).upload(path, imageFile, fileOptions: const FileOptions(upsert: true));
-      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+      final bytes = await imageFile.readAsBytes();
+      return uploadQuizNodeImageBytes(key: key, bytes: bytes);
     } catch (e) {
       return Failure('Failed to upload image', e);
+    }
+  }
+
+  /// Uploads a photo for one quiz's own tile/card (see [Test.thumbnailUrl]) from raw bytes.
+  Future<Result<String>> uploadTestThumbnailBytes({
+    required String testId,
+    required Uint8List bytes,
+  }) async {
+    try {
+      final path = 'test_thumbnails/$testId.jpg';
+      await _db.storage.from(_bucket).uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'));
+      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+    } catch (e) {
+      return Failure('Failed to upload thumbnail', e);
     }
   }
 
@@ -311,11 +340,25 @@ class TestRepository {
     required File imageFile,
   }) async {
     try {
-      final path = 'test_thumbnails/$testId.jpg';
-      await _db.storage.from(_bucket).upload(path, imageFile, fileOptions: const FileOptions(upsert: true));
-      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+      final bytes = await imageFile.readAsBytes();
+      return uploadTestThumbnailBytes(testId: testId, bytes: bytes);
     } catch (e) {
       return Failure('Failed to upload thumbnail', e);
+    }
+  }
+
+  /// Uploads a real photo/diagram for one question inside a test from raw bytes.
+  Future<Result<String>> uploadQuestionImageBytes({
+    required String testId,
+    required String questionId,
+    required Uint8List bytes,
+  }) async {
+    try {
+      final path = 'test_question_images/${testId}_$questionId.jpg';
+      await _db.storage.from(_bucket).uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'));
+      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+    } catch (e) {
+      return Failure('Failed to upload question image', e);
     }
   }
 
@@ -329,9 +372,8 @@ class TestRepository {
     required File imageFile,
   }) async {
     try {
-      final path = 'test_question_images/${testId}_$questionId.jpg';
-      await _db.storage.from(_bucket).upload(path, imageFile, fileOptions: const FileOptions(upsert: true));
-      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+      final bytes = await imageFile.readAsBytes();
+      return uploadQuestionImageBytes(testId: testId, questionId: questionId, bytes: bytes);
     } catch (e) {
       return Failure('Failed to upload question image', e);
     }

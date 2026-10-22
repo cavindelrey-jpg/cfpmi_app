@@ -2,6 +2,8 @@
 // Academia shared widget library — Material 3, animated, accessible.
 
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'action_error_widget.dart';
 import 'package:flutter/services.dart';
@@ -1186,6 +1188,7 @@ class HierarchyAvatar extends StatelessWidget {
   final String? icon;
   final String? imageUrl;
   final File? localImage;
+  final Uint8List? localBytes;
   final double size;
 
   /// When true, this fills whatever box its parent gives it (e.g. the
@@ -1198,7 +1201,7 @@ class HierarchyAvatar extends StatelessWidget {
   final bool fill;
 
   const HierarchyAvatar({
-    super.key, required this.label, this.icon, this.imageUrl, this.localImage, this.size = 44,
+    super.key, required this.label, this.icon, this.imageUrl, this.localImage, this.localBytes, this.size = 44,
     this.fill = false,
   });
 
@@ -1206,15 +1209,26 @@ class HierarchyAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = localImage != null || (imageUrl != null && imageUrl!.isNotEmpty);
+    final hasImage = localBytes != null ||
+        (!kIsWeb && localImage != null) ||
+        (imageUrl != null && imageUrl!.isNotEmpty);
     final radius = BorderRadius.circular(fill ? 12 : size * 0.28);
     if (hasImage) {
-      final image = localImage != null
-          ? Image.file(localImage!, fit: BoxFit.cover,
-              width: fill ? double.infinity : size, height: fill ? double.infinity : size)
-          : Image.network(imageUrl!, fit: BoxFit.cover,
-              width: fill ? double.infinity : size, height: fill ? double.infinity : size,
-              errorBuilder: (_, __, ___) => _fallback(radius));
+      final ImageProvider provider;
+      if (localBytes != null) {
+        provider = MemoryImage(localBytes!);
+      } else if (!kIsWeb && localImage != null) {
+        provider = FileImage(localImage!);
+      } else {
+        provider = NetworkImage(imageUrl!);
+      }
+      final image = Image(
+        image: provider,
+        fit: BoxFit.cover,
+        width: fill ? double.infinity : size,
+        height: fill ? double.infinity : size,
+        errorBuilder: (_, __, ___) => _fallback(radius),
+      );
       return ClipRRect(borderRadius: radius, child: image);
     }
     return _fallback(radius);

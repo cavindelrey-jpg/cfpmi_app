@@ -8,11 +8,15 @@
 // a brand-new one.
 
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/widgets.dart';
+
+typedef QuizIconSaveCallback = Future<void> Function(String emoji, File? image, [Uint8List? imageBytes]);
 
 /// Opens the editor sheet. [currentEmoji]/[currentImageUrl] pre-select
 /// what's already set (if anything); [onSave] receives the final choice
@@ -22,7 +26,7 @@ Future<void> showQuizIconEditor(
   required String label,
   required String currentEmoji,
   required String currentImageUrl,
-  required Future<void> Function(String emoji, File? image) onSave,
+  required QuizIconSaveCallback onSave,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -42,7 +46,7 @@ class _QuizIconEditorSheet extends StatefulWidget {
   final String label;
   final String currentEmoji;
   final String currentImageUrl;
-  final Future<void> Function(String emoji, File? image) onSave;
+  final QuizIconSaveCallback onSave;
   const _QuizIconEditorSheet({
     required this.label,
     required this.currentEmoji,
@@ -57,21 +61,24 @@ class _QuizIconEditorSheet extends StatefulWidget {
 class _QuizIconEditorSheetState extends State<_QuizIconEditorSheet> {
   late String _emoji = widget.currentEmoji;
   File? _image;
+  Uint8List? _bytes;
   bool _saving = false;
 
   Future<void> _pickPhoto() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
+    final bytes = await picked.readAsBytes();
     setState(() {
-      _image = File(picked.path);
+      _bytes = bytes;
+      if (!kIsWeb) _image = File(picked.path);
       _emoji = ''; // photo and emoji are mutually exclusive, same as HierarchyPicker
     });
   }
 
   Future<void> _clear() async {
-    setState(() { _emoji = ''; _image = null; _saving = true; });
+    setState(() { _emoji = ''; _image = null; _bytes = null; _saving = true; });
     try {
-      await widget.onSave('', null);
+      await widget.onSave('', null, null);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
@@ -89,7 +96,7 @@ class _QuizIconEditorSheetState extends State<_QuizIconEditorSheet> {
     // explanation, which is indistinguishable from "the button just
     // doesn't work".
     try {
-      await widget.onSave(_emoji, _image);
+      await widget.onSave(_emoji, _image, _bytes);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
@@ -116,6 +123,7 @@ class _QuizIconEditorSheetState extends State<_QuizIconEditorSheet> {
               label: widget.label,
               icon: _emoji,
               imageUrl: hasImage ? widget.currentImageUrl : '',
+              localBytes: _bytes,
               localImage: _image,
               size: 72,
             ),

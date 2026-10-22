@@ -206,6 +206,7 @@ class _ApplicationShellState extends State<ApplicationShell> {
   /// On touch devices, tapping the toggle icon at top of the rail toggles expansion.
   bool _sidebarHovered = false;
   bool _touchExpanded = false;
+  final FocusNode _contentFocusNode = FocusNode();
   StreamSubscription? _authSub;
 
   @override
@@ -221,6 +222,7 @@ class _ApplicationShellState extends State<ApplicationShell> {
   @override
   void dispose() {
     _authSub?.cancel();
+    _contentFocusNode.dispose();
     super.dispose();
   }
 
@@ -479,7 +481,10 @@ class _ApplicationShellState extends State<ApplicationShell> {
                                   bottom: widget.bottomHeader,
                                 ),
                               Expanded(
-                                child: widget.child,
+                                child: Focus(
+                                  focusNode: _contentFocusNode,
+                                  child: widget.child,
+                                ),
                               ),
                             ],
                           ),
@@ -558,6 +563,36 @@ class _ApplicationShellState extends State<ApplicationShell> {
                             _navigateTo(context, dest);
                           },
                         ),
+                      ),
+                    ),
+                  ),
+
+                  // 4. "Skip to content" keyboard accessibility button (WCAG standard)
+                  Positioned(
+                    top: 8,
+                    left: 80,
+                    child: Focus(
+                      child: Builder(
+                        builder: (fCtx) {
+                          final hasFocus = Focus.of(fCtx).hasFocus;
+                          if (!hasFocus) {
+                            return const SizedBox.shrink();
+                          }
+                          return ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE5A93C),
+                              foregroundColor: const Color(0xFF081630),
+                              elevation: 6,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.arrow_downward_rounded, size: 16),
+                            label: const Text('Skip to content', style: TextStyle(fontWeight: FontWeight.w700)),
+                            onPressed: () {
+                              _contentFocusNode.requestFocus();
+                            },
+                          );
+                        },
                       ),
                     ),
                   ),

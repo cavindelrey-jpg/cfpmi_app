@@ -26,6 +26,8 @@
 // and can be reopened to edit. Those are real omissions, not hidden ones.
 
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/result.dart';
@@ -67,6 +69,7 @@ class _QuestionDraft {
   // one). Same pick-then-upload-after-id-exists pattern as the test's
   // own thumbnail just above in this file.
   File? pickedImage;
+  Uint8List? pickedBytes;
   String? existingImageUrl;
 
   _QuestionDraft({required this.id, required this.type});
@@ -192,6 +195,7 @@ class _TestComposerPageState extends State<TestComposerPage> {
   List<QuizCategory> _categories = [];
   String _category = '';
   File? _pickedThumbnail;
+  Uint8List? _pickedThumbnailBytes;
   String? _existingThumbnailUrl;
 
   final List<_QuestionDraft> _questions = [];
@@ -255,13 +259,21 @@ class _TestComposerPageState extends State<TestComposerPage> {
   Future<void> _pickThumbnail() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
-    setState(() => _pickedThumbnail = File(picked.path));
+    final bytes = await picked.readAsBytes();
+    setState(() {
+      _pickedThumbnailBytes = bytes;
+      if (!kIsWeb) _pickedThumbnail = File(picked.path);
+    });
   }
 
   Future<void> _pickQuestionImage(_QuestionDraft q) async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
-    setState(() => q.pickedImage = File(picked.path));
+    final bytes = await picked.readAsBytes();
+    setState(() {
+      q.pickedBytes = bytes;
+      if (!kIsWeb) q.pickedImage = File(picked.path);
+    });
   }
 
   @override
@@ -438,7 +450,11 @@ class _TestComposerPageState extends State<TestComposerPage> {
     }
 
     var thumbnailUrl = _existingThumbnailUrl;
-    if (_pickedThumbnail != null) {
+    if (_pickedThumbnailBytes != null) {
+      final upload = await TestRepository.instance
+          .uploadTestThumbnailBytes(testId: testId, bytes: _pickedThumbnailBytes!);
+      if (upload is Success<String>) thumbnailUrl = upload.value;
+    } else if (_pickedThumbnail != null) {
       final upload =
           await TestRepository.instance.uploadTestThumbnail(testId: testId, imageFile: _pickedThumbnail!);
       if (upload is Success<String>) thumbnailUrl = upload.value;
@@ -450,12 +466,20 @@ class _TestComposerPageState extends State<TestComposerPage> {
     // the resolved URLs before the update call below.
     var anyImageUploaded = false;
     for (final q in _questions) {
-      if (q.pickedImage == null) continue;
-      final upload = await TestRepository.instance
-          .uploadQuestionImage(testId: testId, questionId: q.id, imageFile: q.pickedImage!);
-      if (upload is Success<String>) {
-        q.existingImageUrl = upload.value;
-        anyImageUploaded = true;
+      if (q.pickedBytes != null) {
+        final upload = await TestRepository.instance
+            .uploadQuestionImageBytes(testId: testId, questionId: q.id, bytes: q.pickedBytes!);
+        if (upload is Success<String>) {
+          q.existingImageUrl = upload.value;
+          anyImageUploaded = true;
+        }
+      } else if (q.pickedImage != null) {
+        final upload = await TestRepository.instance
+            .uploadQuestionImage(testId: testId, questionId: q.id, imageFile: q.pickedImage!);
+        if (upload is Success<String>) {
+          q.existingImageUrl = upload.value;
+          anyImageUploaded = true;
+        }
       }
     }
     if (anyImageUploaded) questions = _questions.map(finalizeQuestion).toList();
@@ -581,7 +605,8 @@ class _TestComposerPageState extends State<TestComposerPage> {
             onTap: _pickThumbnail,
             child: HierarchyAvatar(
               label: _title.text.isEmpty ? 'Quiz' : _title.text,
-              imageUrl: _pickedThumbnail == null ? (_existingThumbnailUrl ?? '') : '',
+              imageUrl: (_pickedThumbnailBytes == null && _pickedThumbnail == null) ? (_existingThumbnailUrl ?? '') : '',
+              localBytes: _pickedThumbnailBytes,
               localImage: _pickedThumbnail,
               size: 72,
             ),
@@ -721,7 +746,7 @@ class _TestComposerPageState extends State<TestComposerPage> {
   /// every question type, not just MCQ, since a Structured or Essay
   /// prompt can just as legitimately ask the learner to analyse an image.
   Widget _questionImagePicker(_QuestionDraft q) {
-    final hasImage = q.pickedImage != null || (q.existingImageUrl ?? '').isNotEmpty;
+    final hasImage = q.pickedBytes != null || (!kIsWeb && q.pickedImage != null) || (q.existingImageUrl ?? '').isNotEmpty;
     if (!hasImage) {
       return OutlinedButton.icon(
         onPressed: () => _pickQuestionImage(q),
@@ -729,13 +754,19 @@ class _TestComposerPageState extends State<TestComposerPage> {
         label: const Text('Add image'),
       );
     }
+    final Widget imageWidget;
+    if (q.pickedBytes != null) {
+      imageWidget = Image.memory(q.pickedBytes!, height: 140, width: double.infinity, fit: BoxFit.cover);
+    } else if (!kIsWeb && q.pickedImage != null) {
+      imageWidget = Image.file(q.pickedImage!, height: 140, width: double.infinity, fit: BoxFit.cover);
+    } else {
+      imageWidget = Image.network(q.existingImageUrl!, height: 140, width: double.infinity, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const SizedBox.shrink());
+    }
     return Stack(children: [
       ClipRRect(
         borderRadius: BorderRadius.circular(Rad.sm),
-        child: q.pickedImage != null
-            ? Image.file(q.pickedImage!, height: 140, width: double.infinity, fit: BoxFit.cover)
-            : Image.network(q.existingImageUrl!, height: 140, width: double.infinity, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+        child: imageWidget,
       ),
       Positioned(
         top: 4, right: 4,
@@ -745,6 +776,7 @@ class _TestComposerPageState extends State<TestComposerPage> {
           child: IconButton(
             icon: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
             onPressed: () => setState(() {
+              q.pickedBytes = null;
               q.pickedImage = null;
               q.existingImageUrl = null;
             }),

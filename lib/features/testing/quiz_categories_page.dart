@@ -106,9 +106,16 @@ class _QuizCategoriesPageState extends State<QuizCategoriesPage> {
       label: c.name,
       currentEmoji: c.emoji,
       currentImageUrl: c.imageUrl,
-      onSave: (emoji, image) async {
+      onSave: (emoji, image, [imageBytes]) async {
         String imageUrl = c.imageUrl;
-        if (image != null) {
+        if (imageBytes != null) {
+          final upload = await TestRepository.instance
+              .uploadQuizCategoryImageBytes(categoryId: c.id, bytes: imageBytes);
+          switch (upload) {
+            case Success(:final value): imageUrl = value;
+            case Failure(:final message): throw Exception(message);
+          }
+        } else if (image != null) {
           final upload = await TestRepository.instance
               .uploadQuizCategoryImage(categoryId: c.id, imageFile: image);
           switch (upload) {

@@ -8,6 +8,8 @@
 // (hero slides, article thumbnails).
 
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -30,6 +32,7 @@ class _ComposeAnnouncementPageState extends State<ComposeAnnouncementPage> {
   final _titleCtrl   = TextEditingController();
   final _bodyCtrl    = TextEditingController();
   File? _pickedImage;
+  Uint8List? _pickedImageBytes;
   bool _urgent = false;
   bool _loading = false;
   bool _uploadingImage = false;
@@ -46,7 +49,19 @@ class _ComposeAnnouncementPageState extends State<ComposeAnnouncementPage> {
 
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null) setState(() => _pickedImage = File(picked.path));
+    if (picked != null) {
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _pickedImageBytes = bytes;
+        if (!kIsWeb) {
+          try {
+            _pickedImage = File(picked.path);
+          } catch (_) {
+            _pickedImage = null;
+          }
+        }
+      });
+    }
   }
 
   Future<void> _publish() async {
@@ -57,14 +72,17 @@ class _ComposeAnnouncementPageState extends State<ComposeAnnouncementPage> {
     setState(() => _loading = true);
 
     final repo = AnnouncementRepository.instance;
-    // A real id is needed BEFORE the image upload so the file can be
-    // keyed to it (and so publish still works cleanly with no photo
-    // attached, in which case the empty-id add() path below is used).
-    final id = _pickedImage != null ? repo.newId() : '';
+    final hasImage = _pickedImageBytes != null || _pickedImage != null;
+    final id = hasImage ? repo.newId() : '';
     String? imageUrl;
-    if (_pickedImage != null) {
+    if (hasImage) {
       setState(() => _uploadingImage = true);
-      final uploadResult = await repo.uploadImage(id: id, imageFile: _pickedImage!);
+      final Result<String> uploadResult;
+      if (_pickedImageBytes != null) {
+        uploadResult = await repo.uploadImageBytes(id: id, bytes: _pickedImageBytes!);
+      } else {
+        uploadResult = await repo.uploadImage(id: id, imageFile: _pickedImage!);
+      }
       if (!mounted) return;
       setState(() => _uploadingImage = false);
       switch (uploadResult) {
@@ -221,11 +239,13 @@ class _ComposeAnnouncementPageState extends State<ComposeAnnouncementPage> {
           Text('Photo (optional)',
             style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          if (_pickedImage != null)
+          if (_pickedImageBytes != null || _pickedImage != null)
             Stack(children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(_pickedImage!, height: 160, width: double.infinity, fit: BoxFit.cover),
+                child: _pickedImageBytes != null
+                    ? Image.memory(_pickedImageBytes!, height: 160, width: double.infinity, fit: BoxFit.cover)
+                    : Image.file(_pickedImage!, height: 160, width: double.infinity, fit: BoxFit.cover),
               ),
               Positioned(
                 top: 6, right: 6,
@@ -234,7 +254,10 @@ class _ComposeAnnouncementPageState extends State<ComposeAnnouncementPage> {
                   shape: const CircleBorder(),
                   child: IconButton(
                     icon: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
-                    onPressed: () => setState(() => _pickedImage = null),
+                    onPressed: () => setState(() {
+                      _pickedImage = null;
+                      _pickedImageBytes = null;
+                    }),
                   ),
                 ),
               ),

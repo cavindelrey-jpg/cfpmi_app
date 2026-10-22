@@ -15,8 +15,8 @@
 // directly, so every existing Quiz call site keeps working unchanged.
 
 import 'dart:async';
-
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/result.dart';
 import '../models/academic_section.dart';
@@ -110,11 +110,20 @@ class AcademicSectionRepository {
     }
   }
 
-  Future<Result<String>> uploadSectionImage({required String sectionId, required File imageFile}) async {
+  Future<Result<String>> uploadSectionImageBytes({required String sectionId, required Uint8List bytes}) async {
     try {
       final path = 'quiz_categories/$sectionId.jpg';
-      await _db.storage.from(_bucket).upload(path, imageFile, fileOptions: const FileOptions(upsert: true));
+      await _db.storage.from(_bucket).uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'));
       return Success(_db.storage.from(_bucket).getPublicUrl(path));
+    } catch (e) {
+      return Failure('Failed to upload image', e);
+    }
+  }
+
+  Future<Result<String>> uploadSectionImage({required String sectionId, required File imageFile}) async {
+    try {
+      final bytes = await imageFile.readAsBytes();
+      return uploadSectionImageBytes(sectionId: sectionId, bytes: bytes);
     } catch (e) {
       return Failure('Failed to upload image', e);
     }

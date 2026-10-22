@@ -70,11 +70,17 @@ class _TestsTopicPickerPageState extends State<TestsTopicPickerPage> {
       label: topic,
       currentEmoji: current.emoji,
       currentImageUrl: current.imageUrl,
-      onSave: (emoji, image) async {
+      onSave: (emoji, image, [imageBytes]) async {
         // Was unconditionally blank -- a failed upload silently wiped
         // whatever image was already set instead of leaving it alone.
         String imageUrl = current.imageUrl;
-        if (image != null) {
+        if (imageBytes != null) {
+          final upload = await TestRepository.instance.uploadQuizNodeImageBytes(key: key, bytes: imageBytes);
+          switch (upload) {
+            case Success(:final value): imageUrl = value;
+            case Failure(:final message): throw Exception(message);
+          }
+        } else if (image != null) {
           final upload = await TestRepository.instance.uploadQuizNodeImage(key: key, imageFile: image);
           switch (upload) {
             case Success(:final value): imageUrl = value;

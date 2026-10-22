@@ -447,7 +447,7 @@ class MessagingRepository {
   }) async {
     final ext = isVideo ? 'mp4' : 'jpg';
     final path = 'chat_media/$conversationId/${DateTime.now().millisecondsSinceEpoch}.$ext';
-    return _uploadWithRetry(path, file, onProgress);
+    return _uploadWithRetry(path, file: file, onProgress: onProgress);
   }
 
   /// General file attachments — any type (PDF, docx, etc.), not just

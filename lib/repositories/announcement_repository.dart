@@ -5,6 +5,7 @@
 // institution scoping elsewhere in this rewrite.
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -43,6 +44,16 @@ class AnnouncementRepository {
     try {
       final path = 'announcement_images/$id.jpg';
       await _db.storage.from(_bucket).upload(path, imageFile, fileOptions: const FileOptions(upsert: true));
+      return Success(_db.storage.from(_bucket).getPublicUrl(path));
+    } catch (e) {
+      return Failure('Failed to upload announcement image', e);
+    }
+  }
+
+  Future<Result<String>> uploadImageBytes({required String id, required Uint8List bytes}) async {
+    try {
+      final path = 'announcement_images/$id.jpg';
+      await _db.storage.from(_bucket).uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'));
       return Success(_db.storage.from(_bucket).getPublicUrl(path));
     } catch (e) {
       return Failure('Failed to upload announcement image', e);
