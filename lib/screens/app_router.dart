@@ -80,6 +80,7 @@ import '../pages/bookmarks_page.dart';
 import '../features/timetable/personal_study_page.dart';
 import 'dictionary_screen.dart';
 import 'login_screen.dart';
+import '../widgets/widgets.dart';
 
 // ────────────────────────────────────────────────────────────────────────────
 // AppRouter — watches Firebase auth state only.
@@ -545,18 +546,6 @@ class AppRouter extends StatefulWidget {
       transitionDuration: Duration.zero,
     );
   }
-
-  @override
-  State<AppRouter> createState() => _AppRouterState();
-}
-
-import '../widgets/widgets.dart';
-
-// ────────────────────────────────────────────────────────────────────────────
-// AppRouter — watches Firebase auth state only.
-// ────────────────────────────────────────────────────────────────────────────
-class AppRouter extends StatefulWidget {
-  const AppRouter({super.key});
 
   @override
   State<AppRouter> createState() => _AppRouterState();
