@@ -16,6 +16,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/result.dart';
 import '../../core/teacher_csv.dart';
+import '../../core/universal_file_saver.dart';
 import '../../models/academic_content.dart' show kAcademicSubjects, kAcademicLevels;
 import '../../models/app_user.dart';
 import '../../models/teaching_assignment.dart';
@@ -30,6 +31,7 @@ import 'teacher_csv_import_page.dart';
 import 'widgets/management_scaffold.dart';
 import 'manage_subjects_dialog.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 // Undergraduate/All Levels (the last two of kAcademicLevels) describe
 // CONTENT scope, not an actual class in this school's own roster -- a
 // teacher is never "assigned to" either one.
@@ -52,7 +54,7 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
   bool _searching = false;
   bool _loadingAssigned = true;
 
-  String get _schoolId => widget.admin.schoolId ?? '';
+  String get _schoolId => widget.admin.effectiveSchoolId;
 
   @override
   void initState() {
@@ -109,11 +111,12 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
   Future<void> _downloadTemplate() async {
     try {
       final csv = generateTeacherCsvTemplate();
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/teacher_assignments_template.csv');
-      await file.writeAsString('\uFEFF$csv');
-      if (!mounted) return;
-      await Share.shareXFiles([XFile(file.path)], text: 'Teacher Assignments CSV Template');
+      await UniversalFileSaver.saveOrShareString(
+        content: '\uFEFF$csv',
+        fileName: 'teacher_assignments_template.csv',
+        mimeType: 'text/csv;charset=utf-8',
+        shareText: 'Teacher Assignments CSV Template',
+      );
     } catch (e) {
       if (mounted) showToast(context, 'Could not generate template: $e', isError: true);
     }
@@ -127,11 +130,12 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
         return;
       }
       final csv = exportTeacherAssignmentsCsv(staff);
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/teacher_assignments.csv');
-      await file.writeAsString('\uFEFF$csv');
-      if (!mounted) return;
-      await Share.shareXFiles([XFile(file.path)], text: 'Teacher Assignments Export');
+      await UniversalFileSaver.saveOrShareString(
+        content: '\uFEFF$csv',
+        fileName: 'teacher_assignments.csv',
+        mimeType: 'text/csv;charset=utf-8',
+        shareText: 'Teacher Assignments Export',
+      );
     } catch (e) {
       if (mounted) showToast(context, 'Could not export teacher assignments: $e', isError: true);
     }
@@ -362,7 +366,7 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
           Text('Staff', style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w700, color: ac.txt)),
           const SizedBox(height: 8),
           if (_loadingAssigned)
-            const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
+            const Center(child: Padding(padding: EdgeInsets.all(16), child: SkeletonSpinner()))
           else if (_assigned.isEmpty)
             Text('No staff accounts at this school yet. Issue Teacher codes from Access Codes.', style: GoogleFonts.inter(color: ac.muted))
           else

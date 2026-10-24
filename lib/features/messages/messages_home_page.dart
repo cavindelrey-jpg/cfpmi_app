@@ -14,6 +14,7 @@ import '../../widgets/widgets.dart';
 import 'chat_conversation_page.dart';
 import 'find_people_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class MessagesHomePage extends StatefulWidget {
   final AppUser user;
   const MessagesHomePage({super.key, required this.user});
@@ -288,7 +289,7 @@ class _ConversationsOverview extends StatelessWidget {
       stream: MessagingRepository.instance.watchConversations(user.id),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: SkeletonSpinner());
         }
         if (snap.hasError) {
           return Center(child: ErrorView(message: snap.error.toString()));
@@ -426,7 +427,7 @@ class _MessageRequestsList extends StatelessWidget {
       stream: MessagingRepository.instance.watchIncomingRequests(user.id),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: SkeletonSpinner());
         }
         final reqs = snap.data ?? const <FriendRequest>[];
         if (reqs.isEmpty) {

@@ -30,6 +30,7 @@ import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import '../../widgets/formula_embed_builder.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class LessonComposerPage extends StatefulWidget {
   final AppUser user;
   final String courseId;
@@ -288,7 +289,7 @@ class _LessonComposerPageState extends State<LessonComposerPage> {
           if (_canImportDocx)
             IconButton(
               icon: _importing
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(width: 20, height: 20, child: SkeletonSpinner(strokeWidth: 2))
                   : Icon(Icons.upload_file_rounded, color: ac.txt),
               tooltip: 'Import Word (.docx) or Text (.txt) document',
               onPressed: _importing ? null : _importDocx,

@@ -20,6 +20,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/widgets.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class SchoolCalendarCsvImportPage extends StatefulWidget {
   final AppUser staff;
   SchoolCalendarCsvImportPage({super.key, AppUser? staff, AppUser? user})
@@ -180,7 +181,7 @@ class _SchoolCalendarCsvImportPageState extends State<SchoolCalendarCsvImportPag
             _actionRow(ac),
             if (_busy) ...[
               const SizedBox(height: 24),
-              const Center(child: CircularProgressIndicator()),
+              const Center(child: SkeletonSpinner()),
             ],
             if (_importError != null) ...[
               const SizedBox(height: 16),

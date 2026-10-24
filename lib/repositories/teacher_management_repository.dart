@@ -8,6 +8,7 @@ import '../core/core.dart';
 import '../models/app_user.dart';
 import '../models/teaching_assignment.dart';
 import '../core/offline_cache.dart';
+import 'student_roster_repository.dart';
 
 class TeacherManagementRepository {
   TeacherManagementRepository._();
@@ -33,7 +34,9 @@ class TeacherManagementRepository {
   /// Merges local OfflineCache and Supabase users table so imported teachers are preserved.
   Future<List<AppUser>> staffOnce(String schoolId) async {
     if (schoolId.isEmpty) return const [];
-    final cached = await _getLocalStaff(schoolId);
+    final resolvedSchoolId = StudentRosterRepository.resolveSchoolId(schoolId);
+    final aliases = [schoolId, resolvedSchoolId].toSet().toList();
+    final cached = await _getLocalStaff(resolvedSchoolId);
 
     final db = _db;
     if (db != null) {
@@ -41,7 +44,7 @@ class TeacherManagementRepository {
         final rows = await db
             .from('users')
             .select()
-            .eq('institution_id', schoolId)
+            .inFilter('institution_id', aliases)
             .not('role', 'in', '(student,guest)')
             .order('name_lower', ascending: true);
         final remote = rows.map(AppUser.fromSupabase).toList();
@@ -53,7 +56,7 @@ class TeacherManagementRepository {
         }
         final merged = map.values.toList()
           ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-        await _setLocalStaff(schoolId, merged);
+        await _setLocalStaff(resolvedSchoolId, merged);
         return merged;
       } catch (_) {}
     }

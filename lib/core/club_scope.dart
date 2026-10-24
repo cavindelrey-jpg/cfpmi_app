@@ -25,6 +25,12 @@ class ClubScope {
     if (id == null) return null;
     final s = id.trim().toLowerCase();
     if (s.isEmpty) return null;
+    if (s == 'cfpmi' ||
+        s == 'cf' ||
+        s == 'cfpmi_app' ||
+        s == '446007a8-4389-40eb-bfa7-5452541b5a1f') {
+      return 'cfpmi';
+    }
     if (s == 'green_hill' ||
         s == 'green_hills' ||
         s == 'greenhill' ||
@@ -51,6 +57,9 @@ class ClubScope {
   static List<String> schoolAliases(String? schoolId) {
     final canonical = normalizeSchoolId(schoolId);
     if (canonical == null) return const [];
+    if (canonical == 'cfpmi') {
+      return const ['cfpmi', 'cf', 'cfpmi_app', '446007a8-4389-40eb-bfa7-5452541b5a1f'];
+    }
     if (canonical == 'green_hill') {
       return const ['green_hill', 'green_hills', 'greenhill', 'greenhills', '93f2afa1-aaa1-4d15-86e8-41a15b1f94c2'];
     }
@@ -113,9 +122,9 @@ class ClubScope {
     }
 
     final clubSchool = normalizeSchoolId(club.schoolId);
-    if (clubSchool == null || clubSchool.isEmpty) {
-      // Unscoped clubs only appear in 'academia' context, never in school-branded apps
-      return allowedSchoolId == 'academia';
+    if (clubSchool == null || clubSchool.isEmpty || clubSchool == 'academia') {
+      // General academia clubs are accessible from any school app context
+      return true;
     }
 
     return clubSchool == allowedSchoolId;

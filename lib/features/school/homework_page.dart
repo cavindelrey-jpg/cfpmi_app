@@ -31,6 +31,7 @@ import 'widgets/management_scaffold.dart';
 import '../../core/content_quality.dart';
 import '../../widgets/application_shell.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class HomeworkPage extends StatefulWidget {
   final AppUser user;
   const HomeworkPage({super.key, required this.user});
@@ -377,7 +378,7 @@ class _AssignedHomeworkTab extends StatelessWidget {
       builder: (context, snap) {
         final items = snap.data ?? const [];
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: SkeletonSpinner());
         }
         if (items.isEmpty) {
           return Center(child: Text('You haven\'t assigned any homework yet.', style: GoogleFonts.inter(color: ac.muted)));
@@ -408,7 +409,7 @@ class _StudentHomeworkView extends StatelessWidget {
         builder: (context, snap) {
           final items = snap.data ?? const [];
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: SkeletonSpinner());
           }
           if (items.isEmpty) {
             return Center(child: Text('No homework assigned yet.', style: GoogleFonts.inter(color: Colors.grey)));

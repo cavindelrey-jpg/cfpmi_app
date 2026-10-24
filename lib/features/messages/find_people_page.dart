@@ -26,6 +26,7 @@ import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import 'chat_conversation_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class FindPeoplePage extends StatefulWidget {
   final AppUser user;
   const FindPeoplePage({super.key, required this.user});
@@ -449,7 +450,7 @@ class _PersonRowState extends State<_PersonRow> {
                   }
                 },
                 child: _sending
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(width: 16, height: 16, child: SkeletonSpinner(strokeWidth: 2))
                     : Text('Add Friend', style: AppText.caption.copyWith(fontSize: 11.5, fontWeight: FontWeight.w700)),
               ),
       ]),

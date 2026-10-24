@@ -16,6 +16,7 @@ import '../../core/club_scope.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ClubMembersPage extends StatelessWidget {
   final Club club;
   final AppUser currentUser;
@@ -280,7 +281,7 @@ class _JoinRequestRowState extends State<_JoinRequestRow> {
       if (_busy)
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 12),
-          child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          child: SizedBox(width: 16, height: 16, child: SkeletonSpinner(strokeWidth: 2)),
         )
       else ...[
         TextButton(

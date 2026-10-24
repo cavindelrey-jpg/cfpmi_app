@@ -23,6 +23,7 @@ import 'classroom_display_page.dart';
 import 'classroom_slide.dart';
 import '../academic_content/content_viewer_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ClassroomTeacherPage extends StatefulWidget {
   final AppUser user;
   const ClassroomTeacherPage({super.key, required this.user});
@@ -95,7 +96,7 @@ class _ClassroomTeacherPageState extends State<ClassroomTeacherPage> {
         label: const Text('Start Class'),
       ),
       child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: SkeletonSpinner())
           : _sessions.isEmpty
               ? _empty()
               : ListView.separated(
@@ -297,7 +298,7 @@ class ClassroomControlPage extends StatelessWidget {
             user: user,
             currentTitle: 'Classroom Control',
             currentDestination: AppNavDestination.classroom,
-            child: const Center(child: CircularProgressIndicator()),
+            child: const Center(child: SkeletonSpinner()),
           );
         }
         return ApplicationShell(
@@ -686,7 +687,7 @@ class ClassroomControlPage extends StatelessWidget {
                 const SizedBox(
                   width: 24,
                   height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                  child: SkeletonSpinner(strokeWidth: 2.5),
                 ),
                 const SizedBox(width: 20),
                 Expanded(
@@ -760,7 +761,7 @@ class ClassroomControlPage extends StatelessWidget {
                 const SizedBox(
                   width: 24,
                   height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                  child: SkeletonSpinner(strokeWidth: 2.5),
                 ),
                 const SizedBox(width: 20),
                 Expanded(
@@ -909,7 +910,7 @@ class ClassroomControlPage extends StatelessWidget {
                               const SizedBox(
                                 width: 26,
                                 height: 26,
-                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                                child: SkeletonSpinner(strokeWidth: 2.5),
                               ),
                               const SizedBox(height: 10),
                               Text(

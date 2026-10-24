@@ -21,6 +21,7 @@ import '../classroom/student_classroom_page.dart';
 import 'class_group_launcher.dart';
 import 'timetable_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ClassroomPage extends StatelessWidget {
   final AppUser user;
   const ClassroomPage({super.key, required this.user});
@@ -587,7 +588,7 @@ class ClassroomPage extends StatelessWidget {
                   !snap.hasData) {
                 return const Padding(
                   padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(child: SkeletonSpinner()),
                 );
               }
               final slots = snap.data ?? const <SchoolTimetableSlot>[];

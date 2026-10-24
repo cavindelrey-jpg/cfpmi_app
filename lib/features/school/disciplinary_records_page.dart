@@ -18,6 +18,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/application_shell.dart';
 import '../../widgets/widgets.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class DisciplinaryRecordsPage extends StatefulWidget {
   final AppUser user;
   const DisciplinaryRecordsPage({super.key, required this.user});
@@ -290,7 +291,7 @@ class _DisciplinaryRecordsPageState extends State<DisciplinaryRecordsPage> {
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: SkeletonSpinner())
                 : _records.isEmpty
                     ? Center(
                         child: Column(

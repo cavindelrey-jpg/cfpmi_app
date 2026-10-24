@@ -89,6 +89,7 @@ import '../features/testing/quiz_categories_page.dart';
 import '../features/testing/xp_dashboard_page.dart';
 import '../features/timetable/personal_study_page.dart';
 
+import 'skeleton_spinner.dart';
 enum AppNavDestination {
   home,
   academicCourses,
@@ -2735,7 +2736,7 @@ class LibraryContextualPanel extends StatelessWidget {
                     child: SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: SkeletonSpinner(strokeWidth: 2),
                     ),
                   ),
                 );
@@ -4482,7 +4483,7 @@ class SchoolContextualPanel extends StatelessWidget {
                           child: SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: SkeletonSpinner(strokeWidth: 2),
                           ),
                         ),
                       );
@@ -4721,7 +4722,7 @@ class _PastQuestionsRedirectorState extends State<_PastQuestionsRedirector> {
       user: widget.user,
       currentTitle: 'Past Questions',
       currentDestination: AppNavDestination.pastQuestions,
-      child: const Center(child: CircularProgressIndicator()),
+      child: const Center(child: SkeletonSpinner()),
     );
   }
 }

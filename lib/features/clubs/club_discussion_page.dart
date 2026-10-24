@@ -31,6 +31,7 @@ import '../../config/branding.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class AskQuestionPage extends StatefulWidget {
   final Club club;
   final AppUser user;
@@ -108,7 +109,7 @@ class _AskQuestionPageState extends State<AskQuestionPage> {
               style: ElevatedButton.styleFrom(backgroundColor: ac.navy, foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14)),
               child: _posting
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(width: 18, height: 18, child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
                   : const Text('Post Question'),
             ),
           ),
@@ -360,7 +361,7 @@ class _ClubDiscussionDetailPageState extends State<ClubDiscussionDetailPage> {
             const SizedBox(width: 6),
             IconButton(
               icon: _sending
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(width: 18, height: 18, child: SkeletonSpinner(strokeWidth: 2))
                   : Icon(Icons.send_rounded, color: ac.primary),
               onPressed: _sending ? null : _sendReply,
             ),

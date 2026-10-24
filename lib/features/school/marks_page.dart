@@ -19,6 +19,7 @@ import 'marks_csv_import_page.dart';
 import 'widgets/school_shared_widgets.dart';
 import '../../widgets/application_shell.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 enum _CompareTarget { previousSequence, firstSequence }
 
 class MarksPage extends StatefulWidget {
@@ -160,7 +161,7 @@ class _MarksPageState extends State<MarksPage> {
             future: _future,
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                return const Center(child: SkeletonSpinner(strokeWidth: 2));
               }
               final (current, previous) = snap.data ?? (const <SchoolMark>[], const <SchoolMark>[]);
               if (current.isEmpty) return _emptyState(ac);

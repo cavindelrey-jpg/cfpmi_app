@@ -27,6 +27,7 @@ import '../../widgets/widgets.dart';
 import 'school_calendar_csv_import_page.dart';
 import 'widgets/management_scaffold.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 Color _categoryColor(AppColors ac, SchoolEventCategory c) {
   switch (c) {
     case SchoolEventCategory.academic: return ac.primary;
@@ -223,7 +224,7 @@ class _SchoolCalendarPageState extends State<SchoolCalendarPage> {
           final events = snap.data ?? const [];
           _currentEvents = events;
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: SkeletonSpinner());
           }
           final upcoming = SchoolCalendarRepository.instance.upcomingFrom(events);
           return ListView(

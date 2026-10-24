@@ -13,6 +13,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class GalleryComposerPage extends StatefulWidget {
   final AppUser user;
   const GalleryComposerPage({super.key, required this.user});
@@ -82,7 +83,7 @@ class _GalleryComposerPageState extends State<GalleryComposerPage> {
             TextButton(
               onPressed: _posting ? null : _submit,
               child: _posting
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(width: 16, height: 16, child: SkeletonSpinner(strokeWidth: 2))
                   : Text('Post', style: AppText.button.copyWith(color: ac.primary)),
             ),
           ]),

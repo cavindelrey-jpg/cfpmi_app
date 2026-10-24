@@ -26,6 +26,7 @@ import '../repositories/academia_voucher_repository.dart';
 import '../repositories/school_access_repository.dart';
 import 'widgets.dart' show showToast;
 
+import 'skeleton_spinner.dart';
 class PremiumUnlockSheet extends StatefulWidget {
   final String userId;
   final VoidCallback onUnlockSuccess;
@@ -334,7 +335,7 @@ class _PremiumUnlockSheetState extends State<PremiumUnlockSheet> {
                 ),
                 child: _isLoading
                     ? const SizedBox(width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                        child: SkeletonSpinner(strokeWidth: 2.5, color: Colors.white))
                     : Text('Pay ${package.suggestedPriceFcfa} FCFA • ${package.label}', style: AppText.button),
               ),
             ),
@@ -377,7 +378,7 @@ class _PremiumUnlockSheetState extends State<PremiumUnlockSheet> {
                 child: OutlinedButton(
                   onPressed: _redeemingVoucher ? null : _redeemVoucher,
                   child: _redeemingVoucher
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5))
+                      ? const SizedBox(width: 18, height: 18, child: SkeletonSpinner(strokeWidth: 2.5))
                       : const Text('Redeem code'),
                 ),
               ),

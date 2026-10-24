@@ -6,6 +6,7 @@ import '../services/dictionary_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/application_shell.dart';
 
+import '../widgets/skeleton_spinner.dart';
 class DictionaryScreen extends StatefulWidget {
   final AppUser? user;
   const DictionaryScreen({super.key, this.user});
@@ -95,7 +96,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                         ),
                       ]),
                     )
-                  : CircularProgressIndicator(color: ac.primary),
+                  : SkeletonSpinner(color: ac.primary),
             )
           : Column(
         children: [

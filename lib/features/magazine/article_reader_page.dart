@@ -27,6 +27,7 @@ import 'article_composer_page.dart';
 
 import '../../widgets/app_background.dart';
 import '../../widgets/application_shell.dart';
+import '../../widgets/skeleton_spinner.dart';
 class ArticleReaderPage extends StatefulWidget {
   final MagazineArticle article;
   final AppUser? currentUser;
@@ -247,7 +248,7 @@ class _ArticleReaderPageState extends State<ArticleReaderPage> with SingleTicker
                     _postingComment
                         ? const SizedBox(width: 40, height: 40,
                             child: Center(child: SizedBox(width: 18, height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2))))
+                                child: SkeletonSpinner(strokeWidth: 2))))
                         : Material(
                             color: Colors.transparent,
                             shape: const CircleBorder(),

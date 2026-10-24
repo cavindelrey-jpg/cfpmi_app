@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ManageSubjectsDialog extends StatefulWidget {
   final String schoolId;
   const ManageSubjectsDialog({super.key, required this.schoolId});
@@ -77,7 +78,7 @@ class _ManageSubjectsDialogState extends State<ManageSubjectsDialog> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: _saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.add),
+                  icon: _saving ? const SizedBox(width: 16, height: 16, child: SkeletonSpinner(strokeWidth: 2)) : const Icon(Icons.add),
                   onPressed: _saving ? null : _add,
                   color: ac.blu,
                 ),
@@ -85,7 +86,7 @@ class _ManageSubjectsDialogState extends State<ManageSubjectsDialog> {
             ),
             const SizedBox(height: 16),
             if (_loading)
-              const Center(child: CircularProgressIndicator())
+              const Center(child: SkeletonSpinner())
             else
               Flexible(
                 child: ListView.builder(

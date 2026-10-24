@@ -20,6 +20,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/widgets.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class TeacherCsvImportPage extends StatefulWidget {
   final AppUser admin;
   const TeacherCsvImportPage({super.key, required this.admin});
@@ -208,7 +209,7 @@ class _TeacherCsvImportPageState extends State<TeacherCsvImportPage> {
           _actionRow(ac),
           if (_busy) ...[
             const SizedBox(height: 24),
-            const Center(child: CircularProgressIndicator()),
+            const Center(child: SkeletonSpinner()),
           ],
           if (_importError != null) ...[
             const SizedBox(height: 16),

@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../widgets/application_shell.dart';
 import '../widgets/widgets.dart';
 
+import '../widgets/skeleton_spinner.dart';
 class DeleteAccountPage extends StatefulWidget {
   final AppUser user;
   const DeleteAccountPage({super.key, required this.user});
@@ -191,7 +192,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     icon: _submitting
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(width: 16, height: 16, child: SkeletonSpinner(strokeWidth: 2))
                         : const Icon(Icons.delete_forever_rounded, size: 18),
                     label: Text(_submitting ? 'Deleting Account…' : 'Permanently Delete Account'),
                   ),

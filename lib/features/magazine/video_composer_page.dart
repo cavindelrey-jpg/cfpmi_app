@@ -13,6 +13,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class VideoComposerPage extends StatefulWidget {
   final AppUser user;
   const VideoComposerPage({super.key, required this.user});
@@ -97,7 +98,7 @@ class _VideoComposerPageState extends State<VideoComposerPage> {
             TextButton(
               onPressed: _posting ? null : _submit,
               child: _posting
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(width: 16, height: 16, child: SkeletonSpinner(strokeWidth: 2))
                   : Text('Post', style: AppText.button.copyWith(color: ac.primary)),
             ),
           ]),

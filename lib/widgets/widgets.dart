@@ -14,6 +14,7 @@ import '../theme/app_colors.dart';
 import '../config/branding.dart';
 import 'chat_media_widgets.dart' show PresenceDot;
 
+import 'skeleton_spinner.dart';
 // ════════════════════════════════════════════════════════════════════════════
 // CIRCULAR PROGRESS INDICATOR (Auto-scaling, fits container without overflow)
 // ════════════════════════════════════════════════════════════════════════════
@@ -54,7 +55,7 @@ class AcademicCircularProgressRing extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          CircularProgressIndicator(
+          SkeletonSpinner(
             value: clamped,
             strokeWidth: strokeWidth,
             backgroundColor: bg,
@@ -443,7 +444,7 @@ class LoadingView extends StatelessWidget {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(
           width: 28, height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2.5, color: ac.primary),
+          child: SkeletonSpinner(strokeWidth: 2.5, color: ac.primary),
         ),
         if (message != null) ...[
           const SizedBox(height: 16),

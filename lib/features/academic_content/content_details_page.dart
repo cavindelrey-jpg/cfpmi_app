@@ -21,6 +21,7 @@ import 'content_delete_dialog.dart';
 import 'content_viewer_page.dart';
 
 import '../../widgets/app_background.dart';
+import '../../widgets/skeleton_spinner.dart';
 class ContentDetailsPage extends StatefulWidget {
   final String contentId;
   final AppUser user;
@@ -597,7 +598,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
         ),
         icon: _loading
             ? const SizedBox(width: 18, height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
             : Icon(widget.item.isViewOnly
                 ? Icons.menu_book_rounded
                 : (_viewableKind != null ? Icons.menu_book_rounded : Icons.download_rounded)),

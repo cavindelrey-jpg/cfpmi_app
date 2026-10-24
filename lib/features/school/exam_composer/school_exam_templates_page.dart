@@ -3,12 +3,15 @@
 // Enforces permissions: teachers pick from configured templates; administrators configure them.
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/logo_codec.dart';
 import '../../../models/app_user.dart';
 import '../../../models/examination.dart';
 import '../../../repositories/exam_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
 
+import '../../../widgets/skeleton_spinner.dart';
 class SchoolExamTemplatesPage extends StatefulWidget {
   final AppUser user;
 
@@ -20,7 +23,8 @@ class SchoolExamTemplatesPage extends StatefulWidget {
 
 class _SchoolExamTemplatesPageState extends State<SchoolExamTemplatesPage> {
   void _editTemplate(BuildContext context, SchoolExamTemplate? initial) {
-    final schoolId = widget.user.schoolId ?? '';
+    final schoolId = widget.user.effectiveSchoolId;
+    String? logoUri = initial?.schoolLogoUrl;
     final nameCtrl = TextEditingController(text: initial?.name ?? 'Standard Exam Letterhead');
     final schoolNameCtrl = TextEditingController(text: initial?.schoolName ?? 'CFPMI');
     final countryHeaderCtrl = TextEditingController(
@@ -87,6 +91,56 @@ class _SchoolExamTemplatesPageState extends State<SchoolExamTemplatesPage> {
                     onChanged: (v) => setModalState(() => type = v ?? ExamTemplateType.examination),
                   ),
                   const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: ac.bdr),
+                          color: ac.surf2,
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: logoBytesFromDataUri(logoUri) != null
+                            ? Image.memory(logoBytesFromDataUri(logoUri)!, fit: BoxFit.cover)
+                            : Icon(Icons.school_rounded, color: ac.muted),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Wrap(
+                          spacing: 8,
+                          children: [
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.image_outlined, size: 16),
+                              label: Text(logoUri == null ? 'Add Logo' : 'Change Logo'),
+                              onPressed: () async {
+                                final picked = await ImagePicker().pickImage(
+                                  source: ImageSource.gallery,
+                                  maxWidth: 400,
+                                  maxHeight: 400,
+                                  imageQuality: 85,
+                                );
+                                if (picked == null) return;
+                                final bytes = await picked.readAsBytes();
+                                final lower = picked.name.toLowerCase();
+                                final mime = lower.endsWith('.jpg') || lower.endsWith('.jpeg')
+                                    ? 'image/jpeg'
+                                    : 'image/png';
+                                setModalState(() => logoUri = logoDataUriFromBytes(bytes, mime: mime));
+                              },
+                            ),
+                            if (logoUri != null)
+                              TextButton(
+                                onPressed: () => setModalState(() => logoUri = null),
+                                child: const Text('Remove'),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: schoolNameCtrl,
                     decoration: const InputDecoration(labelText: 'Official School Name Header'),
@@ -145,6 +199,7 @@ class _SchoolExamTemplatesPageState extends State<SchoolExamTemplatesPage> {
                           name: nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : 'Standard Template',
                           type: type,
                           schoolName: schoolNameCtrl.text.trim(),
+                          schoolLogoUrl: logoUri,
                           countryHeader: countryHeaderCtrl.text.trim(),
                           subHeader: subHeaderCtrl.text.trim(),
                           motto: mottoCtrl.text.trim(),
@@ -177,7 +232,8 @@ class _SchoolExamTemplatesPageState extends State<SchoolExamTemplatesPage> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final schoolId = widget.user.schoolId ?? '';
+    final schoolId = widget.user.effectiveSchoolId;
+    String? logoUri = initial?.schoolLogoUrl;
 
     return Scaffold(
       backgroundColor: ac.bg,
@@ -196,7 +252,7 @@ class _SchoolExamTemplatesPageState extends State<SchoolExamTemplatesPage> {
         stream: ExamRepository.instance.watchSchoolTemplates(schoolId),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: SkeletonSpinner());
           }
           final templates = snap.data ?? [];
 

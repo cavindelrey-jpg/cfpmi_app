@@ -12,6 +12,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import '../models/examination.dart';
+import '../core/logo_codec.dart';
 import '../models/exam_question.dart';
 
 class ExamPdfExportService {
@@ -40,7 +41,7 @@ class ExamPdfExportService {
     );
 
     // Try loading logo bytes from asset if custom bytes not supplied
-    Uint8List? logoBytes = customLogoBytes;
+    Uint8List? logoBytes = customLogoBytes ?? logoBytesFromDataUri(tmpl.schoolLogoUrl);
     if (logoBytes == null) {
       try {
         final byteData = await rootBundle.load('assets/branding/ladybird_logo.jpg');

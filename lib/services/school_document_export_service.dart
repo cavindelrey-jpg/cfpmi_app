@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -22,6 +23,7 @@ import '../models/student_record.dart';
 import '../models/app_user.dart';
 import '../models/school_mark.dart';
 import '../config/branding.dart';
+import '../core/universal_file_saver.dart';
 
 class SchoolDocumentExportService {
   SchoolDocumentExportService._();
@@ -55,11 +57,33 @@ class SchoolDocumentExportService {
   String _clean(String s) => s.replaceAll(RegExp(r'[^a-zA-Z0-9_\-\.]+'), '_');
 
   Future<Directory> _getTempDir() async {
+    if (kIsWeb) return Directory.systemTemp;
     try {
       return await getTemporaryDirectory();
     } catch (_) {
       return Directory.systemTemp;
     }
+  }
+
+  Future<File> _saveOrShareBytes({
+    required Uint8List bytes,
+    required String fileName,
+    required String mimeType,
+    String? text,
+  }) async {
+    if (kIsWeb) {
+      await UniversalFileSaver.saveOrShareBytes(
+        bytes: bytes,
+        fileName: fileName,
+        mimeType: mimeType,
+        shareText: text,
+      );
+      return File(fileName);
+    }
+    final tempDir = await _getTempDir();
+    final file = File('${tempDir.path}/$fileName');
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
   }
 
   Archive _createDocxBase({required String title, required String bodyXml}) {
@@ -304,10 +328,12 @@ class SchoolDocumentExportService {
     );
 
     final bytes = await pdf.save();
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/timetable_${_clean(classLevel)}.pdf');
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: bytes,
+      fileName: 'timetable_${_clean(classLevel)}.pdf',
+      mimeType: 'application/pdf',
+      text: 'Timetable · $classLevel (PDF)',
+    );
   }
 
   Future<File> exportTimetableDocx({
@@ -362,10 +388,12 @@ class SchoolDocumentExportService {
     );
 
     final encoded = ZipEncoder().encode(archive);
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/timetable_${_clean(classLevel)}.docx');
-    await file.writeAsBytes(encoded, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: Uint8List.fromList(encoded!),
+      fileName: 'timetable_${_clean(classLevel)}.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      text: 'Timetable · $classLevel (Word Document)',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -493,10 +521,12 @@ class SchoolDocumentExportService {
     );
 
     final bytes = await pdf.save();
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/program_of_activities.pdf');
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: bytes,
+      fileName: 'program_of_activities.pdf',
+      mimeType: 'application/pdf',
+      text: 'Program of Activities (PDF)',
+    );
   }
 
   Future<File> exportActivitiesDocx({
@@ -549,10 +579,12 @@ class SchoolDocumentExportService {
     );
 
     final encoded = ZipEncoder().encode(archive);
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/program_of_activities.docx');
-    await file.writeAsBytes(encoded, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: Uint8List.fromList(encoded!),
+      fileName: 'program_of_activities.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      text: 'Program of Activities (Word Document)',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -666,10 +698,12 @@ class SchoolDocumentExportService {
     );
 
     final bytes = await pdf.save();
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/roster_${_clean(classLevel)}.pdf');
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: bytes,
+      fileName: 'roster_${_clean(classLevel)}.pdf',
+      mimeType: 'application/pdf',
+      text: 'Student Roster · $classLevel (PDF)',
+    );
   }
 
   Future<File> exportStudentRosterDocx({
@@ -720,10 +754,12 @@ class SchoolDocumentExportService {
     );
 
     final encoded = ZipEncoder().encode(archive);
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/roster_${_clean(classLevel)}.docx');
-    await file.writeAsBytes(encoded, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: Uint8List.fromList(encoded!),
+      fileName: 'roster_${_clean(classLevel)}.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      text: 'Student Roster · $classLevel (Word Document)',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -840,10 +876,12 @@ class SchoolDocumentExportService {
     );
 
     final bytes = await pdf.save();
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/staff_directory.pdf');
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: bytes,
+      fileName: 'staff_directory.pdf',
+      mimeType: 'application/pdf',
+      text: 'Staff Directory (PDF)',
+    );
   }
 
   Future<File> exportStaffDirectoryDocx({
@@ -896,10 +934,12 @@ class SchoolDocumentExportService {
     );
 
     final encoded = ZipEncoder().encode(archive);
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/staff_directory.docx');
-    await file.writeAsBytes(encoded, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: Uint8List.fromList(encoded!),
+      fileName: 'staff_directory.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      text: 'Staff Directory (Word Document)',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1019,10 +1059,12 @@ class SchoolDocumentExportService {
     );
 
     final bytes = await pdf.save();
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/marks_${_clean(classLevel)}_${_clean(subject)}.pdf');
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: bytes,
+      fileName: 'marks_${_clean(classLevel)}_${_clean(subject)}.pdf',
+      mimeType: 'application/pdf',
+      text: 'Marks · $subject · $classLevel (PDF)',
+    );
   }
 
   Future<File> exportMarksDocx({
@@ -1076,10 +1118,12 @@ class SchoolDocumentExportService {
     );
 
     final encoded = ZipEncoder().encode(archive);
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/marks_${_clean(classLevel)}_${_clean(subject)}.docx');
-    await file.writeAsBytes(encoded, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: Uint8List.fromList(encoded!),
+      fileName: 'marks_${_clean(classLevel)}_${_clean(subject)}.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      text: 'Marks · $subject · $classLevel (Word Document)',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1185,10 +1229,12 @@ class SchoolDocumentExportService {
     );
 
     final bytes = await pdf.save();
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/id_card_${_clean(student.name)}.pdf');
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: bytes,
+      fileName: 'id_card_${_clean(student.name)}.pdf',
+      mimeType: 'application/pdf',
+      text: 'Student ID · ${student.name} (PDF)',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1278,10 +1324,12 @@ class SchoolDocumentExportService {
     );
 
     final bytes = await pdf.save();
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/certificate_${_clean(studentName)}.pdf');
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: bytes,
+      fileName: 'certificate_${_clean(studentName)}.pdf',
+      mimeType: 'application/pdf',
+      text: 'Certificate · $studentName (PDF)',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1355,10 +1403,12 @@ class SchoolDocumentExportService {
     );
 
     final bytes = await pdf.save();
-    final tempDir = await _getTempDir();
-    final file = File('${tempDir.path}/honour_roll_${_clean(classLevel)}.pdf');
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
+    return _saveOrShareBytes(
+      bytes: bytes,
+      fileName: 'honour_roll_${_clean(classLevel)}.pdf',
+      mimeType: 'application/pdf',
+      text: 'Honour Roll · $classLevel (PDF)',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1366,6 +1416,7 @@ class SchoolDocumentExportService {
   // ─────────────────────────────────────────────────────────────────────────────
 
   Future<void> shareFile(File file, {String? text}) async {
+    if (kIsWeb) return;
     await Share.shareXFiles([XFile(file.path)], text: text ?? 'Exported Document');
   }
 }

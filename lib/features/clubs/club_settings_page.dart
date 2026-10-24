@@ -44,6 +44,7 @@ import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import 'club_members_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 const _kClubCategories = [
   'General', 'Academic', 'Debate', 'Sports', 'Arts',
   'Tech', 'Language', 'Volunteering',
@@ -367,7 +368,7 @@ class _ClubSettingsPageState extends State<ClubSettingsPage> {
                     foregroundColor: ac.red, side: BorderSide(color: ac.red)),
                 icon: _deleting
                     ? SizedBox(width: 16, height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: ac.red))
+                        child: SkeletonSpinner(strokeWidth: 2, color: ac.red))
                     : const Icon(Icons.delete_outline_rounded),
                 label: Text(_deleting ? 'Deleting…' : 'Delete Group'),
               ),

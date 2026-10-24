@@ -12,6 +12,7 @@ import '../core/result.dart';
 import '../models/school_timetable_slot.dart';
 import '../core/realtime_tolerant.dart';
 import '../core/offline_cache.dart';
+import 'student_roster_repository.dart';
 
 class SchoolTimetableRepository {
   SchoolTimetableRepository._();
@@ -45,7 +46,8 @@ class SchoolTimetableRepository {
   /// Every class's slots at [schoolId] -- what conflict checks need
   /// (a teacher or room clash is across classes).
   /// Combines 0ms local offline cache with live Supabase stream.
-  Stream<List<SchoolTimetableSlot>> watchForSchool(String schoolId) async* {
+  Stream<List<SchoolTimetableSlot>> watchForSchool(String rawSchoolId) async* {
+    final schoolId = StudentRosterRepository.resolveSchoolId(rawSchoolId);
     if (schoolId.isEmpty) {
       yield const [];
       return;
@@ -204,7 +206,8 @@ class SchoolTimetableRepository {
     return Success(slots.length);
   }
 
-  Future<List<SchoolTimetableSlot>> getForSchoolOnce(String schoolId) async {
+  Future<List<SchoolTimetableSlot>> getForSchoolOnce(String rawSchoolId) async {
+    final schoolId = StudentRosterRepository.resolveSchoolId(rawSchoolId);
     if (schoolId.isEmpty) return const [];
     final cached = await _getLocalSlots(schoolId);
     if (cached.isNotEmpty) return cached;

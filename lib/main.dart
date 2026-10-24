@@ -51,14 +51,20 @@ Future<void> main() async {
     // Firebase init — kept for Crashlytics/Analytics only (no Supabase
     // equivalent); Auth/Firestore/Storage now live on Supabase below.
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp().timeout(const Duration(seconds: 6));
     } catch (e) {
       debugPrint('Firebase init failed (expected on web if unconfigured): $e');
     }
 
     // Supabase init — auth/data/storage. Same shared project as
     // academia-cameroon (see core/supabase_config.dart's header).
-    await Supabase.initialize(url: SupabaseConfig.url, anonKey: SupabaseConfig.anonKey);
+    // Bounded: a stalled network must never hold the launch screen forever.
+    try {
+      await Supabase.initialize(url: SupabaseConfig.url, anonKey: SupabaseConfig.anonKey)
+          .timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Supabase init slow/failed, continuing: $e');
+    }
 
     // Route Flutter framework errors (build/layout/paint) to Crashlytics as
     // fatal, instead of just printing to console and moving on.
@@ -80,14 +86,18 @@ Future<void> main() async {
     };
 
     // Remote config (non-blocking — uses defaults if Firestore is unavailable)
-    await ConfigService.instance.initialize();
+    try {
+      await ConfigService.instance.initialize().timeout(const Duration(seconds: 4));
+    } catch (_) {}
 
     // Branding (which product this build is: Academia platform or a
     // school white-label like Green Hill) — must resolve before runApp
     // so the very first frame already has the right name/colors/logo,
     // not a flash of Academia defaults. Falls back to Academia on any
     // load failure rather than blocking startup (see branding.dart).
-    await Branding.load();
+    try {
+      await Branding.load().timeout(const Duration(seconds: 4));
+    } catch (_) {}
 
     // Status bar style
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -98,10 +108,10 @@ Future<void> main() async {
     ));
 
     // Lock to portrait on phones; allow landscape on tablets
-    await SystemChrome.setPreferredOrientations([
+    unawaited(SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
-    ]);
+    ]));
 
     ConnectivityService().initialize();
   // Warm the offline dictionary in the background -- never block launch.

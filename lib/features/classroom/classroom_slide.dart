@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ClassroomSlide extends StatelessWidget {
   final String? url;
   final int index;
@@ -35,7 +36,7 @@ class ClassroomSlide extends StatelessWidget {
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => _placeholder(),
               loadingBuilder: (c, child, p) =>
-                  p == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white38)),
+                  p == null ? child : const Center(child: SkeletonSpinner(strokeWidth: 2, color: Colors.white38)),
             )
           : _placeholder(),
     );

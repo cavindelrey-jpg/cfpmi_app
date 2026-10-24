@@ -44,7 +44,7 @@ class ClubRepository {
         if (scope != null) {
           cachedRows = cached.where((r) {
             final sid = ClubScope.normalizeSchoolId((r['school_id'] ?? r['institution_id']) as String?);
-            return sid == scope;
+            return sid == scope || sid == null || sid == 'academia' || sid.isEmpty;
           }).toList();
         }
         controller.add(cachedRows.map(Club.fromSupabase).toList());
@@ -58,7 +58,7 @@ class ClubRepository {
           if (scope != null) {
             filtered = rows.where((r) {
               final sid = ClubScope.normalizeSchoolId((r['school_id'] ?? r['institution_id']) as String?);
-              return sid == scope;
+              return sid == scope || sid == null || sid == 'academia' || sid.isEmpty;
             }).toList();
           }
           final list = List<Map<String, dynamic>>.from(filtered);
@@ -76,7 +76,7 @@ class ClubRepository {
         if (scope != null) {
           filtered = rows.where((r) {
             final sid = ClubScope.normalizeSchoolId((r['school_id'] ?? r['institution_id']) as String?);
-            return sid == scope;
+            return sid == scope || sid == null || sid == 'academia' || sid.isEmpty;
           }).toList();
         }
         final list = List<Map<String, dynamic>>.from(filtered);

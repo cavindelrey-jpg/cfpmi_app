@@ -10,6 +10,7 @@ import '../../../repositories/exam_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
 
+import '../../../widgets/skeleton_spinner.dart';
 class QuestionBankPickerSheet extends StatefulWidget {
   final String schoolId;
   final String defaultSubject;
@@ -267,7 +268,7 @@ class _QuestionBankPickerSheetState extends State<QuestionBankPickerSheet> {
               // Question List
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: SkeletonSpinner())
                     : _results.isEmpty
                         ? Center(
                             child: Padding(

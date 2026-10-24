@@ -5,6 +5,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/logo_codec.dart';
 import '../../../models/app_user.dart';
 import '../../../models/exam_question.dart';
 import '../../../models/examination.dart';
@@ -15,6 +17,7 @@ import '../../../services/exam_pdf_export_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
 
+import '../../../widgets/skeleton_spinner.dart';
 class ExamPreviewPage extends StatefulWidget {
   final Examination examination;
   final AppUser user;
@@ -118,6 +121,7 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
     bool includeStudentFields = tmpl.includeStudentFields;
     bool includeInstructions = tmpl.includeInstructionsBox;
     String fontFamily = tmpl.fontFamily;
+    String? logoUri = tmpl.schoolLogoUrl;
 
     showModalBottomSheet(
       context: context,
@@ -151,6 +155,46 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
                 Text(
                   'Adjust the school letterhead, font style, and examination structure.',
                   style: AppText.caption.copyWith(color: ac.muted),
+                ),
+                const SizedBox(height: 16),
+
+                // School Logo
+                Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(color: ac.bdr),
+                        color: ac.surf2,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: logoBytesFromDataUri(logoUri) != null
+                          ? Image.memory(logoBytesFromDataUri(logoUri)!, fit: BoxFit.cover)
+                          : Icon(Icons.school_rounded, color: ac.muted),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.image_outlined, size: 16),
+                      label: Text(logoUri == null ? 'Add Logo' : 'Change Logo'),
+                      onPressed: () async {
+                        final picked = await ImagePicker().pickImage(
+                          source: ImageSource.gallery,
+                          maxWidth: 400,
+                          maxHeight: 400,
+                          imageQuality: 85,
+                        );
+                        if (picked == null) return;
+                        final bytes = await picked.readAsBytes();
+                        final lower = picked.name.toLowerCase();
+                        final mime = lower.endsWith('.jpg') || lower.endsWith('.jpeg')
+                            ? 'image/jpeg'
+                            : 'image/png';
+                        setModalState(() => logoUri = logoDataUriFromBytes(bytes, mime: mime));
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
@@ -254,6 +298,7 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
                     onPressed: () {
                       final updatedTemplate = tmpl.copyWith(
                         schoolName: schoolNameCtrl.text.trim(),
+                        schoolLogoUrl: logoUri,
                         countryHeader: countryHeaderCtrl.text.trim(),
                         subHeader: subHeaderCtrl.text.trim(),
                         motto: mottoCtrl.text.trim().isEmpty ? null : mottoCtrl.text.trim(),
@@ -565,7 +610,7 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
                     child: ElevatedButton.icon(
                       onPressed: _exporting ? null : _showExportMenu,
                       icon: _exporting
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(width: 16, height: 16, child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.download_rounded, size: 18),
                       label: Text(_exporting ? 'Exporting…' : 'Export Document (PDF / Word)',
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
@@ -602,7 +647,7 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
                   child: ElevatedButton.icon(
                     onPressed: _exporting ? null : _showExportMenu,
                     icon: _exporting
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(width: 16, height: 16, child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.download_rounded, size: 18),
                     label: Text(_exporting ? 'Exporting…' : 'Export Document',
                         style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
@@ -664,7 +709,10 @@ class _ExamPreviewPageState extends State<ExamPreviewPage> {
                         border: Border.all(color: ac.primary, width: 1.5),
                       ),
                       alignment: Alignment.center,
-                      child: Icon(Icons.school_rounded, color: ac.primary, size: 28),
+                      clipBehavior: Clip.antiAlias,
+                      child: logoBytesFromDataUri(tmpl.schoolLogoUrl) != null
+                          ? Image.memory(logoBytesFromDataUri(tmpl.schoolLogoUrl)!, fit: BoxFit.cover, width: 54, height: 54)
+                          : Icon(Icons.school_rounded, color: ac.primary, size: 28),
                     ),
                     // Right: School Info
                     Expanded(

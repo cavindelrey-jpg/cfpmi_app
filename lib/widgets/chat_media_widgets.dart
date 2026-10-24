@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 
+import 'skeleton_spinner.dart';
 /// Drop-in replacement for a bare `Image.network(url, fit: ...)`
 /// anywhere a thumbnail needs to be GUARANTEED visible: chat image
 /// bubbles, link previews, shared-content cards. Shows a shimmer while
@@ -61,7 +62,7 @@ class NetworkThumb extends StatelessWidget {
           child: SizedBox(
             width: 18,
             height: 18,
-            child: CircularProgressIndicator(
+            child: SkeletonSpinner(
               strokeWidth: 2,
               color: ac.muted,
               value: progress.expectedTotalBytes != null && progress.expectedTotalBytes! > 0

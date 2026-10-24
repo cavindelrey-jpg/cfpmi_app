@@ -138,8 +138,8 @@ void main() {
       expect(ClubScope.canAccessClub(ladybirdClub, user: user, branding: ladybirdBrand), isTrue);
       expect(ClubScope.canAccessClub(greenHillsClub, user: user, branding: ladybirdBrand), isFalse);
       expect(ClubScope.canAccessClub(stStephenClub, user: user, branding: ladybirdBrand), isFalse);
-      expect(ClubScope.canAccessClub(generalAcademiaClub, user: user, branding: ladybirdBrand), isFalse);
-      expect(ClubScope.canAccessClub(unscopedClub, user: user, branding: ladybirdBrand), isFalse);
+      expect(ClubScope.canAccessClub(generalAcademiaClub, user: user, branding: ladybirdBrand), isTrue);
+      expect(ClubScope.canAccessClub(unscopedClub, user: user, branding: ladybirdBrand), isTrue);
     });
 
     test('Ladybird app + Teacher -> Ladybird only', () {
@@ -149,7 +149,7 @@ void main() {
       expect(ClubScope.canAccessClub(ladybirdClub, user: user, branding: ladybirdBrand), isTrue);
       expect(ClubScope.canAccessClub(greenHillsClub, user: user, branding: ladybirdBrand), isFalse);
       expect(ClubScope.canAccessClub(stStephenClub, user: user, branding: ladybirdBrand), isFalse);
-      expect(ClubScope.canAccessClub(generalAcademiaClub, user: user, branding: ladybirdBrand), isFalse);
+      expect(ClubScope.canAccessClub(generalAcademiaClub, user: user, branding: ladybirdBrand), isTrue);
     });
 
     test('Ladybird app + Admin -> Ladybird only', () {
@@ -182,7 +182,7 @@ void main() {
       expect(ClubScope.canAccessClub(ladybirdClub, user: user, branding: ladybirdBrand), isTrue);
       expect(ClubScope.canAccessClub(greenHillsClub, user: user, branding: ladybirdBrand), isFalse);
       expect(ClubScope.canAccessClub(stStephenClub, user: user, branding: ladybirdBrand), isFalse);
-      expect(ClubScope.canAccessClub(generalAcademiaClub, user: user, branding: ladybirdBrand), isFalse);
+      expect(ClubScope.canAccessClub(generalAcademiaClub, user: user, branding: ladybirdBrand), isTrue);
     });
 
     test('Green Hills app + Student -> Green Hills only', () {
@@ -192,7 +192,7 @@ void main() {
       expect(ClubScope.canAccessClub(greenHillsClub, user: user, branding: greenHillsBrand), isTrue);
       expect(ClubScope.canAccessClub(ladybirdClub, user: user, branding: greenHillsBrand), isFalse);
       expect(ClubScope.canAccessClub(stStephenClub, user: user, branding: greenHillsBrand), isFalse);
-      expect(ClubScope.canAccessClub(generalAcademiaClub, user: user, branding: greenHillsBrand), isFalse);
+      expect(ClubScope.canAccessClub(generalAcademiaClub, user: user, branding: greenHillsBrand), isTrue);
     });
 
     test('Green Hills app + Teacher -> Green Hills only', () {

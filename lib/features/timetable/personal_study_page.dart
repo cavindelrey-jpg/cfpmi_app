@@ -16,6 +16,7 @@ import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 import '../../widgets/compact_sign_in_dialog.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class PersonalStudyPage extends StatefulWidget {
   final AppUser user;
   const PersonalStudyPage({super.key, required this.user});
@@ -448,7 +449,7 @@ class _SlotFormSheetState extends State<_SlotFormSheet> {
                       key: const Key('header_save_btn'),
                       onPressed: _saving ? null : _submit,
                       icon: _saving
-                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(width: 14, height: 14, child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.check_rounded, size: 16),
                       label: Text(
                         widget.existing == null ? 'Save' : 'Update',
@@ -625,7 +626,7 @@ class _SlotFormSheetState extends State<_SlotFormSheet> {
                           key: const Key('inline_save_timetable_entry_btn'),
                           onPressed: _saving ? null : _submit,
                           icon: _saving
-                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              ? const SizedBox(width: 18, height: 18, child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
                               : const Icon(Icons.check_circle_rounded, size: 18),
                           label: Text(
                             _saving
@@ -676,7 +677,7 @@ class _SlotFormSheetState extends State<_SlotFormSheet> {
                           key: const Key('sticky_save_timetable_entry_btn'),
                           onPressed: _saving ? null : _submit,
                           icon: _saving
-                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              ? const SizedBox(width: 18, height: 18, child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
                               : const Icon(Icons.check_circle_rounded, size: 18),
                           label: Text(
                             _saving

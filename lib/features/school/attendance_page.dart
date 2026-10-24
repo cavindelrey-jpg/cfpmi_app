@@ -21,6 +21,7 @@ import '../../widgets/app_skeleton.dart';
 import '../../widgets/application_shell.dart';
 import 'attendance_summary_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class AttendancePage extends StatefulWidget {
   final AppUser user;
   final String? initialClass;
@@ -213,7 +214,7 @@ class _AttendancePageState extends State<AttendancePage> {
                 ? const SizedBox(
                     width: 14,
                     height: 14,
-                    child: CircularProgressIndicator(
+                    child: SkeletonSpinner(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
@@ -236,7 +237,7 @@ class _AttendancePageState extends State<AttendancePage> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(
+                      child: SkeletonSpinner(
                         strokeWidth: 2,
                         color: Colors.white,
                       ),

@@ -21,6 +21,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/result.dart';
 import '../../core/timetable_conflicts.dart';
 import '../../core/timetable_csv.dart' hide normalizeTime;
+import '../../core/universal_file_saver.dart';
 import '../../models/academic_content.dart' show kAcademicLevels, kAcademicSubjects;
 import '../../models/app_user.dart';
 import '../../models/school_timetable_slot.dart';
@@ -35,6 +36,7 @@ import '../../widgets/widgets.dart';
 import 'timetable_csv_import_page.dart';
 import 'widgets/management_scaffold.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 List<String> get _classLevels => kAcademicLevels.take(7).toList();
 
 class TimetableManagerPage extends StatefulWidget {
@@ -54,7 +56,7 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
   List<String> _subjects = kAcademicSubjects;
   List<String> _schoolClasses = [];
 
-  String get _schoolId => widget.user.schoolId ?? '';
+  String get _schoolId => widget.user.effectiveSchoolId;
   List<String> get _activeClasses => _schoolClasses.isNotEmpty ? _schoolClasses : _classLevels;
 
   @override
@@ -97,11 +99,12 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
   Future<void> _downloadTemplate() async {
     try {
       final csv = generateTimetableCsvTemplate();
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/timetable_template.csv');
-      await file.writeAsString('\uFEFF$csv');
-      if (!mounted) return;
-      await Share.shareXFiles([XFile(file.path)], text: 'School Timetable CSV Template');
+      await UniversalFileSaver.saveOrShareString(
+        content: '\uFEFF$csv',
+        fileName: 'timetable_template.csv',
+        mimeType: 'text/csv;charset=utf-8',
+        shareText: 'School Timetable CSV Template',
+      );
     } catch (e) {
       if (mounted) showToast(context, 'Could not generate template: $e', isError: true);
     }
@@ -115,12 +118,13 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
     }
     try {
       final csv = exportTimetableCsv(slots);
-      final dir = await getTemporaryDirectory();
       final safeClass = _classLevel.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_');
-      final file = File('${dir.path}/timetable_$safeClass.csv');
-      await file.writeAsString('\uFEFF$csv');
-      if (!mounted) return;
-      await Share.shareXFiles([XFile(file.path)], text: 'Timetable · $_classLevel');
+      await UniversalFileSaver.saveOrShareString(
+        content: '\uFEFF$csv',
+        fileName: 'timetable_$safeClass.csv',
+        mimeType: 'text/csv;charset=utf-8',
+        shareText: 'Timetable · $_classLevel',
+      );
     } catch (_) {
       if (mounted) showToast(context, 'Could not export timetable.', isError: true);
     }
@@ -298,7 +302,7 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
             builder: (context, snap) {
               if (snap.hasData) _latestSchoolSlots = snap.data!;
               if (!snap.hasData && snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                return const Center(child: SkeletonSpinner(strokeWidth: 2));
               }
               if (!snap.hasData && snap.hasError) {
                 return Center(child: Padding(
@@ -437,7 +441,7 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
     final endCtrl = TextEditingController(text: existing?.endTime ?? '08:25');
     final roomCtrl = TextEditingController(text: existing?.room ?? '');
     var day = existing?.dayOfWeek ?? 1;
-    var subject = existing?.subject ?? '';
+    var subject = existing?.subject ?? (_subjects.isNotEmpty ? _subjects.first : '');
     var teacher = existing?.teacherName ?? '';
     var saving = false;
     final ac = AppColors.of(context);
@@ -501,7 +505,17 @@ class _TimetableManagerPageState extends State<TimetableManagerPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     child: saving
-                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(
+                            width: 50,
+                            height: 14,
+                            child: Center(
+                              child: Text('Saving…',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: Colors.white)),
+                            ),
+                          )
                         : Text(existing == null ? 'Confirm' : 'Save', style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],

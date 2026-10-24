@@ -37,6 +37,7 @@ import 'marks_csv_import_page.dart';
 import 'student_roster_page.dart';
 import 'widgets/management_scaffold.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 /// Real classes only -- 'Undergraduate'/'All Levels' are content scopes.
 List<String> get _schoolClassLevels => kAcademicLevels.take(7).toList();
 
@@ -691,7 +692,7 @@ class _MarksEntryPageState extends State<MarksEntryPage> {
     if (_subject == null) {
       return _message(ac, Icons.block_rounded, 'You have no subject to record in $_class.');
     }
-    if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    if (_loading) return const Center(child: SkeletonSpinner(strokeWidth: 2));
     if (_loadError != null) {
       return _message(ac, Icons.wifi_off_rounded, _loadError!, action: TextButton.icon(
         onPressed: _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Retry')));

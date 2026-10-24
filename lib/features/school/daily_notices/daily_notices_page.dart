@@ -15,6 +15,7 @@ import '../../../theme/app_colors.dart';
 import 'compose_daily_notice_page.dart';
 import '../../../widgets/application_shell.dart';
 
+import '../../../widgets/skeleton_spinner.dart';
 class DailyNoticesPage extends StatefulWidget {
   final AppUser user;
 
@@ -125,7 +126,7 @@ class _DailyNoticesPageState extends State<DailyNoticesPage> {
               stream: DailyNoticeRepository.instance.watchForClass(schoolId, userClass),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: SkeletonSpinner());
                 }
 
                 var items = snap.data ?? [];

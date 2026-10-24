@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/result.dart';
+import '../../models/academic_content.dart' show kAcademicLevels;
 import '../../models/app_user.dart';
 import '../../models/fee_ledger_entry.dart';
 import '../../models/school_expense.dart';
@@ -49,6 +50,8 @@ class _FeesPageState extends State<FeesPage> {
   bool _loading = true;
 
   bool get _canManage =>
+      widget.user.isSuperAdmin ||
+      widget.user.isAdmin ||
       widget.user.canRecordAnyMarks ||
       (widget.user.isSchoolMember &&
           !widget.user.isStudent &&
@@ -74,6 +77,7 @@ class _FeesPageState extends State<FeesPage> {
       ...configured,
       for (final s in all)
         if (s.classLevel.isNotEmpty) s.classLevel,
+      if (configured.isEmpty && all.isEmpty) ...kAcademicLevels,
     }.toList()
       ..sort();
     if (!mounted) return;
@@ -350,6 +354,7 @@ class _FeesPageState extends State<FeesPage> {
         currentTitle: 'Fees & Ledger',
         subtitle: 'Personal tuition statement and recorded payments',
         currentDestination: AppNavDestination.fees,
+        breadcrumbs: const [ShellBreadcrumb(label: 'Fees & Ledger', icon: Icons.receipt_long_rounded)],
         child: _StudentFeesView(user: widget.user),
       );
     }
@@ -359,6 +364,7 @@ class _FeesPageState extends State<FeesPage> {
       currentTitle: 'Fees & Expenses',
       subtitle: 'Manage student tuition charges and school operational expenses',
       currentDestination: AppNavDestination.fees,
+      breadcrumbs: const [ShellBreadcrumb(label: 'Fees & Expenses', icon: Icons.receipt_long_rounded)],
       child: Column(
         children: [
           Padding(
@@ -1029,7 +1035,7 @@ class _StudentFeeSheetState extends State<_StudentFeeSheet> {
             const Divider(height: 1),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const SkeletonList()
                   : _entries.isEmpty
                       ? Center(
                           child: Text(
@@ -1258,11 +1264,7 @@ class _FeeEntryDialogState extends State<_FeeEntryDialog> {
         FilledButton(
           onPressed: _saving ? null : _save,
           child: _saving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const Text('Saving…')
               : const Text('Save'),
         ),
       ],

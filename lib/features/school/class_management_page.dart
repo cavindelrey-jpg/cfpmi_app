@@ -14,6 +14,7 @@ import '../../widgets/application_shell.dart';
 import 'student_roster_page.dart';
 import 'timetable_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ClassManagementPage extends StatefulWidget {
   final AppUser user;
   const ClassManagementPage({super.key, required this.user});
@@ -349,7 +350,7 @@ class _ClassManagementPageState extends State<ClassManagementPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => const Center(child: SkeletonSpinner()),
     );
 
     final stats = await SchoolClassRepository.instance.checkClassUsage(_schoolId, cls.name);
@@ -514,7 +515,7 @@ class _ClassManagementPageState extends State<ClassManagementPage> {
         ),
       ],
       child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: SkeletonSpinner())
           : RefreshIndicator(
               onRefresh: _loadClasses,
               child: ListView(

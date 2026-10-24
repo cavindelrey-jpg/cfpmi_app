@@ -17,6 +17,7 @@ import '../../repositories/classroom_repository.dart';
 import '../../widgets/web_embed/web_embed.dart';
 import 'classroom_slide.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ClassroomDisplayPage extends StatefulWidget {
   final String sessionId;
   const ClassroomDisplayPage({super.key, required this.sessionId});
@@ -249,7 +250,7 @@ class _ClassroomDisplayPageState extends State<ClassroomDisplayPage> {
             final s = snap.data;
             if (s == null) {
               return const Center(
-                child: CircularProgressIndicator(
+                child: SkeletonSpinner(
                   strokeWidth: 2.5,
                   color: Colors.white38,
                 ),

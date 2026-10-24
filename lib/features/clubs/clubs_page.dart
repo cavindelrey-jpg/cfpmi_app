@@ -60,6 +60,7 @@ import 'club_members_page.dart';
 import 'club_settings_page.dart';
 import 'club_discussion_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ClubsPage extends StatefulWidget {
   final AppUser user;
 
@@ -132,6 +133,7 @@ class _ClubsPageState extends State<ClubsPage> {
             currentTitle: 'Study Groups & Clubs',
             subtitle: 'Join academic clubs, subject study groups, and campus communities',
             currentDestination: AppNavDestination.clubs,
+            breadcrumbs: const [ShellBreadcrumb(label: 'Study Groups', icon: Icons.groups_outlined)],
             child: const _ClubsSkeleton(),
           );
         }
@@ -141,6 +143,7 @@ class _ClubsPageState extends State<ClubsPage> {
             currentTitle: 'Study Groups & Clubs',
             subtitle: 'Join academic clubs, subject study groups, and campus communities',
             currentDestination: AppNavDestination.clubs,
+            breadcrumbs: const [ShellBreadcrumb(label: 'Study Groups', icon: Icons.groups_outlined)],
             child: Center(child: ErrorView(message: snap.error.toString())),
           );
         }
@@ -179,6 +182,7 @@ class _ClubsPageState extends State<ClubsPage> {
                   currentTitle: 'Study Groups & Clubs',
                   subtitle: 'Join academic clubs, subject study groups, and campus communities',
                   currentDestination: AppNavDestination.clubs,
+                  breadcrumbs: const [ShellBreadcrumb(label: 'Study Groups', icon: Icons.groups_outlined)],
                   headerActions: [
                     if (_canCreate)
                       ElevatedButton.icon(
@@ -222,60 +226,9 @@ class _ClubsPageState extends State<ClubsPage> {
                   bottomHeader: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(child: _searchBar(ac)),
-                          const SizedBox(width: 12),
-                          if (_canCreate)
-                            ElevatedButton.icon(
-                              onPressed: () async {
-                                HapticFeedback.mediumImpact();
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    settings: const RouteSettings(name: '/clubs/create'),
-                                    builder: (_) => CreateClubPage(user: widget.user),
-                                  ),
-                                );
-                                if (mounted) {
-                                  setState(() {
-                                    _clubsStream = ClubRepository.instance.watchClubs(user: widget.user);
-                                    _myClubIdsStream = ClubRepository.instance.watchMyClubIds(widget.user.id);
-                                    _myPendingIdsStream = ClubRepository.instance.watchMyPendingRequestClubIds(widget.user.id);
-                                  });
-                                }
-                              },
-                              icon: const Icon(Icons.add_rounded, size: 18),
-                              label: const Text('Create Group'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF081630),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            )
-                          else
-                            ElevatedButton.icon(
-                              onPressed: () => showCompactSignInDialog(context),
-                              icon: const Icon(Icons.login_rounded, size: 16),
-                              label: const Text('Sign In'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFE5A93C),
-                                foregroundColor: const Color(0xFF081630),
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      if (categories.length > 1) ...[
-                        const SizedBox(height: 10),
+                      _searchBar(ac),
+                      if (categories.isNotEmpty) ...[
+                        const SizedBox(height: 8),
                         _categoryChips(categories, ac),
                       ],
                     ],
@@ -956,35 +909,177 @@ class _MemberAvatarStack extends StatelessWidget {
 /// this is the same data in an actually-scannable vertical list rather
 /// than a real paginated fetch (there's nothing more to page in; the
 /// preview already held every club).
-class AllClubsPage extends StatelessWidget {
+class AllClubsPage extends StatefulWidget {
   final List<Club> clubs;
   final AppUser user;
   const AllClubsPage({super.key, required this.clubs, required this.user});
 
   @override
+  State<AllClubsPage> createState() => _AllClubsPageState();
+}
+
+class _AllClubsPageState extends State<AllClubsPage> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+  String? _selectedCategory;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+    final canCreate = !widget.user.isGuest;
+
+    var filtered = widget.clubs.where((c) => ClubScope.canAccessClub(c, user: widget.user)).toList();
+    if (_query.isNotEmpty) {
+      final q = _query.toLowerCase();
+      filtered = filtered
+          .where((c) =>
+              c.name.toLowerCase().contains(q) ||
+              c.category.toLowerCase().contains(q) ||
+              c.description.toLowerCase().contains(q))
+          .toList();
+    }
+    if (_selectedCategory != null) {
+      filtered = filtered.where((c) => c.category == _selectedCategory).toList();
+    }
+    final categories = widget.clubs.map((c) => c.category).toSet().toList()..sort();
+
     return Scaffold(
       backgroundColor: ac.bg,
       appBar: AppBar(
-        backgroundColor: ac.bg, elevation: 0,
+        backgroundColor: ac.bg,
+        elevation: 0,
         iconTheme: IconThemeData(color: ac.txt),
         title: Text('Discover Groups', style: AppText.title),
-      ),
-      body: AppBackground(child: clubs.isEmpty
-          ? const EmptyState(icon: Icons.groups_outlined, title: 'No groups yet',
-              subtitle: 'Be the first to create one.')
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: clubs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => _DiscoverClubCard(
-                club: clubs[i], user: user, fullWidth: true,
-                onOpen: () => Navigator.push(context, MaterialPageRoute(
-                    settings: RouteSettings(name: '/clubs/${clubs[i].id}'),
-                    builder: (_) => ClubDetailPage(club: clubs[i], user: user))),
+        actions: [
+          if (canCreate)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  HapticFeedback.mediumImpact();
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      settings: const RouteSettings(name: '/clubs/create'),
+                      builder: (_) => CreateClubPage(user: widget.user),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('Create'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF081630),
+                  foregroundColor: Colors.white,
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
-            )),
+            ),
+        ],
+      ),
+      body: AppBackground(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                controller: _searchCtrl,
+                style: AppText.bodySm.copyWith(color: ac.txt),
+                onChanged: (v) => setState(() => _query = v.trim()),
+                decoration: InputDecoration(
+                  hintText: 'Search groups by name or interest…',
+                  hintStyle: AppText.bodySm.copyWith(color: ac.muted, fontSize: 13),
+                  prefixIcon: Icon(Icons.search_rounded, color: ac.muted, size: 20),
+                  suffixIcon: _query.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear_rounded, color: ac.muted, size: 18),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _query = '');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: ac.surf,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: ac.bdr),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: ac.bdr),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: ac.primary),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                ),
+              ),
+            ),
+            if (categories.isNotEmpty)
+              SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: categories.length + 1,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final cat = i == 0 ? null : categories[i - 1];
+                    final label = i == 0 ? 'All Groups' : categories[i - 1];
+                    final selected = _selectedCategory == cat;
+                    return FilterChip(
+                      selected: selected,
+                      label: Text(label),
+                      labelStyle: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? Colors.white : ac.txt,
+                      ),
+                      backgroundColor: ac.surf,
+                      selectedColor: const Color(0xFF081630),
+                      checkmarkColor: Colors.white,
+                      side: BorderSide(color: selected ? Colors.transparent : ac.bdr),
+                      onSelected: (_) => setState(() => _selectedCategory = cat),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: filtered.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.groups_outlined,
+                      title: 'No groups found',
+                      subtitle: 'Try a different search or be the first to create one.',
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (_, i) => _DiscoverClubCard(
+                        club: filtered[i],
+                        user: widget.user,
+                        fullWidth: true,
+                        onOpen: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            settings: RouteSettings(name: '/clubs/${filtered[i].id}'),
+                            builder: (_) => ClubDetailPage(club: filtered[i], user: widget.user),
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1818,7 +1913,7 @@ class _ComposePostSheetState extends State<_ComposePostSheet> {
                   style: ElevatedButton.styleFrom(backgroundColor: ac.navy, foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12)),
                   child: _posting
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(width: 18, height: 18, child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
                       : const Text('Post'),
                 ),
               ),
@@ -2157,7 +2252,7 @@ class _AddResourceSheetState extends State<_AddResourceSheet> {
               onPressed: _saving ? null : _submit,
               style: ElevatedButton.styleFrom(backgroundColor: ac.navy, foregroundColor: Colors.white),
               child: _saving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(width: 18, height: 18, child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
                   : const Text('Share'),
             ),
           ),
@@ -2370,7 +2465,7 @@ class _AddEventSheetState extends State<_AddEventSheet> {
               onPressed: _saving ? null : _submit,
               style: ElevatedButton.styleFrom(backgroundColor: ac.navy, foregroundColor: Colors.white),
               child: _saving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(width: 18, height: 18, child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
                   : const Text('Create Event'),
             ),
           ),

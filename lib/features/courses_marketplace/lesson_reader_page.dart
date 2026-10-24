@@ -40,6 +40,7 @@ import 'course_lessons_page.dart';
 import 'courses_home_page.dart';
 import 'lesson_composer_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class LessonReaderPage extends StatefulWidget {
   final PublicCourse course;
   final CourseLesson lesson;
@@ -737,7 +738,7 @@ class _NotesTabState extends State<_NotesTab> {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     if (!_loaded) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: SkeletonSpinner());
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
@@ -1217,7 +1218,7 @@ class _CommentsTab extends StatelessWidget {
             const SizedBox(width: 8),
             posting
                 ? const SizedBox(width: 40, height: 40,
-                    child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))))
+                    child: Center(child: SizedBox(width: 18, height: 18, child: SkeletonSpinner(strokeWidth: 2))))
                 : IconButton(icon: Icon(Icons.send_rounded, color: ac.primary), onPressed: onPost),
           ])
         else

@@ -13,6 +13,7 @@ import '../../../theme/app_colors.dart';
 import 'question_bank_picker_sheet.dart';
 import 'question_editor_dialog.dart';
 
+import '../../../widgets/skeleton_spinner.dart';
 class QuestionCollectionsPage extends StatefulWidget {
   final AppUser user;
   final String? initialSubject;
@@ -123,7 +124,7 @@ class _QuestionCollectionsPageState extends State<QuestionCollectionsPage> {
         ),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: SkeletonSpinner());
           }
           final collections = snap.data ?? [];
 

@@ -21,6 +21,7 @@ import 'courses_home_page.dart';
 import 'hierarchy_browse_scaffold.dart';
 import 'lesson_reader_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class CourseLessonsPage extends StatefulWidget {
   final PublicCourse course;
   final AppUser? currentUser;
@@ -152,7 +153,7 @@ class _CourseLessonsPageState extends State<CourseLessonsPage> {
                       child: SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
+                        child: SkeletonSpinner(
                           value: _downloadProgress > 0 ? _downloadProgress : null,
                           strokeWidth: 2.2,
                           color: ac.primary,

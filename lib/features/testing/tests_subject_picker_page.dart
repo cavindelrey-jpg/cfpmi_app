@@ -25,6 +25,7 @@ import 'tests_topic_picker_page.dart';
 import 'xp_dashboard_page.dart';
 import '../../core/content_quality.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class TestsSubjectPickerPage extends StatefulWidget {
   final AppUser user;
   final String category;
@@ -185,7 +186,7 @@ class _TestsSubjectPickerPageState extends State<TestsSubjectPickerPage> {
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const SizedBox(height: 92,
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+              child: Center(child: SkeletonSpinner(strokeWidth: 2)));
         }
         final tests = snap.data ?? const <Test>[];
         if (tests.isEmpty) return const SizedBox.shrink();

@@ -15,6 +15,7 @@ import '../features/academic_content/content_viewer_page.dart';
 import '../features/courses_marketplace/course_lessons_page.dart';
 import 'profile_page.dart';
 
+import '../widgets/skeleton_spinner.dart';
 class SearchPage extends StatefulWidget {
   final AppUser user;
   const SearchPage({super.key, required this.user});
@@ -135,7 +136,7 @@ class _SearchPageState extends State<SearchPage> with SingleTickerProviderStateM
       ),
       child: AppBackground(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: SkeletonSpinner())
             : TabBarView(
                 controller: _tabController,
                 children: [

@@ -18,6 +18,7 @@ import '../../widgets/application_shell.dart';
 import 'quiz_icon_editor.dart';
 import 'tests_list_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class TestsTopicPickerPage extends StatefulWidget {
   final AppUser user;
   final String category;
@@ -112,7 +113,7 @@ class _TestsTopicPickerPageState extends State<TestsTopicPickerPage> {
       ],
       rightPanel: QuizzesContextualPanel(user: widget.user),
       child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: SkeletonSpinner())
           : _counts.isEmpty
               ? EmptyState(
                   icon: Icons.topic_outlined,

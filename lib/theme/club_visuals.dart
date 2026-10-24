@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'app_theme.dart';
 import '../models/club.dart';
 
+import '../widgets/skeleton_spinner.dart';
 class ClubIconOption {
   final String key;
   final IconData icon;
@@ -122,7 +123,7 @@ class ClubLogo extends StatelessWidget {
                 alignment: Alignment.center,
                 child: SizedBox(
                   width: size * 0.32, height: size * 0.32,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: accent),
+                  child: SkeletonSpinner(strokeWidth: 2, color: accent),
                 ),
               );
             },

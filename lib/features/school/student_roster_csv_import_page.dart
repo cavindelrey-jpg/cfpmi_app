@@ -21,6 +21,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/widgets.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class StudentRosterCsvImportPage extends StatefulWidget {
   final AppUser staff;
   final String? targetClass;
@@ -183,7 +184,7 @@ class _StudentRosterCsvImportPageState extends State<StudentRosterCsvImportPage>
           _actionRow(ac),
           if (_busy) ...[
             const SizedBox(height: 24),
-            const Center(child: CircularProgressIndicator()),
+            const Center(child: SkeletonSpinner()),
           ],
           if (_importError != null) ...[
             const SizedBox(height: 16),

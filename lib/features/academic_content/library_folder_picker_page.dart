@@ -11,6 +11,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class LibraryFolderPickerPage extends StatelessWidget {
   final String? folderId;
   final String title;
@@ -49,7 +50,7 @@ class LibraryFolderPickerPage extends StatelessWidget {
               : LibraryFolderRepository.instance.watchChildFolders(folderId!),
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: SkeletonSpinner());
             }
             final folders = snap.data ?? const <LibraryFolder>[];
             if (folders.isEmpty) {

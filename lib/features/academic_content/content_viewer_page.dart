@@ -35,6 +35,7 @@ import 'content_details_page.dart';
 import 'content_edit_page.dart';
 import 'library_home_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 enum ViewableFileKind { image, pdf, video, docx, pptx, epub, txt }
 
 /// Maps a file's extension to a kind this viewer can render, or null if
@@ -535,7 +536,7 @@ class _ViewerSaveOfflineActionState extends State<_ViewerSaveOfflineAction> {
           child: SizedBox(
             width: 20,
             height: 20,
-            child: CircularProgressIndicator(
+            child: SkeletonSpinner(
               strokeWidth: 2,
               value: _progress > 0 ? _progress : null,
               color: ac.primary,
@@ -583,7 +584,7 @@ class _ImageViewer extends StatelessWidget {
             url,
             fit: BoxFit.contain,
             loadingBuilder: (_, child, progress) =>
-                progress == null ? child : const Center(child: CircularProgressIndicator()),
+                progress == null ? child : const Center(child: SkeletonSpinner()),
             errorBuilder: (_, __, ___) => const Center(
               child: Text('Could not load this image.'),
             ),
@@ -655,7 +656,7 @@ class _PdfViewerState extends State<_PdfViewer> {
         if (!snap.hasData) {
           return Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              CircularProgressIndicator(
+              SkeletonSpinner(
                 strokeWidth: 2,
                 value: _downloadProgress > 0 ? _downloadProgress : null,
               ),
@@ -858,7 +859,7 @@ class _VideoViewerState extends State<_VideoViewer> {
       return Center(child: Text(_error!, style: const TextStyle(color: Colors.white)));
     }
     if (_chewieCtrl == null) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return const Center(child: SkeletonSpinner(color: Colors.white));
     }
     return Center(child: Chewie(controller: _chewieCtrl!));
   }
@@ -941,7 +942,7 @@ class _DocxViewerState extends State<_DocxViewer> {
     }
     final controller = _controller;
     if (controller == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: SkeletonSpinner());
     }
     final ac = AppColors.of(context);
     return Column(children: [
@@ -1150,7 +1151,7 @@ class _EpubViewerState extends State<_EpubViewer> {
     }
     final doc = _doc;
     if (doc == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: SkeletonSpinner());
     }
 
     if (doc.chapters.isEmpty) {
@@ -1337,7 +1338,7 @@ class _TextViewerState extends State<_TextViewer> {
     }
     final text = _text;
     if (text == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: SkeletonSpinner());
     }
     final ac = AppColors.of(context);
     return Column(

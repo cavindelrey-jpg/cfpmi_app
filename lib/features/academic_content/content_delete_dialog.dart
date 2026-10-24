@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../core/result.dart';
 import '../../theme/app_colors.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ContentDeleteDialog extends StatefulWidget {
   final AcademicContent content;
   final VoidCallback onDeleted;
@@ -89,7 +90,7 @@ class _ContentDeleteDialogState extends State<ContentDeleteDialog> {
           ),
           child: _deleting
               ? const SizedBox(width: 16, height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  child: SkeletonSpinner(strokeWidth: 2, color: Colors.white))
               : Text('Delete', style: AppText.button.copyWith(fontSize: 14)),
         ),
       ],

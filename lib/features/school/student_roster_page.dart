@@ -24,6 +24,7 @@ import 'class_management_page.dart';
 import 'student_roster_csv_import_page.dart';
 import 'widgets/management_scaffold.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class StudentRosterPage extends StatefulWidget {
   final AppUser user;
   final String? initialClass;
@@ -584,7 +585,7 @@ class _StudentRosterPageState extends State<StudentRosterPage> {
           ),
           const SizedBox(height: 10),
           if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            const Center(child: Padding(padding: EdgeInsets.all(32), child: SkeletonSpinner()))
           else if (filtered.isEmpty)
             _emptyState(ac)
           else

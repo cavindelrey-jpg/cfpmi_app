@@ -10,6 +10,7 @@ import '../repositories/notification_repository.dart';
 import '../widgets/widgets.dart';
 import '../widgets/app_background.dart';
 
+import '../widgets/skeleton_spinner.dart';
 class NotificationPreferencesPage extends StatefulWidget {
   final String userId;
   const NotificationPreferencesPage({super.key, required this.userId});
@@ -52,7 +53,7 @@ class _NotificationPreferencesPageState extends State<NotificationPreferencesPag
               padding: EdgeInsets.only(right: 16),
               child: Center(child: SizedBox(
                   width: 16, height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2))),
+                  child: SkeletonSpinner(strokeWidth: 2))),
             ),
         ],
       ),

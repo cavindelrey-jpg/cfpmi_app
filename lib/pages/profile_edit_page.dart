@@ -19,6 +19,7 @@ import '../services/auth_service.dart';
 import '../widgets/widgets.dart';
 
 import '../widgets/app_background.dart';
+import '../widgets/skeleton_spinner.dart';
 const int kBioMaxWords = 100;
 
 class ProfileEditPage extends StatefulWidget {
@@ -144,7 +145,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             onPressed: _saving ? null : _save,
             child: _saving
                 ? const SizedBox(width: 16, height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2))
+                    child: SkeletonSpinner(strokeWidth: 2))
                 : Text('Save', style: GoogleFonts.sora(
                     fontSize: 14, fontWeight: FontWeight.w700, color: ac.primary)),
           ),
@@ -173,7 +174,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                     decoration: BoxDecoration(color: ac.gold, shape: BoxShape.circle),
                     child: _uploadingPhoto
                         ? SizedBox(width: 14, height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: ac.navy))
+                            child: SkeletonSpinner(strokeWidth: 2, color: ac.navy))
                         : Icon(Icons.camera_alt_rounded, size: 14, color: ac.navy),
                   ),
                 ),

@@ -10,6 +10,7 @@ import '../../widgets/app_background.dart';
 import 'compose_announcement_page.dart';
 import '../../theme/app_colors.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class AnnouncementsPage extends StatelessWidget {
   final AppUser user;
   final bool canPost;
@@ -29,7 +30,7 @@ class AnnouncementsPage extends StatelessWidget {
             .watchAnnouncements(schoolId: user.schoolId),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: SkeletonSpinner());
           }
           final list = snap.data ?? [];
           if (list.isEmpty) {

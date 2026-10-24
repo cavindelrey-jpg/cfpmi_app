@@ -13,6 +13,7 @@ import 'package:video_player/video_player.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 
+import 'skeleton_spinner.dart';
 class ArticleVideoPlayer extends StatefulWidget {
   final String url;
   const ArticleVideoPlayer({super.key, required this.url});
@@ -64,7 +65,7 @@ class _ArticleVideoPlayerState extends State<ArticleVideoPlayer> {
           child: _error != null
               ? Center(child: Text(_error!, style: const TextStyle(color: Colors.white70)))
               : (_chewieCtrl == null
-                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  ? const Center(child: SkeletonSpinner(color: Colors.white))
                   : Chewie(controller: _chewieCtrl!)),
         ),
       ),

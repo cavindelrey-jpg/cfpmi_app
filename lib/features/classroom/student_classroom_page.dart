@@ -19,6 +19,7 @@ import '../../widgets/application_shell.dart';
 import '../../widgets/web_embed/web_embed.dart';
 import 'classroom_slide.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class StudentClassroomPage extends StatelessWidget {
   final AppUser user;
   const StudentClassroomPage({super.key, required this.user});
@@ -37,7 +38,7 @@ class StudentClassroomPage extends StatelessWidget {
         builder: (context, snap) {
           final s = snap.data;
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: SkeletonSpinner());
           }
           if (s == null) {
             return Center(
@@ -287,7 +288,7 @@ class _MyNotesState extends State<_MyNotes> {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    if (!_loaded) return const Center(child: CircularProgressIndicator());
+    if (!_loaded) return const Center(child: SkeletonSpinner());
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(

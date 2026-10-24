@@ -20,6 +20,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ComposeAnnouncementPage extends StatefulWidget {
   final AppUser user;
   const ComposeAnnouncementPage({super.key, required this.user});
@@ -133,7 +134,7 @@ class _ComposeAnnouncementPageState extends State<ComposeAnnouncementPage> {
             const Padding(
               padding: EdgeInsets.all(16),
               child: SizedBox(width: 20, height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2)),
+                child: SkeletonSpinner(strokeWidth: 2)),
             )
           else
             TextButton(
@@ -263,7 +264,7 @@ class _ComposeAnnouncementPageState extends State<ComposeAnnouncementPage> {
               ),
               if (_uploadingImage)
                 const Positioned.fill(
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                  child: Center(child: SkeletonSpinner(strokeWidth: 2, color: Colors.white)),
                 ),
             ])
           else

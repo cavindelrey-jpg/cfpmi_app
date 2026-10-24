@@ -26,6 +26,7 @@ import 'library_folder_picker_page.dart';
 import 'library_home_page.dart';
 import 'folder_thumbnail_editor.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class LibraryFolderPage extends StatefulWidget {
   final String folderId;
   final String folderName;
@@ -244,7 +245,7 @@ class _LibraryFolderPageState extends State<LibraryFolderPage> {
                       child: SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: SkeletonSpinner(strokeWidth: 2),
                       ),
                     ),
                   )

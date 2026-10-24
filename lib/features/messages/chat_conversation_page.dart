@@ -79,6 +79,7 @@ import '../courses_marketplace/course_lessons_page.dart';
 import '../magazine/article_reader_page.dart';
 import '../testing/test_taking_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class ChatConversationPage extends StatefulWidget {
   final String conversationId;
   final AppUser currentUser;
@@ -513,7 +514,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           Row(children: [
           IconButton(
             icon: _sending
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(width: 20, height: 20, child: SkeletonSpinner(strokeWidth: 2))
                 : Icon(Icons.add_circle_outline_rounded, color: ac.primary),
             onPressed: _sending ? null : () => _showAttachSheet(),
           ),
@@ -1139,7 +1140,7 @@ class _SharedContentCardState extends State<_SharedContentCard> {
                     width: 40, height: 40,
                     decoration: BoxDecoration(color: ac.primaryBg, borderRadius: BorderRadius.circular(10)),
                     child: _opening
-                        ? Padding(padding: const EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2, color: ac.primary))
+                        ? Padding(padding: const EdgeInsets.all(10), child: SkeletonSpinner(strokeWidth: 2, color: ac.primary))
                         : Icon(_icon, color: ac.primary, size: 18),
                   ),
             const SizedBox(width: 10),
@@ -1154,7 +1155,7 @@ class _SharedContentCardState extends State<_SharedContentCard> {
             if (_opening && (thumb != null && thumb.isNotEmpty))
               Padding(
                 padding: const EdgeInsets.only(left: 6),
-                child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ac.primary)),
+                child: SizedBox(width: 16, height: 16, child: SkeletonSpinner(strokeWidth: 2, color: ac.primary)),
               )
             else
               Icon(Icons.chevron_right_rounded, color: ac.muted, size: 18),
@@ -1201,7 +1202,7 @@ class _LinkPreviewCardState extends State<_LinkPreviewCard> {
         decoration: BoxDecoration(color: ac.surf3, borderRadius: BorderRadius.circular(10)),
         alignment: Alignment.center,
         child: SizedBox(width: 16, height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: ac.muted)),
+            child: SkeletonSpinner(strokeWidth: 2, color: ac.muted)),
       );
     }
     final data = _data;

@@ -18,6 +18,7 @@ import 'school_exam_templates_page.dart';
 import '../../academic_content/bulk_past_paper_upload_page.dart';
 import '../../../widgets/application_shell.dart';
 
+import '../../../widgets/skeleton_spinner.dart';
 class ExamListPage extends StatefulWidget {
   final AppUser user;
 
@@ -92,7 +93,7 @@ class _ExamListPageState extends State<ExamListPage> {
         ),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: SkeletonSpinner());
           }
           final exams = snap.data ?? [];
 

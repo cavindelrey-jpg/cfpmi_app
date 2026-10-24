@@ -9,6 +9,7 @@ import '../../../repositories/daily_notice_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_colors.dart';
 
+import '../../../widgets/skeleton_spinner.dart';
 class ComposeDailyNoticePage extends StatefulWidget {
   final AppUser user;
   final String? initialClass;
@@ -223,7 +224,7 @@ class _ComposeDailyNoticePageState extends State<ComposeDailyNoticePage> {
                 child: ElevatedButton.icon(
                   onPressed: _submitting ? null : _submit,
                   icon: _submitting
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      ? const SizedBox(width: 20, height: 20, child: SkeletonSpinner(color: Colors.white, strokeWidth: 2))
                       : const Icon(Icons.send_rounded),
                   label: Text(_submitting ? 'Submitting...' : 'Post Notice',
                       style: AppText.button.copyWith(fontSize: 15)),

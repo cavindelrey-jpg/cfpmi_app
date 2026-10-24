@@ -23,6 +23,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
 import '../../widgets/app_background.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class SchoolAdminPage extends StatefulWidget {
   final AppUser user;
   const SchoolAdminPage({super.key, required this.user});
@@ -377,7 +378,7 @@ class _IssuedVouchersSectionState extends State<IssuedVouchersSection> {
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+          return const Padding(padding: EdgeInsets.all(24), child: Center(child: SkeletonSpinner(strokeWidth: 2)));
         }
         final res = snap.data;
         if (res is! Success<List<IssuedVoucher>>) {

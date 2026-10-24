@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import '../../models/magazine_video_post.dart';
 import '../../repositories/magazine_repository.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class MagazineVideoPlayerPage extends StatefulWidget {
   final MagazineVideoPost video;
   const MagazineVideoPlayerPage({super.key, required this.video});
@@ -57,7 +58,7 @@ class _MagazineVideoPlayerPageState extends State<MagazineVideoPlayerPage> {
         child: _error != null
             ? Text(_error!, style: const TextStyle(color: Colors.white))
             : (_chewieCtrl == null
-                ? const CircularProgressIndicator(color: Colors.white)
+                ? const SkeletonSpinner(color: Colors.white)
                 : Chewie(controller: _chewieCtrl!)),
       ),
     );

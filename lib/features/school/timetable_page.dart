@@ -22,6 +22,7 @@ import 'widgets/school_shared_widgets.dart';
 import '../../widgets/application_shell.dart';
 import '../../widgets/compact_sign_in_dialog.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class TimetablePage extends StatelessWidget {
   final AppUser user;
   final String? initialClass;
@@ -73,7 +74,7 @@ class TimetablePage extends StatelessWidget {
               stream: SchoolTimetableRepository.instance.watchForClass(schoolId, classLevel),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                  return const Center(child: SkeletonSpinner(strokeWidth: 2));
                 }
                 final all = snap.data ?? const <SchoolTimetableSlot>[];
                 if (all.isEmpty) return _emptyState(context, ac, classLevel);
@@ -352,7 +353,7 @@ class _StaffTimetableViewState extends State<_StaffTimetableView> {
       stream: _stream,
       builder: (context, snap) {
         if (!snap.hasData && snap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+          return const Center(child: SkeletonSpinner(strokeWidth: 2));
         }
         if (!snap.hasData && snap.hasError) {
           return Center(child: Text('Couldn\'t load the timetable. Check your connection.',

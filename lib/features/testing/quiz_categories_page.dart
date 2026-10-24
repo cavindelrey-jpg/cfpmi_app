@@ -24,6 +24,7 @@ import 'quiz_icon_editor.dart';
 import 'tests_subject_picker_page.dart';
 import 'xp_dashboard_page.dart';
 
+import '../../widgets/skeleton_spinner.dart';
 class QuizCategoriesPage extends StatefulWidget {
   final AppUser user;
   const QuizCategoriesPage({super.key, required this.user});
@@ -147,7 +148,7 @@ class _QuizCategoriesPageState extends State<QuizCategoriesPage> {
       currentDestination: AppNavDestination.testsAndQuizzes,
       contextualPanel: QuizzesContextualPanel(user: widget.user),
       child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: SkeletonSpinner())
           : _error != null
           ? Center(
               child: Padding(
