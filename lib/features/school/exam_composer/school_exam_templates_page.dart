@@ -233,7 +233,6 @@ class _SchoolExamTemplatesPageState extends State<SchoolExamTemplatesPage> {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final schoolId = widget.user.effectiveSchoolId;
-    String? logoUri = initial?.schoolLogoUrl;
 
     return Scaffold(
       backgroundColor: ac.bg,
