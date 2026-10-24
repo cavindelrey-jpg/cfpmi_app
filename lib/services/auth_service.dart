@@ -111,25 +111,40 @@ class AuthService {
       if (cached != null && !controller.isClosed) {
         _lastKnownUser = cached;
         controller.add(cached);
+      } else if (_lastKnownUser != null && !controller.isClosed) {
+        controller.add(_lastKnownUser);
       }
       try {
-        final fresh = await currentAppUser();
+        final fresh = await currentAppUser().timeout(const Duration(seconds: 10));
         if (controller.isClosed) return;
         if (fresh != null) {
           _lastKnownUser = fresh;
           unawaited(AppUserCacheService.instance.putUser(fresh));
           controller.add(fresh);
-        } else if (cached == null) {
+        } else if (cached == null && _lastKnownUser == null) {
           // A real, successful "no row" result with nothing cached to
           // fall back on -- the only legitimate null emission.
           controller.add(null);
         }
-        // fresh == null but cached != null: leave the cached value
-        // showing rather than overwrite it with an absence we can't
-        // yet distinguish from a transient blip.
       } catch (_) {
-        // Network/REST failure -- keep showing whatever we already
-        // emitted (cache or nothing yet); never emit null for this.
+        // Network/REST failure -- ensure we don't leave the stream permanently empty
+        if (!controller.isClosed && cached == null && _lastKnownUser != null) {
+          controller.add(_lastKnownUser);
+        } else if (!controller.isClosed && cached == null) {
+          final authUser = _supabase.auth.currentUser;
+          if (authUser != null) {
+            final fallbackUser = AppUser(
+              id: authUser.id,
+              email: authUser.email ?? '',
+              name: authUser.userMetadata?['name'] as String? ?? authUser.email?.split('@').first ?? 'User',
+              role: UserRole.student,
+              accountType: AccountType.independent,
+              status: AccountStatus.active,
+            );
+            _lastKnownUser = fallbackUser;
+            controller.add(fallbackUser);
+          }
+        }
       }
     }
 
@@ -210,9 +225,20 @@ class AuthService {
   // .institution_id is a nullable uuid FK, not a free-text bucket.
   Future<AppUser?> signIn({required String email, required String password}) async {
     try {
-      final res = await _supabase.auth.signInWithPassword(email: email, password: password);
+      final res = await _supabase.auth
+          .signInWithPassword(email: email, password: password)
+          .timeout(const Duration(seconds: 12), onTimeout: () {
+        throw TimeoutException('Login request timed out. Please check your internet connection and try again.');
+      });
       final uid = res.user!.id;
-      final row = await _supabase.from('users').select().eq('id', uid).maybeSingle();
+      final row = await _supabase
+          .from('users')
+          .select()
+          .eq('id', uid)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException('Profile fetch timed out. Please check your internet connection.');
+      });
       if (row == null) {
         unawaited(AuditService.instance.log(
           actorId: uid, actorRole: 'unknown',
@@ -229,7 +255,16 @@ class AuthService {
         ));
         throw Exception('This account has been suspended. Contact administration.');
       }
-      await _assertBelongsToThisBrand(user);
+      try {
+        await _assertBelongsToThisBrand(user).timeout(const Duration(seconds: 8));
+      } catch (e) {
+        if (e is Exception && e.toString().contains('isn\'t linked to')) {
+          rethrow;
+        }
+        debugPrint('Brand assertion non-blocking error/timeout: $e');
+      }
+      _lastKnownUser = user;
+      unawaited(AppUserCacheService.instance.putUser(user));
       unawaited(AuditService.instance.log(
         institutionId: user.schoolId, actorId: uid, actorRole: user.roleLabel,
         action: 'login_success',
@@ -351,11 +386,7 @@ class AuthService {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2.5),
-                ),
+                const ShimmerCircle(size: 24),
                 const SizedBox(width: 20),
                 Text(
                   'Signing out…',

@@ -103,8 +103,15 @@ class PrimaryBtn extends StatelessWidget {
       child: ElevatedButton(
         onPressed: loading ? null : onTap,
         child: loading
-            ? const SizedBox(width: 20, height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const ShimmerLine(width: 44, height: 12),
+                  const SizedBox(width: 8),
+                  Text(label, style: AppText.button.copyWith(color: Colors.white)),
+                ],
+              )
             : Row(mainAxisSize: MainAxisSize.min, children: [
                 if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: 8)],
                 Flexible(child: Text(label, style: AppText.button, maxLines: 1, overflow: TextOverflow.ellipsis)),

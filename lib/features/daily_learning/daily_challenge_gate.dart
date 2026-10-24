@@ -84,17 +84,19 @@ class _DailyChallengeGateState extends State<DailyChallengeGate> {
     return FutureBuilder<_PendingChallenge?>(
       future: _pending,
       builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        final pending = snap.data;
+        final pending = (snap.connectionState == ConnectionState.done) ? snap.data : null;
         if (pending == null) return widget.child;
-        return _DailyChallengeOverlay(
-          user: widget.user,
-          course: pending.course,
-          lesson: pending.lesson,
-          streak: pending.streak,
-          onDismiss: _dismiss,
+        return Stack(
+          children: [
+            widget.child,
+            _DailyChallengeOverlay(
+              user: widget.user,
+              course: pending.course,
+              lesson: pending.lesson,
+              streak: pending.streak,
+              onDismiss: _dismiss,
+            ),
+          ],
         );
       },
     );

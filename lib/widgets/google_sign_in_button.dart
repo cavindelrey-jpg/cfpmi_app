@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
+import 'widgets.dart';
 
 class GoogleSignInButton extends StatefulWidget {
   final void Function(AppUser user)? onSignedIn;
@@ -53,8 +54,17 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Rad.md)),
         ),
         child: _loading
-            ? const SizedBox(
-                width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const ShimmerLine(width: 44, height: 12),
+                  const SizedBox(width: 8),
+                  Text('Connecting…',
+                      style: GoogleFonts.inter(
+                          fontSize: 14, fontWeight: FontWeight.w600, color: ac.navy)),
+                ],
+              )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

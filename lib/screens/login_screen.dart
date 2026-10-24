@@ -1,12 +1,14 @@
 // lib/screens/login_screen.dart
 // Modernized login — immersive navy gradient, animated entry, email+password.
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 import '../config/branding.dart';
 import '../services/auth_service.dart';
+import '../widgets/widgets.dart';
 import 'app_router.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -49,7 +51,9 @@ class _LoginScreenState extends State<LoginScreen>
       final user = await AuthService.instance.signIn(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text,
-      );
+      ).timeout(const Duration(seconds: 15), onTimeout: () {
+        throw TimeoutException('Login request timed out. Please check your internet connection.');
+      });
       if (!mounted) return;
       if (user == null) {
         // Wrong credentials -- close the autofill session without
@@ -89,8 +93,8 @@ class _LoginScreenState extends State<LoginScreen>
       String errorMsg = e.toString().replaceFirst('Exception: ', '');
       if (errorMsg.contains('Invalid login credentials') || errorMsg.contains('invalid_grant')) {
         errorMsg = 'Hmm, that email and password combination didn\'t work. Have you forgotten your password? Try tapping "Forgot Password?" below.';
-      } else if (errorMsg.contains('SocketException') || errorMsg.contains('ClientException')) {
-        errorMsg = 'We couldn\'t connect to the internet. Please check your connection and try again.';
+      } else if (errorMsg.contains('SocketException') || errorMsg.contains('ClientException') || errorMsg.contains('TimeoutException')) {
+        errorMsg = 'We couldn\'t connect or the request timed out. Please check your connection and try again.';
       } else {
         errorMsg = 'Something didn\'t quite work. Please try again in a moment.';
       }
@@ -99,6 +103,10 @@ class _LoginScreenState extends State<LoginScreen>
         _error = errorMsg;
         _loading = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -179,8 +187,10 @@ class _LoginScreenState extends State<LoginScreen>
                   overlayColor: Colors.black.withValues(alpha: .08),
                 ),
                 child: sending
-                    ? SizedBox(width: 18, height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: ac.navy))
+                    ? const SizedBox(
+                        width: 60,
+                        child: ShimmerLine(width: 60, height: 12),
+                      )
                     : Text('Send reset link', style: AppText.button.copyWith(
                         fontSize: 14, color: ac.navy)),
               ),
@@ -272,9 +282,7 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                           const SizedBox(height: 10),
-                          _loading
-                              ? Center(child: Padding(padding: const EdgeInsets.all(8), child: CircularProgressIndicator(color: ac.primary)))
-                              : _SignInButton(onTap: _login),
+                          _SignInButton(onTap: _login, loading: _loading),
                           if (canPop) ...[
                             const SizedBox(height: 14),
                             Center(
@@ -376,7 +384,8 @@ class _ErrorBanner extends StatelessWidget {
 
 class _SignInButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _SignInButton({required this.onTap});
+  final bool loading;
+  const _SignInButton({required this.onTap, this.loading = false});
 
   @override
   Widget build(BuildContext context) {
@@ -405,12 +414,25 @@ class _SignInButton extends StatelessWidget {
           borderRadius: radius,
           splashColor: ac.navy.withValues(alpha: .08),
           highlightColor: ac.navy.withValues(alpha: .05),
-          onTap: () {
+          onTap: loading ? null : () {
             HapticFeedback.lightImpact();
             onTap();
           },
-          child: Center(child: Text('Sign In →', style: AppText.button.copyWith(
-              fontSize: 16, fontWeight: FontWeight.w800, color: ac.navy))),
+          child: Center(
+            child: loading
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const ShimmerLine(width: 44, height: 14),
+                      const SizedBox(width: 10),
+                      Text('Signing In…', style: AppText.button.copyWith(
+                          fontSize: 16, fontWeight: FontWeight.w800, color: ac.navy)),
+                    ],
+                  )
+                : Text('Sign In →', style: AppText.button.copyWith(
+                    fontSize: 16, fontWeight: FontWeight.w800, color: ac.navy)),
+          ),
         ),
       ),
     );

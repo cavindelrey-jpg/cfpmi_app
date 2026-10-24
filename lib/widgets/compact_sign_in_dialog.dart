@@ -2,12 +2,14 @@
 // Compact centered sign-in dialog for guests. Enables instant sign-in
 // without full-page redirection, keeping the application shell intact.
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../features/onboarding/voucher_entry_screen.dart';
+import 'widgets.dart';
 
 Future<bool?> showCompactSignInDialog(BuildContext context) {
   return showDialog<bool>(
@@ -51,7 +53,9 @@ class _CompactSignInDialogState extends State<CompactSignInDialog> {
       final user = await AuthService.instance.signIn(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text,
-      );
+      ).timeout(const Duration(seconds: 15), onTimeout: () {
+        throw TimeoutException('Sign-in timed out. Please check your internet connection.');
+      });
 
       if (user == null) {
         setState(() {
@@ -73,11 +77,19 @@ class _CompactSignInDialogState extends State<CompactSignInDialog> {
       if (!mounted) return;
       setState(() {
         final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
-        _error = msg.contains('Invalid login credentials')
-            ? 'Incorrect email or password.'
-            : msg;
+        if (msg.contains('Invalid login credentials') || msg.contains('invalid_grant')) {
+          _error = 'Incorrect email or password.';
+        } else if (msg.contains('TimeoutException') || msg.contains('SocketException') || msg.contains('ClientException')) {
+          _error = 'Connection timed out. Please check your internet connection.';
+        } else {
+          _error = msg;
+        }
         _loading = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -219,8 +231,18 @@ class _CompactSignInDialogState extends State<CompactSignInDialog> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _loading
-                      ? const SizedBox(width: 20, height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const ShimmerLine(width: 36, height: 12),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Signing in…',
+                              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        )
                       : Text(
                           'Sign In',
                           style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
